@@ -1,18 +1,34 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthGate } from "@/components/AuthGate";
+import { SyncBanner } from "@/components/SyncBanner";
+import { ToastProvider } from "@/components/Toast";
+import { SessionProvider } from "@/state/session";
+import { StoreProvider } from "@/state/store";
+import { c } from "@/theme/tokens";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    // initialMetrics skips the measure-before-first-render pass, which is the other
+    // way this tree can sit on the splash screen.
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SessionProvider>
+        <StoreProvider>
+          <ToastProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: "slide_from_right",
+              contentStyle: { backgroundColor: c.app },
+            }}
+            />
+            <SyncBanner />
+            <AuthGate />
+          </ToastProvider>
+        </StoreProvider>
+      </SessionProvider>
+    </SafeAreaProvider>
   );
 }
