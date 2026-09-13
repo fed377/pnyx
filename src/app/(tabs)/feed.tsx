@@ -1,39 +1,60 @@
-import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, RefreshControl, Share, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
+import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
 import { Media } from "@/components/Media";
 import { useToast } from "@/components/Toast";
-import { VoteControls } from "@/components/VoteControls";
+import {
+  RAIL_GAP,
+  RAIL_LABEL_GAP,
+  VoteControls,
+} from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
-import { COLD_START } from "@/lib/algorithm";
+import { useRouter } from "expo-router";
+import { useMemo, useRef, useState } from "react";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
 
 import { rankReels } from "@/lib/feed";
 import { nearestPoint } from "@/lib/grids";
 import type { Content } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+
+/**
+ * Rail glyphs are laid out edge to edge — no padded boxes — so the gap in the
+ * stylesheet is the gap you see, and every item on the rail sits the same
+ * distance from its neighbour. Touch targets come from hitSlop instead.
+ */
+const RAIL_SIZE = 52;
+const RAIL_ICON = 26;
+const RAIL_SLOP = { top: 10, bottom: 10, left: 12, right: 12 };
 
 function Reel({
   content,
-  index,
   height,
   playing,
 }: {
   content: Content;
-  index: number;
   height: number;
   playing: boolean;
 }) {
-  const { vote, reactionOf, isFollowing, people } = useStore();
+  const { vote, reactionOf, pendingUntilOf, isVoteLocked, isFollowing, people } =
+    useStore();
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const [comments, setComments] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // useAuthor resolves you, a known person, or an unloaded profile.
   const author = useAuthor(content.authorId);
@@ -44,7 +65,9 @@ function Reel({
 
   const share = async () => {
     try {
-      await Share.share({ message: `"${content.text}" — @${author.handle} on PNYX` });
+      await Share.share({
+        message: `"${content.text}" — @${author.handle} on PNYX`,
+      });
     } catch {
       toast("Couldn't share that one");
     }
@@ -52,83 +75,150 @@ function Reel({
 
   return (
     <View style={{ height }} accessibilityLabel={`Reel by ${author.name}`}>
-      <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} fill playing={playing} />
+      <Media
+        id={content.id}
+        scores={content.scores}
+        mediaUrl={content.mediaUrl}
+        fill
+        playing={playing}
+      />
 
-      <View style={[styles.top, { top: insets.top + s[3] }]}>
-        <Pressable
-          style={styles.authorChip}
-          accessibilityRole="link"
-          accessibilityLabel={`Open ${author.name}'s profile`}
-          onPress={() => router.push({ pathname: "/u/[id]", params: { id: author.id } })}
-        >
-          <Avatar name={author.name} positions={author.positions} size={38} />
-          <View>
-            <Text style={styles.authorName}>{author.name}</Text>
-            <Text style={styles.authorMeta}>
-              @{author.handle} · {type.name}
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-
-      {/* Rail and caption share one column so the rail can never sit under it. */}
+      {/*
+       * Caption and rail sit side by side, both anchored to the bottom, so the
+       * rail starts level with the caption instead of climbing the screen.
+       * Neither has a panel behind it: the text carries its own shadow, and the
+       * detail grows upward over the video when the caption is opened.
+       */}
       <View style={styles.stack} pointerEvents="box-none">
-        <View style={styles.rail} pointerEvents="box-none">
-          <VoteControls
-            layout="rail"
-            size={52}
-            overlay
-            current={myVote}
-            disabled={own}
-            onDisabledPress={() => toast("You can't vote on your own post")}
-            onVote={(power) => void vote(content.id, power)}
-          />
+        <View style={styles.bottomRow} pointerEvents="box-none">
           <Pressable
-            onPress={() => setComments(true)}
-            style={styles.railBtn}
+            style={styles.caption}
+            onPress={() => setExpanded((e) => !e)}
             accessibilityRole="button"
-            accessibilityLabel={`${content.comments.length} comments`}
+            accessibilityState={{ expanded }}
+            accessibilityLabel={
+              expanded
+                ? "Hide the full caption and the vote split"
+                : "Show the full caption and how everyone voted"
+            }
           >
-            <Icon name="comment" size={22} color="#fff" />
-            <Text style={styles.railLabel}>{content.comments.length}</Text>
-          </Pressable>
-          <Pressable
-            onPress={share}
-            style={styles.railBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Share this reel"
-          >
-            <Icon name="share" size={22} color="#fff" />
-          </Pressable>
-        </View>
+            {expanded && (
+              <Animated.View
+                entering={FadeIn.duration(180)}
+                exiting={FadeOut.duration(140)}
+                layout={Layout.duration(220)}
+                style={styles.detail}
+              >
+                {own ? (
+                  <Text style={styles.hint}>
+                    Your own reel — other people decide where it sits.
+                  </Text>
+                ) : (
+                  myVote !== undefined && (
+                    <VoteResult
+                      content={content}
+                      friends={friends}
+                      myVote={myVote}
+                      onDark
+                    />
+                  )
+                )}
+                {content.context && (
+                  <Text style={styles.context}>{content.context}</Text>
+                )}
+                {content.music && (
+                  <View style={styles.music}>
+                    <Icon name="feed" size={13} color="rgba(236,237,243,0.7)" />
+                    <Text style={styles.context}>{content.music}</Text>
+                  </View>
+                )}
+                <Text style={styles.context}>
+                  {author.name} · {author.locked ? "Unrevealed" : type.name}
+                </Text>
+              </Animated.View>
+            )}
 
-        <View style={styles.bottom}>
-          <Text style={styles.take}>{content.text}</Text>
-          {content.context && <Text style={styles.meta}>{content.context}</Text>}
-          {content.music && (
-            <View style={styles.music}>
-              <Icon name="feed" size={13} color="rgba(236,237,243,0.66)" />
-              <Text style={styles.meta}>{content.music}</Text>
-            </View>
-          )}
-          {own ? (
-            <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
-          ) : myVote !== undefined ? (
-            <VoteResult content={content} friends={friends} myVote={myVote} onDark />
-          ) : (
-            index === 0 && <Text style={styles.hint}>Tap to like or dislike · hold for 1.5s to love or hate</Text>
-          )}
+            <AnimatedPressable
+              scaleTo={0.97}
+              style={styles.byline}
+              accessibilityRole="link"
+              accessibilityLabel={`Open ${author.name}'s profile`}
+              onPress={() =>
+                router.push({ pathname: "/u/[id]", params: { id: author.id } })
+              }
+            >
+              <Avatar
+                name={author.name}
+                positions={author.positions}
+                size={28}
+              />
+              <Text style={styles.handle}>@{author.handle}</Text>
+            </AnimatedPressable>
+
+            <Text style={styles.take} numberOfLines={expanded ? undefined : 2}>
+              {content.text}
+            </Text>
+          </Pressable>
+
+          <View style={styles.rail} pointerEvents="box-none">
+            <VoteControls
+              layout="rail"
+              size={RAIL_SIZE}
+              overlay
+              current={myVote}
+              pendingUntil={pendingUntilOf(content.id)}
+              locked={isVoteLocked(content.id)}
+              onLockedPress={() =>
+                toast("Your vote is counted — it can't be changed")
+              }
+              disabled={own}
+              onDisabledPress={() => toast("You can't vote on your own post")}
+              onVote={(power) => vote(content.id, power)}
+            />
+            <AnimatedPressable
+              onPress={() => setComments(true)}
+              hitSlop={RAIL_SLOP}
+              scaleTo={0.85}
+              style={styles.railBtn}
+              accessibilityRole="button"
+              accessibilityLabel={`${content.comments.length} comments`}
+            >
+              <Icon name="comment" size={RAIL_ICON} color={c.text} />
+              <Text style={styles.railLabel}>{content.comments.length}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={share}
+              hitSlop={RAIL_SLOP}
+              scaleTo={0.85}
+              style={styles.railBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Share this reel"
+            >
+              <Icon name="share" size={RAIL_ICON} color={c.text} />
+            </AnimatedPressable>
+          </View>
         </View>
       </View>
 
-      <CommentsSheet content={content} open={comments} onClose={() => setComments(false)} />
+      <CommentsSheet
+        content={content}
+        open={comments}
+        onClose={() => setComments(false)}
+      />
     </View>
   );
 }
 
 export default function FeedScreen() {
-  const { positions, voteCount, reels: source, refresh, loading, mode, accent } = useStore();
-  const insets = useSafeAreaInsets();
+  const {
+    positions,
+    voteCount,
+    reels: source,
+    refresh,
+    loading,
+    mode,
+    accent,
+  } = useStore();
   const [height, setHeight] = useState(0);
   const [visible, setVisible] = useState(0);
 
@@ -148,82 +238,92 @@ export default function FeedScreen() {
   const voteCountRef = useRef(voteCount);
   positionsRef.current = positions;
   voteCountRef.current = voteCount;
-  const reels = useMemo(() => rankReels(source, positionsRef.current, voteCountRef.current), [source]);
+  const reels = useMemo(
+    () => rankReels(source, positionsRef.current, voteCountRef.current),
+    [source],
+  );
 
   return (
-    <View style={styles.screen} onLayout={(e) => setHeight(e.nativeEvent.layout.height)}>
+    <BlurBackdrop
+      style={styles.screen}
+      onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
+    >
       {height > 0 && (
         <FlatList
           data={reels}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <Reel content={item} index={index} height={height} playing={index === visible} />
+            <Reel content={item} height={height} playing={index === visible} />
           )}
           pagingEnabled
           snapToInterval={height}
           snapToAlignment="start"
           decelerationRate="fast"
           showsVerticalScrollIndicator={false}
-          getItemLayout={(_, index) => ({ length: height, offset: height * index, index })}
+          getItemLayout={(_, index) => ({
+            length: height,
+            offset: height * index,
+            index,
+          })}
           windowSize={3}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
           refreshControl={
             mode === "remote" ? (
-              <RefreshControl refreshing={loading} onRefresh={() => void refresh()} tintColor={accent} colors={[accent]} />
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={() => void refresh()}
+                tintColor={accent}
+                colors={[accent]}
+              />
             ) : undefined
           }
         />
       )}
-      {voteCount < COLD_START && (
-        <View style={[styles.chip, { top: insets.top + 58 }]} pointerEvents="none">
-          <Text style={styles.chipText}>{`Calibrating · ${voteCount}/${COLD_START}`}</Text>
-        </View>
-      )}
-    </View>
+    </BlurBackdrop>
   );
 }
 
+/** Keeps caption text legible over video without putting a panel behind it. */
+const shadow = {
+  textShadowColor: "rgba(0,0,0,0.75)",
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 6,
+} as const;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
-  top: { position: "absolute", left: s[4], zIndex: 2 },
-  authorChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: s[3],
-    paddingLeft: 6,
-    paddingRight: s[3],
-    paddingVertical: 6,
-    borderRadius: r.full,
-    backgroundColor: c.overlay,
-  },
-  authorName: { color: "#fff", fontSize: f.sm, fontWeight: "600" },
-  authorMeta: { color: "rgba(236,237,243,0.7)", fontSize: f.xs },
-  stack: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, justifyContent: "flex-end" },
-  rail: { alignSelf: "flex-end", alignItems: "center", gap: s[4], paddingHorizontal: s[4], paddingBottom: s[3] },
-  railBtn: { alignItems: "center", gap: 3 },
-  railLabel: { color: "#fff", fontSize: f.xs },
-  bottom: {
-    maxHeight: "62%",
-    padding: s[4],
-    gap: s[2],
-    backgroundColor: "rgba(8,8,13,0.72)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.08)",
-  },
-  take: { color: "#fff", fontSize: 23, fontWeight: "600", lineHeight: 29, letterSpacing: -0.4 },
-  meta: { color: "rgba(236,237,243,0.66)", fontSize: f.xs },
-  music: { flexDirection: "row", alignItems: "center", gap: 6 },
-  hint: { color: "rgba(236,237,243,0.5)", fontSize: f.xs, marginTop: s[1] },
-  chip: {
+  stack: {
     position: "absolute",
-    alignSelf: "center",
-    paddingHorizontal: s[3],
-    paddingVertical: 5,
-    borderRadius: r.full,
-    backgroundColor: c.overlay,
-    borderWidth: 1,
-    borderColor: c.line,
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    justifyContent: "flex-end",
+    paddingBottom: TAB_BAR_CLEARANCE,
   },
-  chipText: { color: c.textDim, fontSize: f.xs },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: s[4],
+    paddingBottom: s[4],
+    gap: s[3],
+  },
+  caption: { flex: 1, gap: s[2] },
+  detail: { gap: s[2], marginBottom: s[1] },
+  byline: { flexDirection: "row", alignItems: "center", gap: s[2] },
+  handle: { color: c.text, fontSize: f.sm, fontWeight: "600", ...shadow },
+  take: {
+    color: c.text,
+    fontSize: f.md,
+    fontWeight: "500",
+    lineHeight: 21,
+    ...shadow,
+  },
+  context: { color: "rgba(236,237,243,0.78)", fontSize: f.xs, ...shadow },
+  music: { flexDirection: "row", alignItems: "center", gap: 6 },
+  hint: { color: "rgba(236,237,243,0.6)", fontSize: f.xs, ...shadow },
+  rail: { alignItems: "center", gap: RAIL_GAP },
+  railBtn: { alignItems: "center", gap: RAIL_LABEL_GAP },
+  railLabel: { color: c.text, fontSize: f.xs, ...shadow },
 });

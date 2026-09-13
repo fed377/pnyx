@@ -9,7 +9,7 @@ import type { ApiContent, ApiPerson } from "./client";
  */
 
 /** Tallies are raw counts; the UI shows a percentage split. */
-function toSplit(t: ApiContent["tallies"]) {
+export function toSplit(t: ApiContent["tallies"]) {
   const total = t.love + t.like + t.dislike + t.hate;
   if (total === 0) return { love: 0, like: 0, dislike: 0, hate: 0 };
   const pct = (n: number) => Math.round((n / total) * 100);

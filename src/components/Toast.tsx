@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 
 const ToastContext = createContext<(msg: string) => void>(() => {});
 
@@ -64,8 +64,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: s[4],
     borderRadius: r.full,
     backgroundColor: c.surface3,
-    borderWidth: 1,
-    borderColor: c.line,
+    ...squircle,
   },
   text: { color: c.text, fontSize: f.sm },
 });

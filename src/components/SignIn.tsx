@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Btn } from "./Primitives";
 import { API_URL } from "@/api/client";
 import { useSession } from "@/state/session";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 
 export function SignIn({ onSkip }: { onSkip?: () => void }) {
   const { signIn, signUp, signInWithGoogle, configured } = useSession();
@@ -179,9 +179,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: s[3],
     paddingVertical: 12,
     borderRadius: r.sm,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   divider: { flexDirection: "row", alignItems: "center", gap: s[3], marginVertical: s[1] },
   rule: { flex: 1, height: 1, backgroundColor: c.line },

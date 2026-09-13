@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
+import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 
 export function Sheet({
@@ -21,9 +22,9 @@ export function Sheet({
         <View style={styles.sheet}>
           <View style={styles.head}>
             <Text style={styles.title}>{title}</Text>
-            <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
+            <AnimatedPressable onPress={onClose} hitSlop={8} scaleTo={0.85} accessibilityRole="button" accessibilityLabel="Close">
               <Icon name="close" size={20} color={c.textDim} />
-            </Pressable>
+            </AnimatedPressable>
           </View>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             {children}
@@ -40,10 +41,9 @@ const styles = StyleSheet.create({
   sheet: {
     maxHeight: "78%",
     backgroundColor: c.surface,
-    borderTopWidth: 1,
-    borderTopColor: c.line,
     borderTopLeftRadius: r.lg,
     borderTopRightRadius: r.lg,
+    ...squircle,
   },
   head: {
     flexDirection: "row",

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useStore } from "@/state/store";
-import { c, f, r } from "@/theme/tokens";
+import { c, f, r, squircle } from "@/theme/tokens";
 
 /** Counts up to `value` once, on mount — the tick-up in spec §6.3. */
 export function useTickUp(value: number, ms = 1000, enabled = true) {
@@ -41,16 +41,9 @@ export function useTickUp(value: number, ms = 1000, enabled = true) {
 }
 
 export function AlignmentPill({ value, muted = false }: { value: number; muted?: boolean }) {
-  const { accentSoft, accentLine } = useStore();
+  const { accentSoft } = useStore();
   return (
-    <View
-      style={[
-        styles.pill,
-        muted
-          ? { backgroundColor: "transparent", borderColor: c.line }
-          : { backgroundColor: accentSoft, borderColor: accentLine },
-      ]}
-    >
+    <View style={[styles.pill, { backgroundColor: muted ? c.surface2 : accentSoft }]}>
       <Text style={styles.pillNum}>{Math.round(value)}</Text>
       <Text style={styles.pillSym}>%</Text>
     </View>
@@ -107,7 +100,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: r.full,
-    borderWidth: 1,
+    ...squircle,
   },
   pillNum: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   pillSym: { color: c.textDim, fontSize: 10 },

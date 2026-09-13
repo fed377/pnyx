@@ -21,7 +21,7 @@ import { useToast } from "@/components/Toast";
 import { GRID_LIST } from "@/lib/grids";
 import type { GridId } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 
 type Step = "categories" | "warning" | "compose";
 
@@ -185,10 +185,10 @@ export default function ContributeScreen() {
                     onPress={() => toggle(grid.id)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: on }}
-                    style={[styles.cat, on && { borderColor: accent, backgroundColor: accentSoft }]}
+                    style={[styles.cat, on && { backgroundColor: accentSoft }]}
                   >
-                    <View style={[styles.mark, on && { borderColor: accent }]}>
-                      {on && <Icon name="check" size={14} color={accent} />}
+                    <View style={[styles.mark, on && { backgroundColor: accent }]}>
+                      {on && <Icon name="check" size={14} color={c.onAccent} />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.catLabel}>{grid.label}</Text>
@@ -236,7 +236,7 @@ export default function ContributeScreen() {
               onPress={() => void pick()}
               accessibilityRole="button"
               accessibilityLabel={media ? "Change the photo or video" : "Choose a photo or video"}
-              style={[styles.picker, media ? { borderStyle: "solid", borderColor: accent } : null]}
+              style={styles.picker}
             >
               {media ? (
                 <>
@@ -274,8 +274,8 @@ export default function ContributeScreen() {
               accessibilityState={{ checked: agreed }}
               style={styles.check}
             >
-              <View style={[styles.mark, agreed && { borderColor: accent }]}>
-                {agreed && <Icon name="check" size={14} color={accent} />}
+              <View style={[styles.mark, agreed && { backgroundColor: accent }]}>
+                {agreed && <Icon name="check" size={14} color={c.onAccent} />}
               </View>
               <Text style={styles.checkLabel}>I&apos;ve read the terms and this is my own opinion.</Text>
             </Pressable>
@@ -306,20 +306,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: s[3],
     padding: s[3],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   mark: {
     width: 20,
     height: 20,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: c.line,
+    backgroundColor: c.surface3,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
+    ...squircle,
   },
   catLabel: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   catAxes: { color: c.textDim, fontSize: f.xs, marginTop: 2 },
@@ -330,6 +329,7 @@ const styles = StyleSheet.create({
     backgroundColor: c.surface,
     borderTopRightRadius: r.sm,
     borderBottomRightRadius: r.sm,
+    ...squircle,
   },
   warnHead: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   warnBody: { color: c.textDim, fontSize: f.sm, lineHeight: 19, marginTop: 2 },
@@ -348,9 +348,8 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     padding: s[3],
     borderRadius: r.sm,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   counter: { color: c.textFaint, fontSize: f.xs, textAlign: "right", marginTop: s[2] },
   picker: {
@@ -365,11 +364,12 @@ const styles = StyleSheet.create({
     borderRadius: r.md,
     backgroundColor: c.surface,
     overflow: "hidden",
+    ...squircle,
   },
   pickerLabel: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   pickerHint: { color: c.textFaint, fontSize: f.xs },
   pickerSwap: { color: c.textDim, fontSize: f.xs, marginTop: s[2] },
-  preview: { width: "100%", height: 220, borderRadius: r.sm, backgroundColor: c.surface2 },
+  preview: { width: "100%", height: 220, borderRadius: r.sm, backgroundColor: c.surface2, ...squircle },
   check: { flexDirection: "row", alignItems: "center", gap: s[3] },
   checkLabel: { color: c.textDim, fontSize: f.sm, flex: 1 },
   gate: {
@@ -380,6 +380,7 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderColor: c.line,
     borderRadius: r.lg,
+    ...squircle,
   },
   gateTitle: { color: c.text, fontSize: f.lg, fontWeight: "600" },
   gateBody: { color: c.textDim, fontSize: f.sm, lineHeight: 20 },

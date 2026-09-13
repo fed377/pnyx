@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, mixHex, r, s, squircle } from "@/theme/tokens";
 
 /**
  * The app falls back to whatever it already has when the API is unreachable.
@@ -42,9 +42,8 @@ const styles = StyleSheet.create({
     paddingVertical: s[2],
     paddingHorizontal: s[3],
     borderRadius: r.md,
-    backgroundColor: c.surface3,
-    borderWidth: 1,
-    borderColor: "rgba(229,98,111,0.45)",
+    backgroundColor: mixHex(c.down, c.surface3, 0.3),
+    ...squircle,
   },
   text: { flex: 1, color: c.text, fontSize: f.xs, lineHeight: 16 },
   retry: { paddingHorizontal: s[2], paddingVertical: 2 },

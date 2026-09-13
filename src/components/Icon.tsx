@@ -22,6 +22,7 @@ export type IconName =
   | "chevron"
   | "filter"
   | "globe"
+  | "play"
   | "thumbUp"
   | "thumbDown"
   | "heart"
@@ -49,6 +50,7 @@ const PATHS: Record<IconName, string> = {
   close: "M6.2 6.2 17.8 17.8M17.8 6.2 6.2 17.8",
   chevron: "M9.5 5 16.5 12l-7 7",
   filter: "M4 7.5h4.5M13.5 7.5H20M4 16.5h8.5M17.5 16.5H20M11 5.4v4.2M15.5 14.4v4.2",
+  play: "M8 5.3v13.4a1 1 0 0 0 1.53.85l10.6-6.7a1 1 0 0 0 0-1.7L9.53 4.45A1 1 0 0 0 8 5.3z",
   globe: "M12 20.6a8.6 8.6 0 1 0 0-17.2 8.6 8.6 0 0 0 0 17.2zM3.4 12h17.2M12 3.4c2.2 2.4 3.4 5.4 3.4 8.6S14.2 18.2 12 20.6c-2.2-2.4-3.4-5.4-3.4-8.6S9.8 5.8 12 3.4z",
   thumbUp:
     "M7.5 20.4V9.8l4.2-6.2c1.2 0 2 1.1 1.8 2.3l-.8 3.5h5.9a2 2 0 0 1 2 2.4l-1.2 6.3a2.4 2.4 0 0 1-2.4 2.1zM7.5 9.8H4.4a1 1 0 0 0-1 1v8.6a1 1 0 0 0 1 1h3.1z",
@@ -60,7 +62,7 @@ const PATHS: Record<IconName, string> = {
     "M12 20.3 10.7 19C6 14.8 3 12.1 3 8.7 3 6 5.1 3.9 7.8 3.9c1.5 0 3 .7 4.2 2 1.2-1.3 2.7-2 4.2-2C18.9 3.9 21 6 21 8.7c0 3.4-3 6.1-7.7 10.3zM12.6 5.5l-2.2 4.1 3.2 1.9-2.4 4.4",
 };
 
-const FILLABLE: IconName[] = ["home", "feed", "people", "profile", "heart", "thumbUp", "thumbDown"];
+const FILLABLE: IconName[] = ["home", "feed", "people", "profile", "heart", "thumbUp", "thumbDown", "play"];
 export function Icon({
   name,
   size = 22,

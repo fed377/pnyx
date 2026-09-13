@@ -10,7 +10,7 @@ import type { PrivacyTier } from "@/lib/types";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
 import type { Profile } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, mixHex, r, s, squircle } from "@/theme/tokens";
 
 const TIERS: { id: PrivacyTier; label: string; note: string }[] = [
   { id: "speaker", label: "Speaker", note: "Most public. Only Speakers can post." },
@@ -87,13 +87,10 @@ export default function SettingsScreen() {
                   onPress={() => void saveProfile({ tier: tier.id })}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
-                  style={[
-                    styles.tier,
-                    active && { borderColor: accent, backgroundColor: accentSoft },
-                  ]}
+                  style={[styles.tier, active && { backgroundColor: accentSoft }]}
                 >
-                  <View style={[styles.mark, active && { borderColor: accent }]}>
-                    {active && <Icon name="check" size={14} color={accent} />}
+                  <View style={[styles.mark, active && { backgroundColor: accent }]}>
+                    {active && <Icon name="check" size={14} color={c.onAccent} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.tierLabel}>{tier.label}</Text>
@@ -132,7 +129,7 @@ export default function SettingsScreen() {
           </Card>
         )}
 
-        <Card style={{ borderColor: "rgba(229,98,111,0.28)" }}>
+        <Card style={{ backgroundColor: mixHex(c.down, c.surface, 0.16) }}>
           <SectionTitle>Forget me</SectionTitle>
           <Text style={styles.note}>
             Erases your profile, every vote, and all five grid positions. This cannot be undone, and nothing is kept
@@ -164,20 +161,19 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: s[3],
     padding: s[3],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   mark: {
     width: 20,
     height: 20,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: c.line,
+    backgroundColor: c.surface3,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
+    ...squircle,
   },
   tierLabel: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   tierNote: { color: c.textDim, fontSize: f.xs, marginTop: 2 },

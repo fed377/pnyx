@@ -1,14 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
-import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { api, uploadToSignedUrl } from "@/api/client";
-import { toContent, toPerson } from "@/api/adapters";
-import { computePositions, totalAlignment, UNLOCK_AT } from "@/lib/algorithm";
+import { api, ApiError, uploadToSignedUrl } from "@/api/client";
+import { toContent, toPerson, toSplit } from "@/api/adapters";
+import { computePositions, totalAlignment, UNLOCK_AT, VOTE_GRACE_MS } from "@/lib/algorithm";
 import { ALL_CONTENT, ME_DEFAULTS, ME_ID, PEOPLE, POSTS, REELS } from "@/lib/data";
 import { GRID_IDS, nearestPoint } from "@/lib/grids";
 import type { Content, GridId, Person, Positions, PrivacyTier, Vote, VotePower } from "@/lib/types";
-import { DEFAULT_ACCENT, hexToRgba } from "@/theme/tokens";
+import { c, LOCKED_ACCENT, mixHex } from "@/theme/tokens";
 import { useSession } from "./session";
 
 const STORAGE_KEY = "pnyx.state.v1";
@@ -33,6 +33,14 @@ type State = {
   premium: boolean;
   /** Minimum alignment % for the filter used across Home and People. */
   alignmentFilter: number;
+  /** Has completed the onboarding screen (username, birthday, bio). */
+  onboarded: boolean;
+  /**
+   * ISO date (YYYY-MM-DD), self-reported at onboarding. Kept only for the
+   * under-16 gate — there's no backend column for it yet (see PNYX
+   * Monetization/Spec), so it never leaves the device.
+   */
+  birthday: string | null;
 };
 
 const initialFollows = Object.fromEntries(PEOPLE.map((p) => [p.id, p.following]));
@@ -46,6 +54,8 @@ const initialState: State = {
   myPosts: [],
   premium: false,
   alignmentFilter: 0,
+  onboarded: false,
+  birthday: null,
 };
 
 type Action =
@@ -59,6 +69,7 @@ type Action =
   | { type: "filter"; value: number }
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
+  | { type: "onboard"; birthday: string }
   | { type: "forget" };
 
 function reducer(state: State, action: Action): State {
@@ -89,6 +100,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, premium: action.value };
     case "post":
       return { ...state, myPosts: [action.content, ...state.myPosts] };
+    case "onboard":
+      return { ...state, onboarded: true, birthday: action.birthday };
     case "forget":
       return { ...initialState, profile: { ...ME_DEFAULTS, tier: "active" } };
     default:
@@ -122,6 +135,8 @@ type Store = {
   mode: "local" | "remote";
   /** The signed-in user's id — a Supabase uuid remotely, the sample id locally. */
   myId: string;
+  /** False until the persisted store has been read back — gates showing onboarding. */
+  hydrated: boolean;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -136,21 +151,36 @@ type Store = {
 
   accent: string;
   accentSoft: string;
-  accentLine: string;
 
   reels: Content[];
   posts: Content[];
   people: Person[];
   peopleById: Record<string, Person>;
 
-  vote: (contentId: string, power: VotePower) => Promise<void>;
+  /**
+   * Casts a reaction — but it doesn't take effect right away. It sits
+   * pending for `VOTE_GRACE_MS`, cancellable by calling this again in the
+   * same direction; only once the window elapses does it commit into the
+   * movement equation and reach the server. See `pendingUntilOf`.
+   */
+  vote: (contentId: string, power: VotePower) => void;
   toggleFollow: (personId: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
   forgetMe: () => Promise<void>;
   publish: (input: PublishInput) => Promise<void>;
+  /** Saves the handle and bio (remotely too, when signed in) and records the birthday locally. */
+  completeOnboarding: (input: { handle: string; bio: string; birthday: string }) => Promise<void>;
 
   alignmentWith: (person: Person) => number;
+  /** The pending reaction if there is one, else the committed one. */
   reactionOf: (contentId: string) => VotePower | undefined;
+  /** When a vote on this content is still pending, the timestamp it commits at. */
+  pendingUntilOf: (contentId: string) => number | undefined;
+  /**
+   * True once a vote has committed. A committed reaction is final: the grace
+   * window was the chance to change your mind, and the buttons stop responding.
+   */
+  isVoteLocked: (contentId: string) => boolean;
   isFollowing: (personId: string) => boolean;
   clearStorage: () => void;
 };
@@ -174,6 +204,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [alignments, setAlignments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Votes cast but not yet committed (see VOTE_GRACE_MS) — shown immediately,
+  // cancellable, and not reflected in state.votes/reactions until the timer
+  // fires. Kept in the provider (not component-local state) so the window
+  // keeps running as the user scrolls or switches tabs.
+  const [pending, setPending] = useState<Record<string, { power: VotePower; commitAt: number }>>({});
+  const pendingTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  useEffect(
+    () => () => {
+      for (const timer of Object.values(pendingTimers.current)) clearTimeout(timer);
+    },
+    [],
+  );
 
   /* ── Local persistence (offline mode, and UI preferences in both) ────────── */
 
@@ -201,6 +245,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     });
   }, [state, hydrated]);
 
+  /**
+   * Runs an authenticated call with the token already in hand; a token can
+   * look locally valid (per `expiresAt`) yet still be rejected server-side —
+   * revoked, clock skew, an app left suspended for a while. On a 401, this
+   * forces one refresh and retries; a dead refresh token makes session.tsx
+   * sign the user out, which this surfaces as `null` for the caller to give
+   * up on quietly (AuthGate takes over from there).
+   */
+  const callWithRetry = useCallback(
+    async <T,>(t: string, fn: (tok: string) => Promise<T>): Promise<T | null> => {
+      try {
+        return await fn(t);
+      } catch (e) {
+        if (!(e instanceof ApiError) || e.status !== 401) throw e;
+        const fresh = await token(true);
+        if (!fresh) return null;
+        return await fn(fresh);
+      }
+    },
+    [token],
+  );
+
   /* ── Remote hydration ────────────────────────────────────────────────────── */
 
   const refresh = useCallback(async () => {
@@ -211,13 +277,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const [me, votes, reels, home, people] = await Promise.all([
-        api.me(t),
-        api.myVotes(t),
-        api.reels(t, 40),
-        api.home(t, 40),
-        api.people(t, 25),
-      ]);
+      const result = await callWithRetry(t, (tok) =>
+        Promise.all([api.me(tok), api.myVotes(tok), api.reels(tok, 40), api.home(tok, 40), api.people(tok, 25)]),
+      );
+      if (!result) return;
+      const [me, votes, reels, home, people] = result;
 
       setServerPositions(me.positions);
       setServerVoteCount(me.voteCount);
@@ -250,7 +314,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [remote, token]);
+  }, [remote, token, callWithRetry]);
 
   // Coming back to the app re-fetches: something may have changed on the server
   // (a post approved, someone else's vote) while it was in the background.
@@ -284,12 +348,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Your own posts are kept locally so they appear the moment you publish, but a
   // post the server is already serving must not be listed twice — the server's
-  // copy wins, because it carries the real moderation status and tallies.
+  // copy wins, because it carries the real moderation status and tallies. A
+  // video post lands in /feed/reels well before (or instead of) /home, so that
+  // counts as "served" too — otherwise Home shows the stale publish-time
+  // snapshot forever, out of sync with whatever Feed is correctly showing.
   const posts = useMemo(() => {
     const fromServer = remote ? (serverContent?.posts ?? []) : POSTS;
     if (!remote) return fromServer;
     const served = new Set(fromServer.map((p) => p.id));
-    const notYetServed = state.myPosts.filter((p) => !served.has(p.id));
+    const reelsById = new Map((serverContent?.reels ?? []).map((c) => [c.id, c]));
+    const notYetServed = state.myPosts
+      .filter((p) => !served.has(p.id))
+      .map((p) => reelsById.get(p.id) ?? p);
     return [...notYetServed, ...fromServer];
   }, [remote, serverContent, state.myPosts]);
   const people = remote ? (serverPeople ?? []) : PEOPLE;
@@ -304,7 +374,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return Object.fromEntries(all.map((c) => [c.id, c])) as Record<string, Content>;
   }, [remote, reels, posts, state.myPosts]);
 
-  const vote = useCallback(
+  // The real work — dispatched into the movement equation and, remotely,
+  // sent to the server. Only ever called once a vote's grace window elapses.
+  const commitVote = useCallback(
     async (contentId: string, power: VotePower) => {
       const content = contentById[contentId];
       if (!content) return;
@@ -316,18 +388,82 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       const t = await token();
       if (!t) return;
-      // Show the reaction immediately; the server's position is authoritative
-      // and replaces the optimistic one as soon as it answers.
       dispatch({ type: "vote", contentId, power, scores: content.scores });
       try {
-        const res = await api.vote(t, contentId, power);
-        setServerPositions(res.positions);
-        setServerVoteCount(res.voteCount);
+        const res = await callWithRetry(t, (tok) => api.vote(tok, contentId, power));
+        if (res) {
+          setServerPositions(res.positions);
+          setServerVoteCount(res.voteCount);
+          // The vote response carries this content's fresh tallies straight
+          // from the DB — patch it in now rather than waiting on the next
+          // full refresh(), so "how everyone voted" includes your own vote.
+          const globalSplit = toSplit(res.tallies);
+          setServerContent((prev) => {
+            if (!prev) return prev;
+            const patch = (list: Content[]) =>
+              list.some((c) => c.id === contentId)
+                ? list.map((c) => (c.id === contentId ? { ...c, globalSplit } : c))
+                : list;
+            return { reels: patch(prev.reels), posts: patch(prev.posts) };
+          });
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "vote failed");
       }
     },
-    [contentById, remote, token],
+    [contentById, remote, token, callWithRetry],
+  );
+
+  const clearPendingTimer = useCallback((contentId: string) => {
+    const timer = pendingTimers.current[contentId];
+    if (timer) {
+      clearTimeout(timer);
+      delete pendingTimers.current[contentId];
+    }
+  }, []);
+
+  const vote = useCallback(
+    (contentId: string, power: VotePower) => {
+      const existingPending = pending[contentId];
+
+      // Once a vote has committed it is final — the grace window is the only
+      // chance to change it. The buttons are already inert; this is the guard.
+      if (existingPending === undefined && state.reactions[contentId] !== undefined) return;
+
+      const dir = Math.sign(power);
+      const isLightTap = Math.abs(power) === 1;
+      const pendingSameDir = existingPending !== undefined && Math.sign(existingPending.power) === dir;
+
+      // A light tap toward a direction already reacted to — pending or
+      // already committed — either cancels the still-open window, or is a
+      // no-op: a committed vote can't be undone, and resubmitting the exact
+      // same reaction would only reshuffle its place in the decay-weighted
+      // history for no real change.
+      if (isLightTap && pendingSameDir) {
+        clearPendingTimer(contentId);
+        setPending((p) => {
+          const next = { ...p };
+          delete next[contentId];
+          return next;
+        });
+        return;
+      }
+      // A new reaction, an escalation (Like → Love), or replacing a
+      // different pending direction — (re)start the grace window.
+      clearPendingTimer(contentId);
+      const commitAt = Date.now() + VOTE_GRACE_MS;
+      setPending((p) => ({ ...p, [contentId]: { power, commitAt } }));
+      pendingTimers.current[contentId] = setTimeout(() => {
+        delete pendingTimers.current[contentId];
+        setPending((p) => {
+          const next = { ...p };
+          delete next[contentId];
+          return next;
+        });
+        void commitVote(contentId, power);
+      }, VOTE_GRACE_MS);
+    },
+    [pending, state.reactions, clearPendingTimer, commitVote],
   );
 
   const toggleFollow = useCallback(
@@ -338,12 +474,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = await token();
       if (!t) return;
       try {
-        await api.follow(t, personId, next);
+        await callWithRetry(t, (tok) => api.follow(tok, personId, next));
       } catch {
         dispatch({ type: "setFollow", personId, following: !next });
       }
     },
-    [remote, state.follows, token],
+    [remote, state.follows, token, callWithRetry],
   );
 
   const saveProfile = useCallback(
@@ -353,19 +489,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = await token();
       if (!t) return;
       try {
-        await api.updateMe(t, {
-          ...(patch.name !== undefined ? { name: patch.name } : {}),
-          ...(patch.handle !== undefined ? { handle: patch.handle } : {}),
-          ...(patch.pronouns !== undefined ? { pronouns: patch.pronouns } : {}),
-          ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
-          ...(patch.city !== undefined ? { city: patch.city } : {}),
-          ...(patch.tier !== undefined ? { privacyTier: patch.tier } : {}),
-        });
+        await callWithRetry(t, (tok) =>
+          api.updateMe(tok, {
+            ...(patch.name !== undefined ? { name: patch.name } : {}),
+            ...(patch.handle !== undefined ? { handle: patch.handle } : {}),
+            ...(patch.pronouns !== undefined ? { pronouns: patch.pronouns } : {}),
+            ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
+            ...(patch.city !== undefined ? { city: patch.city } : {}),
+            ...(patch.tier !== undefined ? { privacyTier: patch.tier } : {}),
+          }),
+        );
       } catch (e) {
         setError(e instanceof Error ? e.message : "could not save your profile");
       }
     },
-    [remote, token],
+    [remote, token, callWithRetry],
+  );
+
+  const completeOnboarding = useCallback(
+    async (input: { handle: string; bio: string; birthday: string }) => {
+      await saveProfile({ handle: input.handle, bio: input.bio });
+      dispatch({ type: "onboard", birthday: input.birthday });
+    },
+    [saveProfile],
   );
 
   const forgetMe = useCallback(async () => {
@@ -373,7 +519,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = await token();
       if (t) {
         try {
-          await api.forgetMe(t);
+          await callWithRetry(t, (tok) => api.forgetMe(tok));
         } catch {
           // Deleting locally regardless; the account may already be gone.
         }
@@ -385,7 +531,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {
       // nothing to clean up
     }
-  }, [remote, token]);
+  }, [remote, token, callWithRetry]);
 
   const publish = useCallback(
     async (input: PublishInput) => {
@@ -421,27 +567,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const t = await token();
       if (!t) throw new Error("not signed in");
 
-      const ticket = await api.uploadTicket(t, input.mediaType);
+      const ticket = await callWithRetry(t, (tok) => api.uploadTicket(tok, input.mediaType));
+      if (!ticket) throw new Error("not signed in");
       await uploadToSignedUrl(ticket.uploadUrl, input.fileUri, input.mediaType);
-      const row = await api.createContent(t, {
-        type: input.type,
-        body: input.body,
-        categories: input.categories,
-        mediaPath: ticket.path,
-        mediaType: input.mediaType,
-      });
+      const row = await callWithRetry(t, (tok) =>
+        api.createContent(tok, {
+          type: input.type,
+          body: input.body,
+          categories: input.categories,
+          mediaPath: ticket.path,
+          mediaType: input.mediaType,
+        }),
+      );
+      if (!row) throw new Error("not signed in");
       dispatch({ type: "post", content: toContent(row) });
     },
-    [positions, remote, token],
+    [positions, remote, token, callWithRetry],
   );
 
   const unlocked = voteCount >= UNLOCK_AT;
-  const accent = unlocked ? nearestPoint("mind", positions.mind).hex! : DEFAULT_ACCENT;
+  const accent = unlocked ? nearestPoint("mind", positions.mind).hex! : LOCKED_ACCENT;
 
   const value = useMemo<Store>(
     () => ({
       mode,
       myId,
+      hydrated,
       loading,
       error,
       refresh,
@@ -452,8 +603,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       unlocked,
       unlockProgress: Math.min(1, voteCount / UNLOCK_AT),
       accent,
-      accentSoft: hexToRgba(accent, 0.16),
-      accentLine: hexToRgba(accent, 0.38),
+      // A solid, opaque tint — not a translucent overlay — so a filled chip or
+      // pill reads the same regardless of what's ever been drawn behind it.
+      accentSoft: mixHex(accent, c.app, 0.22),
       reels,
       posts,
       people,
@@ -463,18 +615,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveProfile,
       forgetMe,
       publish,
+      completeOnboarding,
       // Remotely the server's number wins: a private person's coordinates are
       // withheld, so recomputing here would be wrong.
       alignmentWith: (person) => alignments[person.id] ?? totalAlignment(positions, person.positions),
-      reactionOf: (contentId) => state.reactions[contentId],
+      reactionOf: (contentId) => pending[contentId]?.power ?? state.reactions[contentId],
+      pendingUntilOf: (contentId) => pending[contentId]?.commitAt,
+      isVoteLocked: (contentId) =>
+        state.reactions[contentId] !== undefined && pending[contentId] === undefined,
       isFollowing: (personId) => Boolean(state.follows[personId]),
       clearStorage: () => {
         AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
       },
     }),
     [
-      mode, myId, loading, error, refresh, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, vote, toggleFollow, saveProfile, forgetMe, publish, alignments,
+      mode, myId, hydrated, loading, error, refresh, state, positions, voteCount, unlocked, accent,
+      reels, posts, people, peopleById, vote, toggleFollow, saveProfile, forgetMe, publish, completeOnboarding,
+      alignments, pending,
     ],
   );
 

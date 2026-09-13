@@ -1,13 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fireEvent } from "@testing-library/react-native";
-import { renderRouter, screen } from "expo-router/testing-library";
+import { act, renderRouter, screen } from "expo-router/testing-library";
+import { VOTE_GRACE_MS } from "@/lib/algorithm";
 
 const APP = "./src/app";
 
 /** Every surface should mount and show its own content, not just a shell. */
 const ROUTES: [url: string, expected: RegExp][] = [
   ["/", /more reactions/i],
-  ["/feed", /Calibrating/i],
+  ["/feed", /^@[a-z0-9._]+$/i],
   ["/people", /Most aligned/i],
   ["/profile", /The five grids/i],
   ["/u/mara", /Mara Colombo/],
@@ -46,19 +47,74 @@ describe("every route renders", () => {
 });
 
 describe("voting", () => {
-  it("a tap records a like, reveals the split, and advances the unlock", async () => {
+  it("shows the reaction at once, and counts it after the grace window", async () => {
     await renderRouter(APP, { initialUrl: "/" });
 
-    const banner = (await screen.findAllByText(/more reactions/i))[0];
-    const before = Number(String(banner.props.children).match(/\d+/)![0]);
+    // Read the count off the banner's own label — the number and the unit are
+    // separate Text nodes, so no single text node carries both.
+    const banner = await screen.findByLabelText(/^\d+ more reactions$/);
+    const before = Number(String(banner.props.accessibilityLabel).match(/\d+/)![0]);
     expect(before).toBeGreaterThan(0);
 
     const like = screen.getAllByLabelText(/^Like\./)[0];
     fireEvent(like, "pressIn");
     fireEvent(like, "pressOut");
 
+    // The reaction lands immediately, even though the vote is still cancellable.
     expect(await screen.findByText(/How everyone voted/i)).toBeTruthy();
     expect(await screen.findByText(/You · Liked/)).toBeTruthy();
-    expect(await screen.findByText(`${before - 1} more reactions`)).toBeTruthy();
+
+    // The count only moves once the grace window closes and the vote commits.
+    expect(screen.queryByLabelText(`${before - 1} more reactions`)).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
+    });
+    // The commit dispatches from an async callback; let it settle.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const counted = await screen.findByLabelText(/^\d+ more reactions$/);
+    expect(
+      Number(String(counted.props.accessibilityLabel).match(/\d+/)![0]),
+    ).toBe(before - 1);
+  });
+
+  it("locks the buttons once the vote is counted", async () => {
+    await renderRouter(APP, { initialUrl: "/" });
+    await screen.findByLabelText(/^\d+ more reactions$/);
+
+    const like = screen.getAllByLabelText(/^Like\./)[0];
+    fireEvent(like, "pressIn");
+    fireEvent(like, "pressOut");
+    await act(async () => {
+      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // The vote it landed on is final, and the other direction is inert.
+    expect(await screen.findByLabelText(/This vote is final/)).toBeTruthy();
+    const other = screen.getAllByLabelText(
+      /unavailable, your vote is already counted/,
+    )[0];
+
+    const before = Number(
+      String(
+        (await screen.findByLabelText(/^\d+ more reactions$/)).props
+          .accessibilityLabel,
+      ).match(/\d+/)![0],
+    );
+    fireEvent(other, "pressIn");
+    fireEvent(other, "pressOut");
+    await act(async () => {
+      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
+      await Promise.resolve();
+    });
+    const after = await screen.findByLabelText(/^\d+ more reactions$/);
+    expect(
+      Number(String(after.props.accessibilityLabel).match(/\d+/)![0]),
+    ).toBe(before);
   });
 });

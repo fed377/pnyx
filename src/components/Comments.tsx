@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { PEOPLE_BY_ID } from "@/lib/data";
 import type { Comment, Content } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, mixHex, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
@@ -64,7 +64,7 @@ export function CommentsSheet({
                   onPress={() => cast(cm.id, 1)}
                   accessibilityRole="button"
                   accessibilityLabel="Agree with this comment"
-                  style={[styles.chip, v === 1 && { borderColor: c.up }]}
+                  style={[styles.chip, v === 1 && { backgroundColor: mixHex(c.up, c.surface2, 0.3) }]}
                 >
                   <Icon name="thumbUp" size={13} color={v === 1 ? c.up : c.textFaint} filled={v === 1} />
                   <Text style={[styles.chipNum, v === 1 && { color: c.up }]}>{cm.up + (v === 1 ? 1 : 0)}</Text>
@@ -73,7 +73,7 @@ export function CommentsSheet({
                   onPress={() => cast(cm.id, -1)}
                   accessibilityRole="button"
                   accessibilityLabel="Disagree with this comment"
-                  style={[styles.chip, v === -1 && { borderColor: c.down }]}
+                  style={[styles.chip, v === -1 && { backgroundColor: mixHex(c.down, c.surface2, 0.3) }]}
                 >
                   <Icon name="thumbDown" size={13} color={v === -1 ? c.down : c.textFaint} filled={v === -1} />
                   <Text style={[styles.chipNum, v === -1 && { color: c.down }]}>{cm.down + (v === -1 ? 1 : 0)}</Text>
@@ -122,8 +122,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: r.full,
-    borderWidth: 1,
-    borderColor: c.line,
+    backgroundColor: c.surface2,
   },
   chipNum: { color: c.textFaint, fontSize: f.xs },
   form: {
@@ -142,9 +141,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: s[3],
     paddingVertical: 10,
     borderRadius: r.sm,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   send: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 });

@@ -1,0 +1,1022 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
+› Building app...
+Starting a Gradle Daemon, 1 busy and 1 incompatible and 3 stopped Daemons could not be reused, use --status for details
+Configuration on demand is an incubating feature.
+> Task :gradle-plugin:shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:settings-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:processResources
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:processResources
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:shared:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:compileJava NO-SOURCE
+> Task :gradle-plugin:shared:processResources NO-SOURCE
+> Task :gradle-plugin:shared:classes UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:processResources NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:classes UP-TO-DATE
+> Task :gradle-plugin:shared:jar
+> Task :expo-gradle-plugin:expo-autolinking-plugin-shared:jar
+> Task :gradle-plugin:settings-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:settings-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:settings-plugin:classes
+> Task :gradle-plugin:settings-plugin:jar
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileKotlin UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:classes
+> Task :expo-gradle-plugin:expo-autolinking-settings-plugin:jar
+> Task :expo-gradle-plugin:expo-autolinking-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle-plugin:react-native-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-module-gradle-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-module-gradle-plugin:pluginDescriptors
+> Task :expo-module-gradle-plugin:processResources
+> Task :gradle-plugin:react-native-gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:react-native-gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:react-native-gradle-plugin:processResources
+> Task :gradle-plugin:react-native-gradle-plugin:classes
+> Task :gradle-plugin:react-native-gradle-plugin:jar
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:compileKotlin FROM-CACHE
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:processResources
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:classes
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileKotlin FROM-CACHE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:compileJava NO-SOURCE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:pluginDescriptors UP-TO-DATE
+> Task :expo-gradle-plugin:expo-autolinking-plugin:processResources
+> Task :expo-gradle-plugin:expo-autolinking-plugin:classes
+> Task :expo-gradle-plugin:expo-max-sdk-override-plugin:jar
+> Task :expo-gradle-plugin:expo-autolinking-plugin:jar
+> Task :expo-module-gradle-plugin:compileKotlin FROM-CACHE
+> Task :expo-module-gradle-plugin:compileJava NO-SOURCE
+> Task :expo-module-gradle-plugin:classes
+> Task :expo-module-gradle-plugin:jar
+
+> Configure project :
+[32m[ExpoRootProject][0m Using the following versions:
+  - buildTools:  [32m36.0.0[0m
+  - minSdk:      [32m24[0m
+  - compileSdk:  [32m36[0m
+  - targetSdk:   [32m36[0m
+  - ndk:         [32m27.1.12297006[0m
+  - kotlin:      [32m2.1.20[0m
+  - ksp:         [32m2.1.20-2.0.1[0m
+
+> Configure project :app
+ ??  [33mApplying gradle plugin[0m '[32mexpo-max-sdk-override-plugin[0m'
+  [expo-max-sdk-override-plugin] This plugin will find all permissions declared with `android:maxSdkVersion`. If there exists a declaration with the `android:maxSdkVersion` annotation and another one without, the plugin will remove the annotation from the final merged manifest. In order to see a log with the changes run a clean build of the app.
+
+> Configure project :expo
+
+Using expo modules
+  - [32mexpo-log-box[0m (57.0.4)
+  - [32mexpo-constants[0m (57.0.17)
+
+> Configure project :expo-modules-core
+Linking react-native-worklets native libs into expo-modules-core build tasks
+task ':react-native-worklets:mergeDebugNativeLibs'
+task ':react-native-worklets:mergeReleaseNativeLibs'
+
+> Configure project :expo
+  - [32mexpo-modules-core[0m (57.0.17)
+  - [33m[?][0m [32mexpo-dom-webview[0m (57.0.1)
+  - [33m[?][0m [32mexpo-ui[0m (57.0.17)
+  - [33m[?][0m [32mexpo-asset[0m (57.0.16)
+  - [33m[?][0m [32mexpo-blur[0m (57.0.2)
+  - [33m[?][0m [32mexpo-device[0m (57.0.1)
+  - [33m[?][0m [32mexpo-file-system[0m (57.0.6)
+  - [33m[?][0m [32mexpo-font[0m (57.0.3)
+  - [33m[?][0m [32mexpo-image[0m (57.0.4)
+  - [33m[?][0m [32mexpo-image-loader[0m (57.0.1)
+  - [33m[?][0m [32mexpo-image-picker[0m (57.0.16)
+  - [33m[?][0m [32mexpo-keep-awake[0m (57.0.1)
+  - [33m[?][0m [32mexpo-linking[0m (57.0.9)
+  - [33m[?][0m [32mexpo-router[0m (57.0.20)
+  - [33m[?][0m [32mexpo-splash-screen[0m (57.0.8)
+  - [33m[?][0m [32mexpo-status-bar[0m (57.0.1)
+  - [33m[?][0m [32mexpo-system-ui[0m (57.0.3)
+  - [33m[?][0m [32mexpo-video[0m (57.0.3)
+  - [33m[?][0m [32mexpo-web-browser[0m (57.0.2)
+
+
+> Task :expo-modules-core:preBuild UP-TO-DATE
+> Task :expo-log-box:preBuild UP-TO-DATE
+> Task :expo-modules-core:preDebugBuild UP-TO-DATE
+> Task :expo-log-box:preDebugBuild UP-TO-DATE
+> Task :react-native-masked-view_masked-view:preBuild UP-TO-DATE
+> Task :react-native-masked-view_masked-view:preDebugBuild UP-TO-DATE
+> Task :expo-modules-core:writeDebugAarMetadata UP-TO-DATE
+> Task :expo-log-box:writeDebugAarMetadata UP-TO-DATE
+> Task :react-native-masked-view_masked-view:writeDebugAarMetadata UP-TO-DATE
+> Task :expo:generatePackagesList UP-TO-DATE
+> Task :expo:preBuild UP-TO-DATE
+> Task :expo:preDebugBuild UP-TO-DATE
+> Task :expo:writeDebugAarMetadata UP-TO-DATE
+> Task :expo-log-box:generateDebugResValues UP-TO-DATE
+> Task :react-native-reanimated:assertMinimalReactNativeVersionTask
+> Task :expo-log-box:generateDebugResources UP-TO-DATE
+> Task :expo:generateDebugResValues UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-community_slider:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :app:generateAutolinkingNewArchitectureFiles UP-TO-DATE
+> Task :expo:generateDebugResources UP-TO-DATE
+> Task :react-native-gesture-handler:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-safe-area-context:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :expo:packageDebugResources UP-TO-DATE
+> Task :expo-log-box:packageDebugResources UP-TO-DATE
+> Task :react-native-masked-view_masked-view:generateDebugResValues UP-TO-DATE
+> Task :expo-modules-core:generateDebugResValues UP-TO-DATE
+> Task :react-native-svg:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-screens:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-masked-view_masked-view:generateDebugResources UP-TO-DATE
+> Task :expo-modules-core:generateDebugResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-async-storage_async-storage:preBuild UP-TO-DATE
+> Task :react-native-async-storage_async-storage:preDebugBuild UP-TO-DATE
+> Task :react-native-community_slider:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-community_slider:preBuild UP-TO-DATE
+> Task :react-native-community_slider:preDebugBuild UP-TO-DATE
+> Task :react-native-async-storage_async-storage:writeDebugAarMetadata UP-TO-DATE
+> Task :react-native-community_slider:writeDebugAarMetadata UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateDebugResValues UP-TO-DATE
+> Task :react-native-community_slider:generateDebugResValues UP-TO-DATE
+> Task :expo-modules-core:packageDebugResources UP-TO-DATE
+> Task :react-native-safe-area-context:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-safe-area-context:preBuild UP-TO-DATE
+> Task :react-native-gesture-handler:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-safe-area-context:preDebugBuild UP-TO-DATE
+> Task :react-native-gesture-handler:preBuild UP-TO-DATE
+> Task :react-native-gesture-handler:preDebugBuild UP-TO-DATE
+> Task :expo:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-safe-area-context:writeDebugAarMetadata UP-TO-DATE
+> Task :app:generateAutolinkingPackageList UP-TO-DATE
+> Task :app:generateCodegenSchemaFromJavaScript SKIPPED
+> Task :react-native-gesture-handler:writeDebugAarMetadata UP-TO-DATE
+> Task :app:generateCodegenArtifactsFromSchema SKIPPED
+> Task :app:generateReactNativeEntryPoint UP-TO-DATE
+> Task :react-native-gesture-handler:generateDebugResValues UP-TO-DATE
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :expo:processDebugManifest UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-gesture-handler:generateDebugResources UP-TO-DATE
+> Task :react-native-svg:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-safe-area-context:generateDebugResValues UP-TO-DATE
+> Task :react-native-worklets:assertMinimalReactNativeVersionTask
+> Task :react-native-reanimated:assertWorkletsVersionTask
+> Task :react-native-community_slider:generateDebugResources UP-TO-DATE
+> Task :react-native-safe-area-context:generateDebugResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateDebugResources UP-TO-DATE
+> Task :react-native-screens:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-screens:preBuild UP-TO-DATE
+> Task :react-native-svg:preBuild UP-TO-DATE
+> Task :react-native-screens:preDebugBuild UP-TO-DATE
+> Task :react-native-gesture-handler:packageDebugResources UP-TO-DATE
+> Task :react-native-screens:writeDebugAarMetadata UP-TO-DATE
+> Task :expo-log-box:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-safe-area-context:packageDebugResources UP-TO-DATE
+> Task :react-native-community_slider:packageDebugResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:packageDebugResources UP-TO-DATE
+> Task :react-native-screens:generateDebugResValues UP-TO-DATE
+> Task :react-native-worklets:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :react-native-async-storage_async-storage:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-gesture-handler:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-community_slider:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-reanimated:generateCodegenSchemaFromJavaScript UP-TO-DATE
+> Task :expo-log-box:processDebugManifest UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-svg:preDebugBuild UP-TO-DATE
+> Task :expo-modules-core:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-masked-view_masked-view:packageDebugResources UP-TO-DATE
+> Task :react-native-safe-area-context:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-masked-view_masked-view:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-svg:writeDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :react-native-svg:generateDebugResValues UP-TO-DATE
+> Task :react-native-svg:generateDebugResources UP-TO-DATE
+> Task :react-native-worklets:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-reanimated:generateCodegenArtifactsFromSchema UP-TO-DATE
+> Task :react-native-screens:generateDebugResources UP-TO-DATE
+> Task :expo-modules-core:processDebugManifest UP-TO-DATE
+> Task :react-native-gesture-handler:processDebugManifest UP-TO-DATE
+> Task :react-native-community_slider:processDebugManifest UP-TO-DATE
+> Task :react-native-async-storage_async-storage:processDebugManifest UP-TO-DATE
+> Task :react-native-masked-view_masked-view:processDebugManifest UP-TO-DATE
+> Task :react-native-safe-area-context:processDebugManifest UP-TO-DATE
+> Task :expo:compileDebugLibraryResources UP-TO-DATE
+> Task :expo-log-box:compileDebugLibraryResources UP-TO-DATE
+> Task :expo-modules-core:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-gesture-handler:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-community_slider:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:compileDebugLibraryResources UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :react-native-screens:packageDebugResources UP-TO-DATE
+> Task :react-native-svg:packageDebugResources UP-TO-DATE
+> Task :react-native-screens:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-svg:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-community_slider:parseDebugLocalResources UP-TO-DATE
+> Task :expo:parseDebugLocalResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:parseDebugLocalResources UP-TO-DATE
+> Task :expo-log-box:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-gesture-handler:parseDebugLocalResources UP-TO-DATE
+> Task :expo-modules-core:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :react-native-community_slider:generateDebugRFile UP-TO-DATE
+> Task :react-native-masked-view_masked-view:compileDebugLibraryResources UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :expo:generateDebugRFile UP-TO-DATE
+> Task :expo:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-async-storage_async-storage:generateDebugRFile UP-TO-DATE
+> Task :expo:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-masked-view_masked-view:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-safe-area-context:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-async-storage_async-storage:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-worklets:prepareWorkletsHeadersForPrefabs UP-TO-DATE
+> Task :react-native-worklets:preBuild
+> Task :react-native-worklets:preDebugBuild
+> Task :expo-modules-core:generateDebugRFile UP-TO-DATE
+> Task :expo-modules-core:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-log-box:generateDebugRFile UP-TO-DATE
+> Task :react-native-gesture-handler:generateDebugRFile UP-TO-DATE
+> Task :expo:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-worklets:writeDebugAarMetadata UP-TO-DATE
+> Task :react-native-async-storage_async-storage:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-gesture-handler:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-log-box:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-screens:processDebugManifest UP-TO-DATE
+> Task :react-native-safe-area-context:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-svg:processDebugManifest UP-TO-DATE
+> Task :react-native-worklets:generateDebugResValues UP-TO-DATE
+> Task :react-native-masked-view_masked-view:generateDebugRFile UP-TO-DATE
+> Task :react-native-community_slider:generateDebugBuildConfig UP-TO-DATE
+> Task :expo-log-box:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-svg:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-gesture-handler:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-masked-view_masked-view:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-gesture-handler:javaPreCompileDebug UP-TO-DATE
+> Task :expo-log-box:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-community_slider:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-safe-area-context:generateDebugRFile UP-TO-DATE
+> Task :react-native-safe-area-context:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-modules-core:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-svg:parseDebugLocalResources UP-TO-DATE
+> Task :expo:mergeDebugShaders UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :expo:compileDebugShaders NO-SOURCE
+> Task :expo:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :react-native-masked-view_masked-view:javaPreCompileDebug UP-TO-DATE
+> Task :expo-modules-core:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-safe-area-context:generateDebugBuildConfig UP-TO-DATE
+> Task :expo:mergeDebugAssets UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :expo-log-box:mergeDebugShaders UP-TO-DATE
+> Task :expo-modules-core:mergeDebugShaders UP-TO-DATE
+> Task :react-native-svg:generateDebugRFile UP-TO-DATE
+> Task :react-native-gesture-handler:mergeDebugShaders UP-TO-DATE
+> Task :react-native-screens:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-worklets:generateDebugResources UP-TO-DATE
+> Task :expo-log-box:compileDebugShaders NO-SOURCE
+> Task :expo-log-box:generateDebugAssets UP-TO-DATE
+> Task :react-native-svg:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-gesture-handler:compileDebugShaders NO-SOURCE
+> Task :expo-modules-core:compileDebugShaders NO-SOURCE
+> Task :react-native-gesture-handler:generateDebugAssets UP-TO-DATE
+> Task :expo-modules-core:generateDebugAssets UP-TO-DATE
+> Task :react-native-screens:parseDebugLocalResources UP-TO-DATE
+> Task :expo-modules-core:mergeDebugAssets UP-TO-DATE
+> Task :expo-log-box:mergeDebugAssets UP-TO-DATE
+> Task :react-native-gesture-handler:mergeDebugAssets UP-TO-DATE
+> Task :react-native-svg:javaPreCompileDebug UP-TO-DATE
+> Task :expo:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :expo-log-box:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-worklets:packageDebugResources UP-TO-DATE
+> Task :react-native-screens:generateDebugRFile UP-TO-DATE
+> Task :react-native-screens:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo:mergeDebugNativeLibs NO-SOURCE
+> Task :expo-log-box:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-screens:generateDebugBuildConfig UP-TO-DATE
+> Task :expo:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-worklets:extractDeepLinksDebug UP-TO-DATE
+> Task :expo-log-box:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :expo-modules-core:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-gesture-handler:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-reanimated:prepareReanimatedHeadersForPrefabs UP-TO-DATE
+> Task :react-native-reanimated:preBuild
+> Task :react-native-reanimated:preDebugBuild
+> Task :react-native-reanimated:writeDebugAarMetadata UP-TO-DATE
+> Task :react-native-reanimated:generateDebugResValues UP-TO-DATE
+> Task :react-native-worklets:processDebugManifest UP-TO-DATE
+> Task :react-native-reanimated:generateDebugResources UP-TO-DATE
+> Task :react-native-worklets:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-worklets:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-reanimated:packageDebugResources UP-TO-DATE
+> Task :react-native-worklets:generateDebugRFile UP-TO-DATE
+> Task :react-native-worklets:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-worklets:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-reanimated:extractDeepLinksDebug UP-TO-DATE
+> Task :react-native-reanimated:processDebugManifest UP-TO-DATE
+> Task :react-native-reanimated:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-reanimated:parseDebugLocalResources UP-TO-DATE
+> Task :react-native-reanimated:generateDebugRFile UP-TO-DATE
+> Task :react-native-reanimated:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :react-native-reanimated:generateDebugBuildConfig UP-TO-DATE
+> Task :react-native-reanimated:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-reanimated:mergeDebugShaders UP-TO-DATE
+> Task :react-native-reanimated:compileDebugShaders NO-SOURCE
+> Task :react-native-reanimated:generateDebugAssets UP-TO-DATE
+> Task :react-native-reanimated:mergeDebugAssets UP-TO-DATE
+> Task :react-native-reanimated:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :react-native-community_slider:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-async-storage_async-storage:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-masked-view_masked-view:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-community_slider:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-async-storage_async-storage:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-masked-view_masked-view:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-svg:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-svg:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeDebugShaders UP-TO-DATE
+> Task :react-native-masked-view_masked-view:mergeDebugShaders UP-TO-DATE
+> Task :react-native-async-storage_async-storage:compileDebugShaders NO-SOURCE
+> Task :react-native-masked-view_masked-view:compileDebugShaders NO-SOURCE
+> Task :react-native-async-storage_async-storage:generateDebugAssets UP-TO-DATE
+> Task :react-native-svg:mergeDebugShaders UP-TO-DATE
+> Task :react-native-svg:compileDebugShaders NO-SOURCE
+> Task :react-native-svg:generateDebugAssets UP-TO-DATE
+> Task :react-native-masked-view_masked-view:generateDebugAssets UP-TO-DATE
+> Task :react-native-worklets:compileDebugKotlin UP-TO-DATE
+> Task :react-native-worklets:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-svg:mergeDebugAssets UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeDebugAssets UP-TO-DATE
+> Task :react-native-community_slider:mergeDebugShaders UP-TO-DATE
+> Task :react-native-community_slider:compileDebugShaders NO-SOURCE
+> Task :react-native-community_slider:generateDebugAssets UP-TO-DATE
+> Task :react-native-masked-view_masked-view:mergeDebugAssets UP-TO-DATE
+> Task :react-native-async-storage_async-storage:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-svg:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-community_slider:mergeDebugAssets UP-TO-DATE
+> Task :react-native-masked-view_masked-view:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-community_slider:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-worklets:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-worklets:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-async-storage_async-storage:processDebugJavaRes NO-SOURCE
+> Task :react-native-worklets:mergeDebugShaders UP-TO-DATE
+> Task :react-native-worklets:compileDebugShaders NO-SOURCE
+> Task :react-native-worklets:generateDebugAssets UP-TO-DATE
+> Task :react-native-worklets:mergeDebugAssets UP-TO-DATE
+> Task :react-native-masked-view_masked-view:processDebugJavaRes NO-SOURCE
+> Task :react-native-worklets:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-community_slider:processDebugJavaRes NO-SOURCE
+> Task :react-native-worklets:processDebugJavaRes UP-TO-DATE
+> Task :react-native-svg:processDebugJavaRes NO-SOURCE
+> Task :react-native-worklets:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-async-storage_async-storage:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-community_slider:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-masked-view_masked-view:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-async-storage_async-storage:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-async-storage_async-storage:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-svg:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-community_slider:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-community_slider:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-community_slider:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-masked-view_masked-view:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-masked-view_masked-view:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-masked-view_masked-view:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-svg:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-svg:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-svg:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-safe-area-context:compileDebugKotlin UP-TO-DATE
+> Task :react-native-safe-area-context:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-screens:compileDebugKotlin UP-TO-DATE
+> Task :react-native-screens:javaPreCompileDebug UP-TO-DATE
+> Task :react-native-screens:compileDebugJavaWithJavac UP-TO-DATE
+
+> Task :react-native-worklets:configureCMakeDebug[arm64-v8a]
+[CXX5304] Observed package id 'build-tools;30.0.3' in inconsistent location 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3-2' (Expected 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3')
+[CXX5304] Observed package id 'build-tools;30.0.3' in inconsistent location 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3-2' (Expected 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3')
+[CXX5304] Already observed package id 'build-tools;30.0.3' in 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3'. Skipping duplicate at 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3-2'
+[CXX5304] Already observed package id 'build-tools;30.0.3' in 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3'. Skipping duplicate at 'C:\Users\user\AppData\Local\Android\Sdk\build-tools\30.0.3-2'
+
+> Task :react-native-safe-area-context:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-screens:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-safe-area-context:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :react-native-safe-area-context:mergeDebugShaders UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-safe-area-context:compileDebugShaders NO-SOURCE
+> Task :react-native-safe-area-context:generateDebugAssets UP-TO-DATE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :react-native-screens:mergeDebugShaders UP-TO-DATE
+> Task :react-native-screens:compileDebugShaders NO-SOURCE
+> Task :react-native-screens:generateDebugAssets UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :react-native-screens:mergeDebugAssets UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :react-native-screens:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-safe-area-context:mergeDebugAssets UP-TO-DATE
+> Task :react-native-reanimated:compileDebugKotlin UP-TO-DATE
+> Task :react-native-safe-area-context:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-safe-area-context:processDebugJavaRes UP-TO-DATE
+> Task :react-native-screens:processDebugJavaRes UP-TO-DATE
+> Task :react-native-safe-area-context:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-safe-area-context:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-safe-area-context:mergeDebugNativeLibs NO-SOURCE
+> Task :react-native-safe-area-context:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-reanimated:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-reanimated:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-reanimated:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :react-native-reanimated:processDebugJavaRes UP-TO-DATE
+> Task :react-native-reanimated:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :expo-modules-core:compileDebugKotlin UP-TO-DATE
+> Task :react-native-screens:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :expo-modules-core:compileDebugJavaWithJavac UP-TO-DATE
+> Task :expo-modules-core:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :expo-modules-core:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :expo-constants:createExpoConfig
+> Task :expo-constants:preBuild
+> Task :expo-constants:preDebugBuild
+> Task :expo-constants:writeDebugAarMetadata UP-TO-DATE
+> Task :expo-constants:generateDebugResValues UP-TO-DATE
+> Task :expo-constants:generateDebugResources UP-TO-DATE
+> Task :react-native-gesture-handler:compileDebugKotlin UP-TO-DATE
+> Task :react-native-gesture-handler:compileDebugJavaWithJavac UP-TO-DATE
+> Task :react-native-gesture-handler:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :react-native-gesture-handler:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :expo-modules-core:processDebugJavaRes UP-TO-DATE
+> Task :react-native-gesture-handler:processDebugJavaRes UP-TO-DATE
+> Task :expo-constants:packageDebugResources UP-TO-DATE
+> Task :expo-constants:extractDeepLinksDebug UP-TO-DATE
+> Task :expo-constants:processDebugManifest UP-TO-DATE
+> Task :expo-constants:compileDebugLibraryResources UP-TO-DATE
+> Task :react-native-gesture-handler:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :expo-constants:parseDebugLocalResources UP-TO-DATE
+> Task :expo-constants:generateDebugRFile UP-TO-DATE
+> Task :expo-constants:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :expo-constants:generateDebugBuildConfig UP-TO-DATE
+> Task :expo-modules-core:bundleLibRuntimeToDirDebug UP-TO-DATE
+
+> Task :react-native-worklets:configureCMakeDebug[arm64-v8a]
+[CXX5304] Observed package id 'platforms;android-33' in inconsistent location 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33-2' (Expected 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33')
+[CXX5304] Observed package id 'platforms;android-33' in inconsistent location 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33-2' (Expected 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33')
+[CXX5304] Already observed package id 'platforms;android-33' in 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33'. Skipping duplicate at 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33-2'
+[CXX5304] Already observed package id 'platforms;android-33' in 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33'. Skipping duplicate at 'C:\Users\user\AppData\Local\Android\Sdk\platforms\android-33-2'
+
+> Task :expo-constants:compileDebugKotlin UP-TO-DATE
+> Task :expo-constants:javaPreCompileDebug UP-TO-DATE
+> Task :expo-constants:compileDebugJavaWithJavac UP-TO-DATE
+> Task :expo-constants:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :expo-constants:mergeDebugShaders UP-TO-DATE
+> Task :expo-constants:compileDebugShaders NO-SOURCE
+> Task :expo-constants:generateDebugAssets UP-TO-DATE
+> Task :expo-constants:mergeDebugAssets UP-TO-DATE
+> Task :expo-constants:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :expo-constants:processDebugJavaRes UP-TO-DATE
+> Task :expo-constants:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :expo-constants:mergeDebugJniLibFolders UP-TO-DATE
+> Task :expo-constants:mergeDebugNativeLibs NO-SOURCE
+> Task :expo-constants:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :expo-log-box:compileDebugKotlin UP-TO-DATE
+> Task :expo-log-box:compileDebugJavaWithJavac UP-TO-DATE
+> Task :expo-log-box:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :expo-log-box:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :expo-log-box:processDebugJavaRes UP-TO-DATE
+> Task :expo-log-box:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :react-native-screens:configureCMakeDebug[arm64-v8a]
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :expo:compileDebugKotlin UP-TO-DATE
+> Task :expo:compileDebugJavaWithJavac UP-TO-DATE
+> Task :expo:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :expo:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :expo:processDebugJavaRes UP-TO-DATE
+> Task :react-native-screens:buildCMakeDebug[arm64-v8a]
+> Task :expo:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :react-native-screens:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-screens:mergeDebugNativeLibs UP-TO-DATE
+> Task :react-native-screens:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:expoDebugOverrideMaxSdkConflicts UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:dexBuilderDebug UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugJavaResource UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeProjectDexDebug UP-TO-DATE
+> Task :react-native-worklets:buildCMakeDebug[arm64-v8a][worklets]
+> Task :react-native-worklets:externalNativeBuildDebug
+> Task :react-native-worklets:generateJsonModelDebug
+> Task :react-native-worklets:prefabDebugConfigurePackage
+> Task :react-native-worklets:prefabDebugPackage UP-TO-DATE
+> Task :react-native-worklets:mergeDebugJniLibFolders UP-TO-DATE
+> Task :react-native-worklets:mergeDebugNativeLibs UP-TO-DATE
+> Task :react-native-worklets:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-reanimated:configureCMakeDebug[arm64-v8a]
+> Task :react-native-reanimated:generateJsonModelDebug
+> Task :react-native-reanimated:prefabDebugConfigurePackage UP-TO-DATE
+> Task :expo-modules-core:configureCMakeDebug[arm64-v8a]
+> Task :expo-modules-core:buildCMakeDebug[arm64-v8a]
+> Task :expo-modules-core:mergeDebugNativeLibs UP-TO-DATE
+> Task :expo-modules-core:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-reanimated:buildCMakeDebug[arm64-v8a][reanimated]
+> Task :react-native-reanimated:externalNativeBuildDebug
+> Task :react-native-reanimated:prefabDebugPackage UP-TO-DATE
+> Task :react-native-reanimated:mergeDebugNativeLibs UP-TO-DATE
+> Task :react-native-reanimated:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :react-native-gesture-handler:configureCMakeDebug[arm64-v8a]
+> Task :react-native-gesture-handler:buildCMakeDebug[arm64-v8a]
+> Task :react-native-gesture-handler:mergeDebugNativeLibs UP-TO-DATE
+> Task :react-native-gesture-handler:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:buildCMakeDebug[arm64-v8a]
+> Task :app:mergeDebugNativeLibs UP-TO-DATE
+> Task :app:stripDebugDebugSymbols UP-TO-DATE
+> Task :app:packageDebug UP-TO-DATE
+> Task :app:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleDebug UP-TO-DATE
+
+[Incubating] Problems report is available at: file:///C:/Users/user/Desktop/pnyx_app/pnyx-native/android/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.3.1/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 5m 44s
+380 actionable tasks: 34 executed, 3 from cache, 343 up-to-date
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Starting Metro Bundler
+
+Error while reading cache, falling back to a full crawl:
+ Error: Unable to deserialize cloned data.
+    at deserialize (node:v8:469:14)
+    at DiskCacheManager.read (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@expo\metro-file-map\build\cache\DiskCacheManager.js:55:41)
+    at async FileMap.read (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@expo\metro-file-map\build\index.js:371:20)
+    at async C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@expo\metro-file-map\build\index.js:262:35
+    at async DependencyGraph.ready (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\node-haste\DependencyGraph.js:94:5)
+    at async Bundler.ready (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\Bundler.js:62:5)
+    at async IncrementalBundler.ready (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\IncrementalBundler.js:310:5)
+    at async Server.ready (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\Server.js:1446:5)
+    at async runMetro (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\index.flow.js:142:5)
+    at async createConnectMiddleware (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\metro\src\index.flow.js:147:23)
+Waiting on http://localhost:8081
+› Installing C:\Users\user\Desktop\pnyx_app\pnyx-native\android\app\build\outputs\apk\debug\app-debug.apk
+› Opening pnyx://expo-development-client/?url=http%3A%2F%2F192.168.68.53%3A8081 on SM_S911U1
+
+› Logs for your project will appear below.
+Android Bundled 40148ms node_modules\expo-router\entry.js (1615 modules)
+Android Bundled 1435ms node_modules\expo-router\entry.js (1603 modules)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: PostCard.tsx
+[0m [90m 75 |[39m     [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39mpost}[33m>[39m
+ [90m 76 |[39m       [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39mhead}[33m>[39m
+[31m[1m>[22m[39m[90m 77 |[39m         [33m<[39m[33mPressable[39m
+ [90m    |[39m          [31m[1m^[22m[39m
+ [90m 78 |[39m           style[33m=[39m{styles[33m.[39mauthor}
+ [90m 79 |[39m           accessibilityRole[33m=[39m[32m"link"[39m
+ [90m 80 |[39m           accessibilityLabel[33m=[39m{[32m`Open ${author.name}'s profile`[39m}[0m
+Call Stack
+  PostCard (src\components\PostCard.tsx:77:10) 
+
+Code: index.tsx
+[0m [90m 127 |[39m           [33m<[39m[33mView[39m style[33m=[39m{{ gap[33m:[39m s[[35m5[39m] }}[33m>[39m
+ [90m 128 |[39m             {posts[33m.[39mmap((post[33m,[39m i) [33m=>[39m (
+[31m[1m>[22m[39m[90m 129 |[39m               [33m<[39m[33mAnimated[39m[33m.[39m[33mView[39m key[33m=[39m{post[33m.[39mid} entering[33m=[39m{[33mFadeInDown[39m[33m.[39mduration([35m260[39m)[33m.[39mdelay(enterDelay(i))}[33m>[39m
+ [90m     |[39m                                                                [31m[1m^[22m[39m
+ [90m 130 |[39m                 [33m<[39m[33mPostCard[39m content[33m=[39m{post} [33m/[39m[33m>[39m
+ [90m 131 |[39m               [33m<[39m[33m/[39m[33mAnimated[39m[33m.[39m[33mView[39m[33m>[39m
+ [90m 132 |[39m             ))}[0m
+Call Stack
+  posts.map$argument_0 (src\app\(tabs)\index.tsx:129:64)
+  HomeScreen (src\app\(tabs)\index.tsx:127:37)
+  TabsLayout (src\app\(tabs)\_layout.tsx:92:9)
+  <global> (src\components\ProfileView.tsx:244:65)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: PostCard.tsx
+[0m [90m 76 |[39m     [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39mpost}[33m>[39m
+ [90m 77 |[39m       [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39mhead}[33m>[39m
+[31m[1m>[22m[39m[90m 78 |[39m         [33m<[39m[33mPressable[39m
+ [90m    |[39m          [31m[1m^[22m[39m
+ [90m 79 |[39m           style[33m=[39m{styles[33m.[39mauthor}
+ [90m 80 |[39m           accessibilityRole[33m=[39m[32m"link"[39m
+ [90m 81 |[39m           accessibilityLabel[33m=[39m{[32m`Open ${author.name}'s profile`[39m}[0m
+Call Stack
+  PostCard (src\components\PostCard.tsx:78:10) 
+
+Code: index.tsx
+[0m [90m 128 |[39m             {posts[33m.[39mmap((post[33m,[39m i) [33m=>[39m (
+ [90m 129 |[39m               [33m<[39m[33mAnimated[39m[33m.[39m[33mView[39m key[33m=[39m{post[33m.[39mid} entering[33m=[39m{[33mFadeInDown[39m[33m.[39mduration([35m260[39m)[33m.[39mdelay(enterDelay(i))}[33m>[39m
+[31m[1m>[22m[39m[90m 130 |[39m                 [33m<[39m[33mPostCard[39m content[33m=[39m{post} [33m/[39m[33m>[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 131 |[39m               [33m<[39m[33m/[39m[33mAnimated[39m[33m.[39m[33mView[39m[33m>[39m
+ [90m 132 |[39m             ))}
+ [90m 133 |[39m           [33m<[39m[33m/[39m[33mView[39m[33m>[39m[0m
+Call Stack
+  posts.map$argument_0 (src\app\(tabs)\index.tsx:130:17)
+  HomeScreen (src\app\(tabs)\index.tsx:128:23)
+  TabsLayout (src\app\(tabs)\_layout.tsx:26:5)
+  <global> (src\components\ProfileView.tsx:244:40)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: PostCard.tsx
+[0m [90m 123 |[39m         [33m/[39m[33m>[39m
+ [90m 124 |[39m         [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39msecondary}[33m>[39m
+[31m[1m>[22m[39m[90m 125 |[39m           [33m<[39m[33mPressable[39m
+ [90m     |[39m            [31m[1m^[22m[39m
+ [90m 126 |[39m             onPress[33m=[39m{() [33m=>[39m setOpenComments([36mtrue[39m)}
+ [90m 127 |[39m             style[33m=[39m{styles[33m.[39mghost}
+ [90m 128 |[39m             accessibilityRole[33m=[39m[32m"button"[39m[0m
+Call Stack
+  PostCard (src\components\PostCard.tsx:125:12) 
+
+Code: index.tsx
+[0m [90m 128 |[39m             {posts[33m.[39mmap((post[33m,[39m i) [33m=>[39m (
+ [90m 129 |[39m               [33m<[39m[33mAnimated[39m[33m.[39m[33mView[39m key[33m=[39m{post[33m.[39mid} entering[33m=[39m{[33mFadeInDown[39m[33m.[39mduration([35m260[39m)[33m.[39mdelay(enterDelay(i))}[33m>[39m
+[31m[1m>[22m[39m[90m 130 |[39m                 [33m<[39m[33mPostCard[39m content[33m=[39m{post} [33m/[39m[33m>[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 131 |[39m               [33m<[39m[33m/[39m[33mAnimated[39m[33m.[39m[33mView[39m[33m>[39m
+ [90m 132 |[39m             ))}
+ [90m 133 |[39m           [33m<[39m[33m/[39m[33mView[39m[33m>[39m[0m
+Call Stack
+  posts.map$argument_0 (src\app\(tabs)\index.tsx:130:17)
+  HomeScreen (src\app\(tabs)\index.tsx:128:23)
+  TabsLayout (src\app\(tabs)\_layout.tsx:26:5)
+  <global> (src\components\ProfileView.tsx:244:20)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: PostCard.tsx
+[0m [90m 156 |[39m
+ [90m 157 |[39m       {topComment [33m&&[39m (
+[31m[1m>[22m[39m[90m 158 |[39m         [33m<[39m[33mPressable[39m onPress[33m=[39m{() [33m=>[39m setOpenComments([36mtrue[39m)} accessibilityRole[33m=[39m[32m"button"[39m[33m>[39m
+ [90m     |[39m          [31m[1m^[22m[39m
+ [90m 159 |[39m           [33m<[39m[33mText[39m style[33m=[39m{styles[33m.[39mtopComment} numberOfLines[33m=[39m{[35m2[39m}[33m>[39m
+ [90m 160 |[39m             [33m<[39m[33mText[39m style[33m=[39m{styles[33m.[39mtopCommentWho}[33m>[39m[33m@[39m{peopleById[topComment[33m.[39mauthorId][33m?[39m[33m.[39mhandle [33m?[39m[33m?[39m [32m"someone"[39m} [33m<[39m[33m/[39m[33mText[39m[33m>[39m
+ [90m 161 |[39m             {topComment[33m.[39mtext}[0m
+Call Stack
+  PostCard (src\components\PostCard.tsx:158:10) 
+
+Code: index.tsx
+[0m [90m 128 |[39m             {posts[33m.[39mmap((post[33m,[39m i) [33m=>[39m (
+ [90m 129 |[39m               [33m<[39m[33mAnimated[39m[33m.[39m[33mView[39m key[33m=[39m{post[33m.[39mid} entering[33m=[39m{[33mFadeInDown[39m[33m.[39mduration([35m260[39m)[33m.[39mdelay(enterDelay(i))}[33m>[39m
+[31m[1m>[22m[39m[90m 130 |[39m                 [33m<[39m[33mPostCard[39m content[33m=[39m{post} [33m/[39m[33m>[39m
+ [90m     |[39m                 [31m[1m^[22m[39m
+ [90m 131 |[39m               [33m<[39m[33m/[39m[33mAnimated[39m[33m.[39m[33mView[39m[33m>[39m
+ [90m 132 |[39m             ))}
+ [90m 133 |[39m           [33m<[39m[33m/[39m[33mView[39m[33m>[39m[0m
+Call Stack
+  posts.map$argument_0 (src\app\(tabs)\index.tsx:130:17)
+  HomeScreen (src\app\(tabs)\index.tsx:128:23)
+  TabsLayout (src\app\(tabs)\_layout.tsx:26:5)
+  <global> (src\components\ProfileView.tsx:243:67)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: feed.tsx
+[0m [90m 133 |[39m             )}
+ [90m 134 |[39m
+[31m[1m>[22m[39m[90m 135 |[39m             [33m<[39m[33mPressable[39m
+ [90m     |[39m              [31m[1m^[22m[39m
+ [90m 136 |[39m               style[33m=[39m{({ pressed }) [33m=>[39m [
+ [90m 137 |[39m                 styles[33m.[39mbyline[33m,[39m
+ [90m 138 |[39m                 pressed [33m&&[39m styles[33m.[39mpressed[33m,[39m[0m
+Call Stack
+  Reel (src\app\(tabs)\feed.tsx:135:14) 
+
+Code: feed.tsx
+[0m [90m 253 |[39m           data[33m=[39m{reels}
+ [90m 254 |[39m           keyExtractor[33m=[39m{(item) [33m=>[39m item[33m.[39mid}
+[31m[1m>[22m[39m[90m 255 |[39m           renderItem[33m=[39m{({ item[33m,[39m index }) [33m=>[39m (
+ [90m     |[39m                                [31m[1m^[22m[39m
+ [90m 256 |[39m             [33m<[39m[33mReel[39m content[33m=[39m{item} height[33m=[39m{height} playing[33m=[39m{index [33m===[39m visible} [33m/[39m[33m>[39m
+ [90m 257 |[39m           )}
+ [90m 258 |[39m           pagingEnabled[0m
+Call Stack
+  FlatList.props.renderItem (src\app\(tabs)\feed.tsx:255:32)
+  BlurBackdrop.props.onLayout (src\app\(tabs)\feed.tsx:249:55)
+  TabsLayout (src\app\(tabs)\_layout.tsx:26:5)
+  <global> (src\components\ProfileView.tsx:243:50)
+ ERROR  [ReferenceError: Property 'Pressable' doesn't exist] 
+
+Code: AlignmentFilter.tsx
+[0m [90m 16 |[39m   [36mreturn[39m (
+ [90m 17 |[39m     [33m<[39m[33mView[39m style[33m=[39m{styles[33m.[39mwrap}[33m>[39m
+[31m[1m>[22m[39m[90m 18 |[39m       [33m<[39m[33mPressable[39m
+ [90m    |[39m        [31m[1m^[22m[39m
+ [90m 19 |[39m         onPress[33m=[39m{() [33m=>[39m setOpen((o) [33m=>[39m [33m![39mo)}
+ [90m 20 |[39m         accessibilityRole[33m=[39m[32m"button"[39m
+ [90m 21 |[39m         accessibilityState[33m=[39m{{ expanded[33m:[39m open }}[0m
+Call Stack
+  AlignmentFilter (src\components\AlignmentFilter.tsx:18:8) 
+
+Code: index.tsx
+[0m [90m 117 |[39m         [33m<[39m[33m/[39m[33mView[39m[33m>[39m
+ [90m 118 |[39m
+[31m[1m>[22m[39m[90m 119 |[39m         [33m<[39m[33mAlignmentFilter[39m [33m/[39m[33m>[39m
+ [90m     |[39m         [31m[1m^[22m[39m
+ [90m 120 |[39m
+ [90m 121 |[39m         {posts[33m.[39mlength [33m===[39m [35m0[39m [33m?[39m (
+ [90m 122 |[39m           [33m<[39m[33mEmpty[39m[33m>[39m[0m
+Call Stack
+  HomeScreen (src\app\(tabs)\index.tsx:119:9)
+  TabsLayout (src\app\(tabs)\_layout.tsx:26:5)
+  <global> (src\components\ProfileView.tsx:245:17)
+ ERROR  SyntaxError: C:\Users\user\Desktop\pnyx_app\pnyx-native\src\components\AlignmentFilter.tsx: Expected corresponding JSX closing tag for <Animated.View>. (47:8)
+
+  45 |             see everyone.
+  46 |           </Text>
+> 47 |         </View>
+     |         ^
+  48 |       )}
+  49 |     </View>
+  50 |   );
+    at constructor (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:369:19)
+    at TypeScriptParserMixin.raise (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:6620:19)
+    at TypeScriptParserMixin.jsxParseElementAt (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4743:16)
+    at TypeScriptParserMixin.jsxParseElement (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4765:17)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4775:19)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10925:23)
+    at TypeScriptParserMixin.parseMaybeConditional (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10902:23)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10852:21)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9796:39
+    at TypeScriptParserMixin.tryParse (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:6928:20)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9796:18)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10821:39
+    at TypeScriptParserMixin.allowInAnd (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12455:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10821:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12522:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11701:28)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11357:23)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4780:20)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOpBaseRightExpr (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11007:34)
+    at TypeScriptParserMixin.parseExprOpRightExpr (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11002:21)
+    at TypeScriptParserMixin.parseExprOp (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10968:27)
+    at TypeScriptParserMixin.parseExprOp (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9327:18)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10929:17)
+    at TypeScriptParserMixin.parseMaybeConditional (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10902:23)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10852:21)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9807:20)
+    at TypeScriptParserMixin.parseExpressionBase (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10805:23)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10801:39
+    at TypeScriptParserMixin.allowInAnd (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12455:12)
+    at TypeScriptParserMixin.parseExpression (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10801:17)
+    at TypeScriptParserMixin.jsxParseExpressionContainer (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4648:31)
+    at TypeScriptParserMixin.jsxParseElementAt (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4727:36)
+    at TypeScriptParserMixin.jsxParseElement (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4765:17)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4775:19)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10925:23)
+ ERROR  SyntaxError: C:\Users\user\Desktop\pnyx_app\pnyx-native\src\components\AlignmentFilter.tsx: Expected corresponding JSX closing tag for <Animated.View>. (47:8)
+
+  45 |             see everyone.
+  46 |           </Text>
+> 47 |         </View>
+     |         ^
+  48 |       )}
+  49 |     </View>
+  50 |   );
+    at constructor (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:369:19)
+    at TypeScriptParserMixin.raise (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:6620:19)
+    at TypeScriptParserMixin.jsxParseElementAt (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4743:16)
+    at TypeScriptParserMixin.jsxParseElement (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4765:17)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4775:19)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10925:23)
+    at TypeScriptParserMixin.parseMaybeConditional (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10902:23)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10852:21)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9796:39
+    at TypeScriptParserMixin.tryParse (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:6928:20)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9796:18)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10821:39
+    at TypeScriptParserMixin.allowInAnd (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12455:12)
+    at TypeScriptParserMixin.parseMaybeAssignAllowIn (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10821:17)
+    at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12522:17)
+    at TypeScriptParserMixin.parseParenAndDistinguishExpression (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11701:28)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11357:23)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4780:20)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOpBaseRightExpr (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11007:34)
+    at TypeScriptParserMixin.parseExprOpRightExpr (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11002:21)
+    at TypeScriptParserMixin.parseExprOp (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10968:27)
+    at TypeScriptParserMixin.parseExprOp (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9327:18)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10929:17)
+    at TypeScriptParserMixin.parseMaybeConditional (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10902:23)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10852:21)
+    at TypeScriptParserMixin.parseMaybeAssign (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9807:20)
+    at TypeScriptParserMixin.parseExpressionBase (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10805:23)
+    at C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10801:39
+    at TypeScriptParserMixin.allowInAnd (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:12455:12)
+    at TypeScriptParserMixin.parseExpression (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10801:17)
+    at TypeScriptParserMixin.jsxParseExpressionContainer (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4648:31)
+    at TypeScriptParserMixin.jsxParseElementAt (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4727:36)
+    at TypeScriptParserMixin.jsxParseElement (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4765:17)
+    at TypeScriptParserMixin.parseExprAtom (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:4775:19)
+    at TypeScriptParserMixin.parseExprSubscripts (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11102:23)
+    at TypeScriptParserMixin.parseUpdate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11087:21)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:11067:23)
+    at TypeScriptParserMixin.parseMaybeUnary (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:9858:18)
+    at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10920:61)
+    at TypeScriptParserMixin.parseExprOps (C:\Users\user\Desktop\pnyx_app\pnyx-native\node_modules\@babel\parser\lib\index.js:10925:23)
+ ERROR  [ReferenceError: Property 'mixHex' doesn't exist] 
+
+Code: store.tsx
+[0m [90m 607 |[39m       [90m// A solid, opaque tint — not a translucent overlay — so a filled chip or[39m
+ [90m 608 |[39m       [90m// pill reads the same regardless of what's ever been drawn behind it.[39m
+[31m[1m>[22m[39m[90m 609 |[39m       accentSoft[33m:[39m mixHex(accent[33m,[39m c[33m.[39mapp[33m,[39m [35m0.22[39m)[33m,[39m
+ [90m     |[39m                   [31m[1m^[22m[39m
+ [90m 610 |[39m       accentLine[33m:[39m hexToRgba(accent[33m,[39m [35m0.38[39m)[33m,[39m
+ [90m 611 |[39m       reels[33m,[39m
+ [90m 612 |[39m       posts[33m,[39m[0m
+Call Stack
+  useMemo$argument_0 (src\state\store.tsx:609:19)
+  StoreProvider (src\state\store.tsx:592:24) 
+
+Code: ProfileView.tsx
+[0m [90m 189 |[39m           {tab [33m===[39m [32m"loved"[39m [33m&&[39m [33m<[39m[33mArchive[39m items[33m=[39m{loved} empty[33m=[39m[32m"Nothing loved yet. Hold the like button for 1.5 seconds."[39m [33m/[39m[33m>[39m}
+ [90m 190 |[39m           {tab [33m===[39m [32m"hated"[39m [33m&&[39m [33m<[39m[33mArchive[39m items[33m=[39m{hated} empty[33m=[39m[32m"Nothing hated yet. That's allowed."[39m [33m/[39m[33m>[39m}
+[31m[1m>[22m[39m[90m 191 |[39m           {tab [33m===[39m [32m"posts"[39m [33m&&[39m [33m<[39m[33mArchive[39m items[33m=[39m{posts} empty[33m=[39m[32m"No posts yet."[39m [33m/[39m[33m>[39m}
+ [90m     |[39m                                                                              [31m[1m^[22m[39m
+ [90m 192 |[39m         [33m<[39m[33m/[39m[33mView[39m[33m>[39m
+ [90m 193 |[39m       [33m<[39m[33m/[39m[33mView[39m[33m>[39m
+ [90m 194 |[39m[0m
+Call Stack
+  ProfileView (src\components\ProfileView.tsx:191:78)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: Toast.tsx
+[0m [90m 65 |[39m     borderRadius[33m:[39m r[33m.[39mfull[33m,[39m
+ [90m 66 |[39m     backgroundColor[33m:[39m c[33m.[39msurface3[33m,[39m
+[31m[1m>[22m[39m[90m 67 |[39m     [33m...[39msquircle[33m,[39m
+ [90m    |[39m        [31m[1m^[22m[39m
+ [90m 68 |[39m   }[33m,[39m
+ [90m 69 |[39m   text[33m:[39m { color[33m:[39m c[33m.[39mtext[33m,[39m fontSize[33m:[39m f[33m.[39msm }[33m,[39m
+ [90m 70 |[39m })[33m;[39m[0m
+Call Stack
+  <global> (src\components\Toast.tsx:67:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: SignIn.tsx
+[0m [90m 181 |[39m     borderRadius[33m:[39m r[33m.[39msm[33m,[39m
+ [90m 182 |[39m     backgroundColor[33m:[39m c[33m.[39msurface2[33m,[39m
+[31m[1m>[22m[39m[90m 183 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 184 |[39m   }[33m,[39m
+ [90m 185 |[39m   divider[33m:[39m { flexDirection[33m:[39m [32m"row"[39m[33m,[39m alignItems[33m:[39m [32m"center"[39m[33m,[39m gap[33m:[39m s[[35m3[39m][33m,[39m marginVertical[33m:[39m s[[35m1[39m] }[33m,[39m
+ [90m 186 |[39m   rule[33m:[39m { flex[33m:[39m [35m1[39m[33m,[39m height[33m:[39m [35m1[39m[33m,[39m backgroundColor[33m:[39m c[33m.[39mline }[33m,[39m[0m
+Call Stack
+  <global> (src\components\SignIn.tsx:183:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: Onboarding.tsx
+[0m [90m 237 |[39m     backgroundColor[33m:[39m c[33m.[39msurface2[33m,[39m
+ [90m 238 |[39m     paddingLeft[33m:[39m s[[35m3[39m][33m,[39m
+[31m[1m>[22m[39m[90m 239 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 240 |[39m   }[33m,[39m
+ [90m 241 |[39m   at[33m:[39m { color[33m:[39m c[33m.[39mtextFaint[33m,[39m fontSize[33m:[39m f[33m.[39mmd }[33m,[39m
+ [90m 242 |[39m   handleInput[33m:[39m {[0m
+Call Stack
+  <global> (src\components\Onboarding.tsx:239:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: Onboarding.tsx
+[0m [90m 237 |[39m     backgroundColor[33m:[39m c[33m.[39msurface2[33m,[39m
+ [90m 238 |[39m     paddingLeft[33m:[39m s[[35m3[39m][33m,[39m
+[31m[1m>[22m[39m[90m 239 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 240 |[39m   }[33m,[39m
+ [90m 241 |[39m   at[33m:[39m { color[33m:[39m c[33m.[39mtextFaint[33m,[39m fontSize[33m:[39m f[33m.[39mmd }[33m,[39m
+ [90m 242 |[39m   handleInput[33m:[39m {[0m
+Call Stack
+  <global> (src\components\Onboarding.tsx:239:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: Onboarding.tsx
+[0m [90m 237 |[39m     backgroundColor[33m:[39m c[33m.[39msurface2[33m,[39m
+ [90m 238 |[39m     paddingLeft[33m:[39m s[[35m3[39m][33m,[39m
+[31m[1m>[22m[39m[90m 239 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 240 |[39m   }[33m,[39m
+ [90m 241 |[39m   at[33m:[39m { color[33m:[39m c[33m.[39mtextFaint[33m,[39m fontSize[33m:[39m f[33m.[39mmd }[33m,[39m
+ [90m 242 |[39m   handleInput[33m:[39m {[0m
+Call Stack
+  <global> (src\components\Onboarding.tsx:239:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: ProfileView.tsx
+[0m [90m 214 |[39m     borderRadius[33m:[39m r[33m.[39mmd[33m,[39m
+ [90m 215 |[39m     backgroundColor[33m:[39m c[33m.[39msurface[33m,[39m
+[31m[1m>[22m[39m[90m 216 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 217 |[39m   }[33m,[39m
+ [90m 218 |[39m   codeLabel[33m:[39m { color[33m:[39m c[33m.[39mtextFaint[33m,[39m fontSize[33m:[39m f[33m.[39mxs[33m,[39m letterSpacing[33m:[39m [35m1.1[39m[33m,[39m textTransform[33m:[39m [32m"uppercase"[39m }[33m,[39m
+ [90m 219 |[39m   codeValue[33m:[39m { color[33m:[39m c[33m.[39mtext[33m,[39m fontSize[33m:[39m f[33m.[39mlg[33m,[39m fontWeight[33m:[39m [32m"600"[39m[33m,[39m letterSpacing[33m:[39m [35m1.4[39m }[33m,[39m[0m
+Call Stack
+  <global> (src\components\ProfileView.tsx:216:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: ProfileView.tsx
+[0m [90m 214 |[39m     borderRadius[33m:[39m r[33m.[39mmd[33m,[39m
+ [90m 215 |[39m     backgroundColor[33m:[39m c[33m.[39msurface[33m,[39m
+[31m[1m>[22m[39m[90m 216 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 217 |[39m   }[33m,[39m
+ [90m 218 |[39m   codeLabel[33m:[39m { color[33m:[39m c[33m.[39mtextFaint[33m,[39m fontSize[33m:[39m f[33m.[39mxs[33m,[39m letterSpacing[33m:[39m [35m1.1[39m[33m,[39m textTransform[33m:[39m [32m"uppercase"[39m }[33m,[39m
+ [90m 219 |[39m   codeValue[33m:[39m { color[33m:[39m c[33m.[39mtext[33m,[39m fontSize[33m:[39m f[33m.[39mlg[33m,[39m fontWeight[33m:[39m [32m"600"[39m[33m,[39m letterSpacing[33m:[39m [35m1.4[39m }[33m,[39m[0m
+Call Stack
+  <global> (src\components\ProfileView.tsx:216:8)
+ ERROR  [ReferenceError: Property 'squircle' doesn't exist] 
+
+Code: settings.tsx
+[0m [90m 164 |[39m     borderRadius[33m:[39m r[33m.[39mmd[33m,[39m
+ [90m 165 |[39m     backgroundColor[33m:[39m c[33m.[39msurface2[33m,[39m
+[31m[1m>[22m[39m[90m 166 |[39m     [33m...[39msquircle[33m,[39m
+ [90m     |[39m        [31m[1m^[22m[39m
+ [90m 167 |[39m   }[33m,[39m
+ [90m 168 |[39m   mark[33m:[39m {
+ [90m 169 |[39m     width[33m:[39m [35m20[39m[33m,[39m[0m
+Call Stack
+  <global> (src\app\settings.tsx:166:8)
+ ERROR  [Error: Unable to find node on an unmounted component.] 
+
+Code: _layout.tsx
+[0m [90m 106 |[39m         }[33m,[39m
+ [90m 107 |[39m         tabBarBackground[33m:[39m () [33m=>[39m (
+[31m[1m>[22m[39m[90m 108 |[39m           [33m<[39m[33mBlurView[39m
+ [90m     |[39m           [31m[1m^[22m[39m
+ [90m 109 |[39m             tint[33m=[39m[32m"dark"[39m
+ [90m 110 |[39m             intensity[33m=[39m{[35m92[39m}
+ [90m 111 |[39m             blurTarget[33m=[39m{blurTarget}[0m
+Call Stack
+  Tabs.props.screenOptions.tabBarBackground (src\app\(tabs)\_layout.tsx:108:11)
+  TabsLayout (src\app\(tabs)\_layout.tsx:56:5)
+  ProfileView (src\components\ProfileView.tsx:190:99)
+ ERROR  [ReferenceError: Property 'UNLOCK_PADDING' doesn't exist] 
+
+Code: index.tsx
+[0m [90m 59 |[39m         [90m// the way round, instead of the button's default full-pill radius[39m
+ [90m 60 |[39m         [90m// reading as a mismatched shape against a squarer parent.[39m
+[31m[1m>[22m[39m[90m 61 |[39m         style[33m=[39m{{ borderRadius[33m:[39m r[33m.[39mlg [33m-[39m [33mUNLOCK_PADDING[39m }}
+ [90m    |[39m                                       [31m[1m^[22m[39m
+ [90m 62 |[39m       [33m/[39m[33m>[39m
+ [90m 63 |[39m     [33m<[39m[33m/[39m[33mView[39m[33m>[39m
+ [90m 64 |[39m   )[33m;[39m[0m
+Call Stack
+  UnlockBanner (src\app\(tabs)\index.tsx:61:39) 
+
+Code: index.tsx
+[0m [90m 89 |[39m   [36mreturn[39m (
+ [90m 90 |[39m     [33m<[39m[33mBlurBackdrop[39m style[33m=[39m{styles[33m.[39mscreen}[33m>[39m
+[31m[1m>[22m[39m[90m 91 |[39m       [33m<[39m[33mTopBar[39m showBell [33m/[39m[33m>[39m
+ [90m    |[39m                          [31m[1m^[22m[39m
+ [90m 92 |[39m       [33m<[39m[33mScrollView[39m
+ [90m 93 |[39m         contentContainerStyle[33m=[39m{styles[33m.[39mcontent}
+ [90m 94 |[39m         keyboardShouldPersistTaps[33m=[39m[32m"handled"[39m[0m
+Call Stack
+  HomeScreen (src\app\(tabs)\index.tsx:91:26)
+  TabsLayout (src\app\(tabs)\_layout.tsx:56:5)
+  ProfileView (src\components\ProfileView.tsx:185:47)

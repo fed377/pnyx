@@ -4,6 +4,7 @@ import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-c
 import { AuthGate } from "@/components/AuthGate";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ToastProvider } from "@/components/Toast";
+import { BlurTargetProvider } from "@/state/blurTarget";
 import { SessionProvider } from "@/state/session";
 import { StoreProvider } from "@/state/store";
 import { c } from "@/theme/tokens";
@@ -16,16 +17,18 @@ export default function RootLayout() {
       <SessionProvider>
         <StoreProvider>
           <ToastProvider>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: "slide_from_right",
-              contentStyle: { backgroundColor: c.app },
-            }}
-            />
-            <SyncBanner />
-            <AuthGate />
+            <BlurTargetProvider>
+              <StatusBar style="light" />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                  contentStyle: { backgroundColor: c.app },
+                }}
+              />
+              <SyncBanner />
+              <AuthGate />
+            </BlurTargetProvider>
           </ToastProvider>
         </StoreProvider>
       </SessionProvider>

@@ -1,23 +1,57 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Share, StyleSheet, Text, View } from "react-native";
 import { timeAgo } from "@/lib/format";
 import { nearestPoint } from "@/lib/grids";
 import type { Content } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { c, f, s } from "@/theme/tokens";
+import { c, f, r, s } from "@/theme/tokens";
 import { AlignmentPill } from "./Alignment";
+import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
-import { Media } from "./Media";
+import { isVideoUrl, Media } from "./Media";
 import { useToast } from "./Toast";
 import { VoteControls } from "./VoteControls";
 import { VoteResult } from "./VoteResult";
 
+/**
+ * Video posts show as a paused thumbnail until tapped, instead of autoplaying
+ * inline. Seeded posts without a real video file fall back to Media's
+ * generated art — nothing to play there, so no tap affordance is shown.
+ */
+function VideoThumb({ content }: { content: Content }) {
+  const [playing, setPlaying] = useState(false);
+  const hasVideo = isVideoUrl(content.mediaUrl);
+
+  if (!hasVideo) {
+    return <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} playing={false} />;
+  }
+
+  return (
+    <AnimatedPressable
+      onPress={() => setPlaying((p) => !p)}
+      scaleTo={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={playing ? "Pause video" : "Play video"}
+    >
+      <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} playing={playing} />
+      {!playing && (
+        <View style={styles.playOverlay} pointerEvents="none">
+          <View style={styles.playBtn}>
+            <Icon name="play" size={22} color={c.text} filled />
+          </View>
+        </View>
+      )}
+    </AnimatedPressable>
+  );
+}
+
 export function PostCard({ content }: { content: Content }) {
-  const { vote, reactionOf, alignmentWith, isFollowing, accent, people, peopleById, myId } = useStore();
+  const { vote, reactionOf, pendingUntilOf, isVoteLocked, alignmentWith, isFollowing, people, peopleById, myId } =
+    useStore();
   const author = useAuthor(content.authorId);
   const router = useRouter();
   const toast = useToast();
@@ -41,7 +75,8 @@ export function PostCard({ content }: { content: Content }) {
   return (
     <View style={styles.post}>
       <View style={styles.head}>
-        <Pressable
+        <AnimatedPressable
+          scaleTo={0.98}
           style={styles.author}
           accessibilityRole="link"
           accessibilityLabel={`Open ${author.name}'s profile`}
@@ -56,19 +91,22 @@ export function PostCard({ content }: { content: Content }) {
               @{author.handle} · {author.locked ? "Unrevealed" : type.name} · {timeAgo(content.createdAt)}
             </Text>
           </View>
-        </Pressable>
+        </AnimatedPressable>
         {person && <AlignmentPill value={alignmentWith(person)} />}
       </View>
 
-      {content.type === "image" ? (
+      {content.type === "video" ? (
+        <>
+          <VideoThumb content={content} />
+          <Text style={styles.caption}>{content.text}</Text>
+        </>
+      ) : content.type === "image" ? (
         <>
           <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} />
           <Text style={styles.caption}>{content.text}</Text>
         </>
       ) : (
-        <View style={[styles.takeWrap, { borderLeftColor: accent }]}>
-          <Text style={styles.take}>{content.text}</Text>
-        </View>
+        <Text style={styles.take}>{content.text}</Text>
       )}
 
       {content.context && <Text style={styles.context}>{content.context}</Text>}
@@ -76,28 +114,33 @@ export function PostCard({ content }: { content: Content }) {
       <View style={styles.actions}>
         <VoteControls
           current={myVote}
-          onVote={(power) => void vote(content.id, power)}
+          pendingUntil={pendingUntilOf(content.id)}
+          locked={isVoteLocked(content.id)}
+          onLockedPress={() => toast("Your vote is counted — it can't be changed")}
+          onVote={(power) => vote(content.id, power)}
           disabled={own}
           onDisabledPress={() => toast("You can't vote on your own posts")}
         />
         <View style={styles.secondary}>
-          <Pressable
+          <AnimatedPressable
             onPress={() => setOpenComments(true)}
+            scaleTo={0.9}
             style={styles.ghost}
             accessibilityRole="button"
             accessibilityLabel={`${content.comments.length} comments`}
           >
             <Icon name="comment" size={18} color={c.textDim} />
             <Text style={styles.ghostText}>{content.comments.length}</Text>
-          </Pressable>
-          <Pressable
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={share}
+            scaleTo={0.9}
             style={styles.ghost}
             accessibilityRole="button"
             accessibilityLabel="Share this post"
           >
             <Icon name="share" size={18} color={c.textDim} />
-          </Pressable>
+          </AnimatedPressable>
         </View>
       </View>
 
@@ -112,12 +155,12 @@ export function PostCard({ content }: { content: Content }) {
       {myVote !== undefined && !own && <VoteResult content={content} friends={friends} myVote={myVote} />}
 
       {topComment && (
-        <Pressable onPress={() => setOpenComments(true)} accessibilityRole="button">
+        <AnimatedPressable onPress={() => setOpenComments(true)} scaleTo={0.98} accessibilityRole="button">
           <Text style={styles.topComment} numberOfLines={2}>
             <Text style={styles.topCommentWho}>@{peopleById[topComment.authorId]?.handle ?? "someone"} </Text>
             {topComment.text}
           </Text>
-        </Pressable>
+        </AnimatedPressable>
       )}
 
       <CommentsSheet content={content} open={openComments} onClose={() => setOpenComments(false)} />
@@ -132,9 +175,26 @@ const styles = StyleSheet.create({
   who: { flex: 1 },
   name: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   meta: { color: c.textFaint, fontSize: f.xs },
-  takeWrap: { paddingLeft: s[4], borderLeftWidth: 2 },
   take: { color: c.text, fontSize: 21, fontWeight: "600", lineHeight: 27, letterSpacing: -0.3 },
   caption: { color: c.text, fontSize: f.md, lineHeight: 22 },
+  playOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  playBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: r.full,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 3,
+    backgroundColor: c.surface3,
+  },
   context: { color: c.textFaint, fontSize: f.xs },
   actions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: s[3] },
   secondary: { flexDirection: "row", alignItems: "center", gap: s[1] },

@@ -3,13 +3,14 @@ import { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AlignmentPill } from "@/components/Alignment";
 import { Avatar } from "@/components/Avatar";
+import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { Btn, SectionTitle } from "@/components/Primitives";
 import { ProfileView } from "@/components/ProfileView";
 
 import type { Person } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, s } from "@/theme/tokens";
+import { c, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 function AlignedRow({
   title,
@@ -72,7 +73,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <BlurBackdrop style={styles.screen}>
       <TopBar />
       <ScrollView contentContainerStyle={styles.content}>
         <ProfileView
@@ -101,13 +102,13 @@ export default function ProfileScreen() {
           }
         />
       </ScrollView>
-    </View>
+    </BlurBackdrop>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
-  content: { padding: s[4], paddingBottom: s[7] },
+  content: { padding: s[4], paddingBottom: TAB_BAR_CLEARANCE },
   row: { gap: s[4], paddingRight: s[4] },
   item: { alignItems: "center", gap: 5, width: 68 },
   handle: { color: c.textDim, fontSize: f.xs },

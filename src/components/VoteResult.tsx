@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { friendVotes, POWER_LABEL } from "@/lib/feed";
 import type { Content, Person, VotePower } from "@/lib/types";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 
 const SEGMENTS = [
@@ -26,7 +26,7 @@ export function VoteResult({
   const votes = friendVotes(content, friends.slice(0, 5));
 
   return (
-    <View style={[styles.wrap, onDark && { backgroundColor: "rgba(20,20,28,0.86)" }]}>
+    <View style={[styles.wrap, onDark && { backgroundColor: "#14141c" }]}>
       <View style={styles.head}>
         <Text style={styles.title}>How everyone voted</Text>
         <Text style={styles.you}>You · {POWER_LABEL[myVote]}</Text>
@@ -71,14 +71,13 @@ export function VoteResult({
 
 const styles = StyleSheet.create({
   wrap: {
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface,
     paddingHorizontal: s[4],
     paddingTop: s[3],
     paddingBottom: s[4],
     gap: s[3],
+    ...squircle,
   },
   head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: s[2] },
   title: { color: c.textFaint, fontSize: f.xs, letterSpacing: 1.1, textTransform: "uppercase" },

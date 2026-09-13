@@ -5,7 +5,7 @@ import { identityCode } from "@/lib/algorithm";
 import { GRID_LIST, nearestPoint, orientationOf } from "@/lib/grids";
 import type { Content, GridId, Positions } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 import { AlignmentDial } from "./Alignment";
 import { Crest } from "./Crest";
 import { Icon } from "./Icon";
@@ -211,10 +211,9 @@ const styles = StyleSheet.create({
     gap: s[3],
     paddingHorizontal: s[4],
     paddingVertical: s[3],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface,
+    ...squircle,
   },
   codeLabel: { color: c.textFaint, fontSize: f.xs, letterSpacing: 1.1, textTransform: "uppercase" },
   codeValue: { color: c.text, fontSize: f.lg, fontWeight: "600", letterSpacing: 1.4 },
@@ -234,12 +233,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: s[3],
     padding: s[4],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface,
+    ...squircle,
   },
-  gcardLocked: { borderStyle: "dashed", backgroundColor: "transparent" },
+  gcardLocked: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: c.line,
+    backgroundColor: "transparent",
+  },
   gcardGrid: { color: c.textFaint, fontSize: f.xs, letterSpacing: 1.1 },
   gcardDetermines: { letterSpacing: 0.2, textTransform: "none" },
   gcardNameRow: { flexDirection: "row", alignItems: "center", gap: s[2], marginTop: 2 },

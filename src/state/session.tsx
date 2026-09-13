@@ -24,8 +24,13 @@ type SessionStore = {
   /** Opens Google in a browser and comes back through the app's deep link. */
   signInWithGoogle: () => Promise<OAuthResult>;
   signOut: () => Promise<void>;
-  /** A valid access token, refreshed if it is about to expire. */
-  token: () => Promise<string | null>;
+  /**
+   * A valid access token, refreshed if it is about to expire. Pass `force`
+   * when a call was rejected server-side despite looking valid locally (a
+   * revoked session, clock skew) — it refreshes regardless of `expiresAt`,
+   * and signs the user out if the refresh token itself is dead.
+   */
+  token: (force?: boolean) => Promise<string | null>;
 };
 
 const SessionContext = createContext<SessionStore | null>(null);
@@ -68,11 +73,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const token = useCallback(async (): Promise<string | null> => {
+  const token = useCallback(async (force = false): Promise<string | null> => {
     const s = current.current;
     if (!s) return null;
 
-    const expiring = s.expiresAt !== null && s.expiresAt - SKEW <= Math.floor(Date.now() / 1000);
+    const expiring = force || (s.expiresAt !== null && s.expiresAt - SKEW <= Math.floor(Date.now() / 1000));
     if (!expiring) return s.accessToken;
 
     // Collapse concurrent refreshes into one request.

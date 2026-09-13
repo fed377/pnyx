@@ -20,7 +20,7 @@ import { POWER_LABEL } from "@/lib/feed";
 import { timeAgo } from "@/lib/format";
 import type { ChatMessage, VotePower } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 
 /** A forwarded post carries the sender's vote on it (spec section 6.7). */
 function ForwardedPost({ contentId, vote }: { contentId: string; vote?: VotePower }) {
@@ -44,7 +44,7 @@ function ForwardedPost({ contentId, vote }: { contentId: string; vote?: VotePowe
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { alignmentWith, accent, accentSoft, accentLine } = useStore();
+  const { alignmentWith, accent, accentSoft } = useStore();
   const insets = useSafeAreaInsets();
   const [extra, setExtra] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
@@ -77,10 +77,7 @@ export default function ThreadScreen() {
           return (
             <View
               key={m.id}
-              style={[
-                styles.bubble,
-                mine && { alignSelf: "flex-end", backgroundColor: accentSoft, borderColor: accentLine },
-              ]}
+              style={[styles.bubble, mine && { alignSelf: "flex-end", backgroundColor: accentSoft }]}
             >
               {m.contentId && <ForwardedPost contentId={m.contentId} vote={m.vote} />}
               {m.text && <Text style={styles.bubbleText}>{m.text}</Text>}
@@ -123,13 +120,12 @@ const styles = StyleSheet.create({
     maxWidth: "84%",
     padding: s[3],
     borderRadius: r.md,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface,
+    ...squircle,
   },
   bubbleText: { color: c.text, fontSize: f.sm, lineHeight: 19 },
   time: { color: c.textFaint, fontSize: 10, marginTop: 4 },
-  fwd: { marginBottom: s[2], borderRadius: r.sm, overflow: "hidden", borderWidth: 1, borderColor: c.line },
+  fwd: { marginBottom: s[2], borderRadius: r.sm, overflow: "hidden", ...squircle },
   fwdText: { color: c.text, fontSize: f.xs, lineHeight: 17, paddingHorizontal: s[3], paddingTop: s[2] },
   fwdMeta: { color: c.textFaint, fontSize: 10, paddingHorizontal: s[3], paddingBottom: s[2], paddingTop: 4 },
   composer: {
@@ -149,9 +145,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: s[3],
     paddingVertical: 10,
     borderRadius: r.sm,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface2,
+    ...squircle,
   },
   send: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 });

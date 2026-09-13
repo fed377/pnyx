@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { NOTIFICATIONS, PEOPLE_BY_ID } from "@/lib/data";
@@ -13,22 +15,24 @@ export default function NotificationsScreen() {
     <View style={styles.screen}>
       <PageHeader title="Notifications" />
       <ScrollView contentContainerStyle={styles.content}>
-        {NOTIFICATIONS.map((n) => {
+        {NOTIFICATIONS.map((n, i) => {
           const person = PEOPLE_BY_ID[n.personId];
           return (
-            <Pressable
-              key={n.id}
-              style={styles.row}
-              accessibilityRole="link"
-              accessibilityLabel={`${person.name} ${n.text}`}
-              onPress={() => router.push({ pathname: "/u/[id]", params: { id: person.id } })}
-            >
-              <Avatar name={person.name} positions={person.positions} size={40} />
-              <Text style={styles.text}>
-                <Text style={styles.name}>{person.name}</Text> {n.text}
-              </Text>
-              <Text style={styles.time}>{timeAgo(n.at)}</Text>
-            </Pressable>
+            <Animated.View key={n.id} entering={FadeInDown.duration(240).delay(enterDelay(i))}>
+              <AnimatedPressable
+                scaleTo={0.98}
+                style={styles.row}
+                accessibilityRole="link"
+                accessibilityLabel={`${person.name} ${n.text}`}
+                onPress={() => router.push({ pathname: "/u/[id]", params: { id: person.id } })}
+              >
+                <Avatar name={person.name} positions={person.positions} size={40} />
+                <Text style={styles.text}>
+                  <Text style={styles.name}>{person.name}</Text> {n.text}
+                </Text>
+                <Text style={styles.time}>{timeAgo(n.at)}</Text>
+              </AnimatedPressable>
+            </Animated.View>
           );
         })}
       </ScrollView>

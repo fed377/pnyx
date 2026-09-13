@@ -1,40 +1,56 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
 import { AlignmentFilter } from "@/components/AlignmentFilter";
+import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
+import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { Icon } from "@/components/Icon";
 import { Empty, LockedRow, Note, SegTabs } from "@/components/Primitives";
 import { nearestPoint } from "@/lib/grids";
 import type { Person } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
 
-function PersonRow({ person, alignment, rank }: { person: Person; alignment: number; rank?: number }) {
+function PersonRow({
+  person,
+  alignment,
+  rank,
+  index,
+}: {
+  person: Person;
+  alignment: number;
+  rank?: number;
+  index: number;
+}) {
   const router = useRouter();
   const type = nearestPoint("values", person.positions.values);
 
   return (
-    <Pressable
-      style={styles.row}
-      accessibilityRole="link"
-      accessibilityLabel={`Open ${person.name}'s profile, ${Math.round(alignment)} percent aligned`}
-      onPress={() => router.push({ pathname: "/u/[id]", params: { id: person.id } })}
-    >
-      {rank !== undefined && <Text style={styles.rank}>{rank}</Text>}
-      <Avatar name={person.name} positions={person.positions} size={44} />
-      <View style={styles.rowBody}>
-        <Text style={styles.rowName}>{person.name}</Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>
-          @{person.handle} · {type.name} · {person.city}
-        </Text>
-      </View>
-      <AlignmentPill value={alignment} />
-    </Pressable>
+    <Animated.View entering={FadeInDown.duration(240).delay(enterDelay(index))}>
+      <AnimatedPressable
+        scaleTo={0.98}
+        style={styles.row}
+        accessibilityRole="link"
+        accessibilityLabel={`Open ${person.name}'s profile, ${Math.round(alignment)} percent aligned`}
+        onPress={() => router.push({ pathname: "/u/[id]", params: { id: person.id } })}
+      >
+        {rank !== undefined && <Text style={styles.rank}>{rank}</Text>}
+        <Avatar name={person.name} positions={person.positions} size={44} />
+        <View style={styles.rowBody}>
+          <Text style={styles.rowName}>{person.name}</Text>
+          <Text style={styles.rowMeta} numberOfLines={1}>
+            @{person.handle} · {type.name} · {person.city}
+          </Text>
+        </View>
+        <AlignmentPill value={alignment} />
+      </AnimatedPressable>
+    </Animated.View>
   );
 }
 
@@ -65,7 +81,7 @@ export default function PeopleScreen() {
   const hiddenByPremium = !searching && tab === "world" ? Math.max(0, ranked.length - WORLD_LIMIT) : 0;
 
   return (
-    <View style={styles.screen}>
+    <BlurBackdrop style={styles.screen}>
       <TopBar />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -88,9 +104,15 @@ export default function PeopleScreen() {
             style={styles.searchInput}
           />
           {searching && (
-            <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
+            <AnimatedPressable
+              onPress={() => setQuery("")}
+              hitSlop={8}
+              scaleTo={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
               <Icon name="close" size={16} color={c.textDim} />
-            </Pressable>
+            </AnimatedPressable>
           )}
         </View>
 
@@ -124,6 +146,7 @@ export default function PeopleScreen() {
                 person={p}
                 alignment={a}
                 rank={!searching && tab === "world" ? i + 1 : undefined}
+                index={i}
               />
             ))}
           </View>
@@ -138,13 +161,13 @@ export default function PeopleScreen() {
           </LockedRow>
         )}
       </ScrollView>
-    </View>
+    </BlurBackdrop>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
-  content: { padding: s[4], paddingBottom: s[7], gap: s[5] },
+  content: { padding: s[4], paddingBottom: TAB_BAR_CLEARANCE, gap: s[5] },
   search: {
     flexDirection: "row",
     alignItems: "center",
@@ -152,8 +175,6 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: s[3],
     borderRadius: r.full,
-    borderWidth: 1,
-    borderColor: c.line,
     backgroundColor: c.surface,
   },
   searchInput: { flex: 1, color: c.text, fontSize: f.sm, paddingVertical: 0 },

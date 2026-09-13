@@ -70,6 +70,8 @@ export type ApiVoteResult = {
   unlocked: boolean;
   unlockIn: number;
   replaced: VotePower | null;
+  /** The content just voted on, fresh from the DB — includes this vote. */
+  tallies: { love: number; like: number; dislike: number; hate: number };
 };
 
 /**
@@ -121,6 +123,12 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /**
+     * Extra fields the API attached to the error, e.g. a rejected post's
+     * moderation outcome: `code` ("policy_violation" | "low_effort"),
+     * `flagged`, `strikeCount`. Undefined for ordinary errors.
+     */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -157,11 +165,10 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    const message =
-      typeof parsed === "object" && parsed !== null && "error" in parsed
-        ? String((parsed as { error: unknown }).error)
-        : `request failed (${res.status})`;
-    throw new ApiError(res.status, message);
+    const body = typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : null;
+    const message = body && "error" in body ? String(body.error) : `request failed (${res.status})`;
+    const { error: _error, ...details } = body ?? {};
+    throw new ApiError(res.status, message, Object.keys(details).length ? details : undefined);
   }
   return parsed as T;
 }

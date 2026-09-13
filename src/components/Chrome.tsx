@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NOTIFICATIONS } from "@/lib/data";
 import { useStore } from "@/state/store";
 import { c, f, s } from "@/theme/tokens";
+import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 import { IconBtn } from "./Primitives";
 
@@ -41,15 +42,16 @@ export function PageHeader({ title, action }: { title: string; action?: ReactNod
 
   return (
     <View style={[styles.pagehead, { paddingTop: insets.top + s[2] }]}>
-      <Pressable
+      <AnimatedPressable
         onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel="Go back"
+        scaleTo={0.88}
         style={styles.back}
       >
         <Icon name="back" size={20} color={c.textDim} />
-      </Pressable>
+      </AnimatedPressable>
       <Text style={styles.pageTitle} numberOfLines={1}>
         {title}
       </Text>

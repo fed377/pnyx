@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Path, Rect } from "react-native-svg";
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from "react-native-reanimated";
 import { GRIDS, nearestPoint } from "@/lib/grids";
 import type { GridId, Point } from "@/lib/types";
 import { c } from "@/theme/tokens";
@@ -9,6 +11,20 @@ const SPAN = 100 - PAD * 2;
 
 const sx = (x: number) => PAD + ((x + 1) / 2) * SPAN;
 const sy = (y: number) => PAD + ((1 - y) / 2) * SPAN;
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/** Glides the plotted dot to its new spot instead of jumping — a vote should read as movement. */
+function usePlotted(position: Point) {
+  const cx = useSharedValue(sx(position.x));
+  const cy = useSharedValue(sy(position.y));
+  useEffect(() => {
+    cx.value = withTiming(sx(position.x), { duration: 480 });
+    cy.value = withTiming(sy(position.y), { duration: 480 });
+  }, [position.x, position.y, cx, cy]);
+  const props = useAnimatedProps(() => ({ cx: cx.value, cy: cy.value }));
+  return props;
+}
 
 export function GridPlot({
   gridId,
@@ -34,6 +50,7 @@ export function GridPlot({
   const color = accent ?? near.hex ?? c.text;
   const trailPath =
     trail && trail.length > 1 ? trail.map((p, i) => `${i ? "L" : "M"}${sx(p.x)} ${sy(p.y)}`).join(" ") : null;
+  const dotProps = usePlotted(position);
 
   return (
     <View style={{ width: size, height: size }}>
@@ -65,8 +82,8 @@ export function GridPlot({
             <Circle cx={sx(compare.x)} cy={sy(compare.y)} r={4} fill="none" stroke={c.textDim} strokeWidth={1.4} />
           </>
         )}
-        <Circle cx={sx(position.x)} cy={sy(position.y)} r={7} fill={color} fillOpacity={0.16} />
-        <Circle cx={sx(position.x)} cy={sy(position.y)} r={3.4} fill={color} />
+        <AnimatedCircle animatedProps={dotProps} r={7} fill={color} fillOpacity={0.16} />
+        <AnimatedCircle animatedProps={dotProps} r={3.4} fill={color} />
       </Svg>
       {labels && (
         <>

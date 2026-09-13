@@ -1,8 +1,11 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { AlignmentFilter } from "@/components/AlignmentFilter";
 import { Avatar } from "@/components/Avatar";
+import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { PostCard } from "@/components/PostCard";
 import { Btn, Empty, SectionTitle } from "@/components/Primitives";
@@ -11,16 +14,34 @@ import { UNLOCK_AT } from "@/lib/algorithm";
 import { HOT_TAKES } from "@/lib/data";
 import type { HotTake } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+
+/** Even on all four sides, and the one value the button's concentric radius is derived from. */
+const UNLOCK_PADDING = s[4];
 
 function UnlockBanner() {
-  const { voteCount, unlockProgress, unlocked, accent, accentLine } = useStore();
+  const { voteCount, unlockProgress, unlocked, accent, accentSoft } = useStore();
   const router = useRouter();
+  const width = useSharedValue(0);
+  useEffect(() => {
+    width.value = withTiming(unlockProgress * 100, { duration: 420 });
+  }, [unlockProgress, width]);
+  const meterStyle = useAnimatedStyle(() => ({ width: `${width.value}%` }));
   if (unlocked) return null;
 
   return (
-    <View style={[styles.unlock, { borderColor: accentLine }]}>
-      <Text style={styles.unlockTitle}>{`${UNLOCK_AT - voteCount} more reactions`}</Text>
+    <View style={[styles.unlock, { backgroundColor: accentSoft }]}>
+      {/* The count and the unit are separate Text nodes for layout, so the whole
+          phrase is announced as one label rather than two loose fragments. */}
+      <View
+        style={styles.unlockHead}
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={`${UNLOCK_AT - voteCount} more reactions`}
+      >
+        <Text style={styles.unlockNum}>{UNLOCK_AT - voteCount}</Text>
+        <Text style={styles.unlockUnit}>more reactions</Text>
+      </View>
       <Text style={styles.unlockBody}>
         Your type stays hidden until PNYX has enough of your opinions to be sure of it.
       </Text>
@@ -29,9 +50,19 @@ function UnlockBanner() {
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: UNLOCK_AT, now: voteCount }}
       >
-        <View style={{ width: `${unlockProgress * 100}%`, height: "100%", backgroundColor: accent }} />
+        <Animated.View style={[{ height: "100%", backgroundColor: accent }, meterStyle]} />
       </View>
-      <Btn label="Open the Feed" variant="accent" icon="chevron" onPress={() => router.push("/feed")} />
+      <Btn
+        label="Open the Feed"
+        variant="accent"
+        icon="chevron"
+        onPress={() => router.push("/feed")}
+        // Concentric with the card around it: sharing the same corner center
+        // means the gap between the two curves stays the padding's width all
+        // the way round, instead of the button's default full-pill radius
+        // reading as a mismatched shape against a squarer parent.
+        style={{ borderRadius: r.lg - UNLOCK_PADDING }}
+      />
     </View>
   );
 }
@@ -59,7 +90,7 @@ export default function HomeScreen() {
   const takePerson = take ? (peopleById[take.authorId] ?? null) : null;
 
   return (
-    <View style={styles.screen}>
+    <BlurBackdrop style={styles.screen}>
       <TopBar showBell />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -78,9 +109,10 @@ export default function HomeScreen() {
             {HOT_TAKES.filter((t) => peopleById[t.authorId]).map((t) => {
               const p = peopleById[t.authorId];
               return (
-                <Pressable
+                <AnimatedPressable
                   key={t.id}
                   onPress={() => setTake(t)}
+                  scaleTo={0.92}
                   style={styles.take}
                   accessibilityRole="button"
                   accessibilityLabel={`Hot take from ${p.name}`}
@@ -91,7 +123,7 @@ export default function HomeScreen() {
                   <Text style={styles.takeName} numberOfLines={1}>
                     {p.handle}
                   </Text>
-                </Pressable>
+                </AnimatedPressable>
               );
             })}
           </ScrollView>
@@ -106,8 +138,10 @@ export default function HomeScreen() {
           </Empty>
         ) : (
           <View style={{ gap: s[5] }}>
-            {posts.map((post) => (
-              <PostCard key={post.id} content={post} />
+            {posts.map((post, i) => (
+              <Animated.View key={post.id} entering={FadeInDown.duration(260).delay(enterDelay(i))}>
+                <PostCard content={post} />
+              </Animated.View>
             ))}
           </View>
         )}
@@ -128,22 +162,22 @@ export default function HomeScreen() {
           </View>
         )}
       </Sheet>
-    </View>
+    </BlurBackdrop>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
-  content: { padding: s[4], paddingBottom: s[7], gap: s[5] },
+  content: { padding: s[4], paddingBottom: TAB_BAR_CLEARANCE, gap: s[5] },
   unlock: {
-    padding: s[4],
-    paddingVertical: s[5],
-    borderWidth: 1,
+    padding: UNLOCK_PADDING,
     borderRadius: r.lg,
-    backgroundColor: c.surface,
     gap: s[3],
+    ...squircle,
   },
-  unlockTitle: { color: c.text, fontSize: f.xl, fontWeight: "600", letterSpacing: -0.4 },
+  unlockHead: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+  unlockNum: { color: c.text, fontSize: 44, fontWeight: "700", letterSpacing: -1.2 },
+  unlockUnit: { color: c.textDim, fontSize: f.md, fontWeight: "500" },
   unlockBody: { color: c.textDim, fontSize: f.sm, lineHeight: 19 },
   meter: { height: 4, borderRadius: r.full, backgroundColor: c.surface3, overflow: "hidden" },
   takesRow: { gap: s[4], paddingRight: s[4] },

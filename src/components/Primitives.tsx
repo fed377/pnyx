@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { useStore } from "@/state/store";
-import { c, f, r, s } from "@/theme/tokens";
+import { c, f, r, s, squircle } from "@/theme/tokens";
+import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 import type { IconName } from "./Icon";
 
@@ -65,30 +66,27 @@ export function Btn({
   style?: StyleProp<ViewStyle>;
 }) {
   const { accent } = useStore();
-  const bg =
-    variant === "accent" ? accent : variant === "danger" ? "transparent" : c.surface2;
-  const border =
-    variant === "accent" ? accent : variant === "danger" ? "rgba(229,98,111,0.4)" : c.line;
-  const fg = variant === "accent" ? c.onAccent : variant === "danger" ? c.down : c.text;
+  const bg = variant === "accent" ? accent : variant === "danger" ? c.down : c.surface2;
+  const fg = variant === "accent" || variant === "danger" ? c.onAccent : c.text;
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
-      style={({ pressed }) => [
+      scaleTo={0.96}
+      style={[
         styles.btn,
-        { backgroundColor: bg, borderColor: border },
+        { backgroundColor: bg },
         wide && { alignSelf: "stretch" },
         disabled && { opacity: 0.42 },
-        pressed && !disabled && { opacity: 0.82 },
         style,
       ]}
     >
       {icon && <Icon name={icon} size={16} color={fg} />}
       <Text style={[styles.btnLabel, { color: fg }]}>{label}</Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -109,12 +107,13 @@ export function IconBtn({
 }) {
   const { accent } = useStore();
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={6}
-      style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.6 }]}
+      scaleTo={0.88}
+      style={styles.iconBtn}
     >
       <Icon name={name} size={size} color={color ?? c.textDim} />
       {badge !== undefined && badge > 0 && (
@@ -122,7 +121,7 @@ export function IconBtn({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -143,15 +142,16 @@ export function SegTabs<T extends string>({
       {tabs.map(([key, label]) => {
         const active = key === value;
         return (
-          <Pressable
+          <AnimatedPressable
             key={key}
             onPress={() => onChange(key)}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            scaleTo={0.96}
             style={[styles.tab, active && { borderBottomColor: accent }]}
           >
             <Text style={[styles.tabLabel, active && { color: c.text }]}>{label}</Text>
-          </Pressable>
+          </AnimatedPressable>
         );
       })}
     </View>
@@ -175,7 +175,6 @@ export function Field({
   maxLength?: number;
   placeholder?: string;
 }) {
-  const { accentLine } = useStore();
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -187,11 +186,7 @@ export function Field({
         placeholder={placeholder}
         placeholderTextColor={c.textFaint}
         accessibilityLabel={label}
-        style={[
-          styles.input,
-          multiline && { minHeight: 96, textAlignVertical: "top", paddingTop: 10 },
-          { borderColor: value ? accentLine : c.line },
-        ]}
+        style={[styles.input, multiline && { minHeight: 96, textAlignVertical: "top", paddingTop: 10 }]}
       />
     </View>
   );
@@ -219,20 +214,18 @@ export const styles = StyleSheet.create({
   emptyText: { color: c.textDim, fontSize: f.sm, textAlign: "center" },
   card: {
     padding: s[4],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface,
+    ...squircle,
   },
   lockedRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: s[3],
     padding: s[4],
-    borderWidth: 1,
-    borderColor: c.line,
     borderRadius: r.md,
     backgroundColor: c.surface,
+    ...squircle,
   },
   btn: {
     flexDirection: "row",
@@ -242,7 +235,7 @@ export const styles = StyleSheet.create({
     minHeight: 40,
     paddingHorizontal: s[4],
     borderRadius: r.full,
-    borderWidth: 1,
+    ...squircle,
   },
   btnLabel: { fontSize: f.sm, fontWeight: "500" },
   iconBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
@@ -280,7 +273,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: s[3],
     paddingVertical: 10,
     borderRadius: r.sm,
-    borderWidth: 1,
     backgroundColor: c.surface2,
+    ...squircle,
   },
 });

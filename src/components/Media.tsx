@@ -7,7 +7,7 @@ import Svg, { Circle, G, Rect } from "react-native-svg";
 import { hashSeed } from "@/lib/format";
 import { nearestPoint } from "@/lib/grids";
 import type { Scores } from "@/lib/types";
-import { r as radius } from "@/theme/tokens";
+import { r as radius, squircle } from "@/theme/tokens";
 
 /**
  * Real uploaded media when the post has any. Seeded posts have none, so they
@@ -18,6 +18,10 @@ import { r as radius } from "@/theme/tokens";
  * square viewBox would be scaled to cover a phone-shaped reel, blowing the
  * shapes up to several times the screen.
  */
+export function isVideoUrl(url?: string): boolean {
+  return Boolean(url && /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url));
+}
+
 export function Media({
   id,
   scores,
@@ -50,7 +54,7 @@ export function Media({
   const secondary = nearestPoint("culture", scores.culture).hex!;
   const accent = nearestPoint("soul", scores.soul).hex!;
 
-  const isVideo = Boolean(mediaUrl && /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl));
+  const isVideo = isVideoUrl(mediaUrl);
   const player = useVideoPlayer(isVideo ? mediaUrl! : null, (p) => {
     p.loop = true;
     p.muted = muted;
@@ -87,7 +91,7 @@ export function Media({
       ? { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }
       : { width: "100%", aspectRatio: ratio },
     { overflow: "hidden", backgroundColor: ground },
-    rounded && !fill ? { borderRadius: radius.md } : null,
+    rounded && !fill ? { borderRadius: radius.md, ...squircle } : null,
     style,
   ];
 
