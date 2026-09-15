@@ -6,17 +6,13 @@ import { Crest } from "@/components/Crest";
 import { GridPlot } from "@/components/GridPlot";
 import { Btn, Card, LockedRow, Note, SectionTitle } from "@/components/Primitives";
 import { conviction, UNLOCK_AT, positionHistory } from "@/lib/algorithm";
-import { hashSeed, pct } from "@/lib/format";
+import { pct } from "@/lib/format";
 import { GRID_LIST, nearestPoint, orientationOf } from "@/lib/grids";
 import { POWER_LABEL } from "@/lib/feed";
 import type { Person, Positions, Vote, VotePower } from "@/lib/types";
 import { useStore } from "@/state/store";
+import { useRarity } from "@/state/useRarity";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
-
-/** Placeholder rarity figure — real numbers need a population to count against. */
-function rarity(label: string): number {
-  return 3 + Math.floor(hashSeed(label) * 900);
-}
 
 const capitalize = (w: string) => w[0]!.toUpperCase() + w.slice(1);
 
@@ -52,6 +48,7 @@ function closestMatch(people: Person[], alignmentWith: (p: Person) => number): {
 
 export default function StatisticsScreen() {
   const { state, positions, unlocked, voteCount, dispatch, accent, people, alignmentWith } = useStore();
+  const rarity = useRarity();
 
   const history = useMemo(() => positionHistory(state.votes, 4), [state.votes]);
 
@@ -111,7 +108,7 @@ export default function StatisticsScreen() {
                     <Text style={styles.gridMeaning}>{meaning}</Text>
                     {unlocked && (
                       <Text style={styles.gridRarity}>
-                        {rarity(`${grid.label}-${near.name}`)}% of people share this type.
+                        {rarity(grid.id, `${grid.label}-${near.name}`)}% of people share this type.
                       </Text>
                     )}
                   </View>

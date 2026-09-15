@@ -288,6 +288,9 @@ export const api = {
   /** Own votes, oldest first, with score snapshots — enough to redraw history. */
   myVotes: (token: string) => request<{ items: Vote[] }>("/me/votes", { token }),
 
+  /** Real "shared by X% of people" rarity, per grid (spec §6.6) — not the local placeholder hash. */
+  rarity: (token: string) => request<Record<GridId, number>>("/me/rarity", { token }),
+
   forgetMe: (token: string) => request<void>("/me", { method: "DELETE", token }),
 
   reels: (token: string, limit = 30) =>
