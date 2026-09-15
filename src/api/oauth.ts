@@ -40,10 +40,22 @@ function subjectOf(accessToken: string): string {
 
 export class OAuthError extends Error {}
 
-export function sessionFromRedirect(url: string): Session {
+function redirectParams(url: string): URLSearchParams {
   const hash = url.includes("#") ? url.slice(url.indexOf("#") + 1) : "";
   const query = url.includes("?") ? url.slice(url.indexOf("?") + 1).split("#")[0] : "";
-  const params = new URLSearchParams(hash || query);
+  return new URLSearchParams(hash || query);
+}
+
+/** Supabase marks a password-recovery redirect with `type=recovery` in the
+ * same fragment/query the session itself comes back in — same shape as an
+ * ordinary sign-in redirect otherwise, so this is the one thing that tells
+ * them apart. */
+export function isRecoveryRedirect(url: string): boolean {
+  return redirectParams(url).get("type") === "recovery";
+}
+
+export function sessionFromRedirect(url: string): Session {
+  const params = redirectParams(url);
 
   const error = params.get("error_description") ?? params.get("error");
   if (error) throw new OAuthError(decodeURIComponent(error.replace(/\+/g, " ")));
@@ -51,7 +63,7 @@ export function sessionFromRedirect(url: string): Session {
   const accessToken = params.get("access_token");
   const refreshToken = params.get("refresh_token");
   if (!accessToken || !refreshToken) {
-    throw new OAuthError("Google sign-in did not return a session");
+    throw new OAuthError("That link did not return a session");
   }
 
   const expiresIn = Number(params.get("expires_in") ?? 3600);

@@ -1,3 +1,4 @@
+import { usePathname } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
@@ -13,6 +14,12 @@ import { SignIn } from "./SignIn";
 export function AuthGate() {
   const { ready, session, configured } = useSession();
   const { hydrated, state, dispatch } = useStore();
+  const pathname = usePathname();
+
+  // A password-recovery link opens this while signed out (the whole point of
+  // forgetting your password) — it must never be covered by the sign-in
+  // screen the way every other route is.
+  if (pathname === "/auth-callback") return null;
 
   // Reading the stored session, or the local store: cover the app so no
   // content — or the onboarding gate below, decided from a stale default — flashes past.

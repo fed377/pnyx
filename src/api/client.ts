@@ -270,6 +270,16 @@ export const api = {
       body: { ...(currentPassword ? { currentPassword } : {}), newPassword },
     }),
 
+  /** Always resolves the same way regardless of whether the email is
+   * registered — the server never reveals that either way. */
+  forgotPassword: (email: string, redirect: string) =>
+    request<{ ok: boolean }>("/auth/forgot-password", { method: "POST", body: { email, redirect } }),
+
+  /** `token` here is the short-lived recovery session's own access token
+   * (from the emailed link), not a normal signed-in session's. */
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ ok: boolean }>("/auth/reset-password", { method: "POST", token, body: { newPassword } }),
+
   /** Own votes, oldest first, with score snapshots — enough to redraw history. */
   myVotes: (token: string) => request<{ items: Vote[] }>("/me/votes", { token }),
 

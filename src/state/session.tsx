@@ -34,6 +34,16 @@ type SessionStore = {
    * nothing to verify and `currentPassword` should be omitted.
    */
   changePassword: (currentPassword: string | undefined, newPassword: string) => Promise<void>;
+  /** Emails a recovery link — always resolves, whether or not the address
+   * is actually registered. The link opens `auth-callback.tsx`. */
+  forgotPassword: (email: string) => Promise<void>;
+  /**
+   * The other half of that link: `redirectUrl` is the raw deep link
+   * `auth-callback.tsx` was opened with. Sets the new password using the
+   * recovery session it carries, then signs the user in with that same
+   * session — no separate sign-in step after resetting.
+   */
+  completePasswordReset: (redirectUrl: string, newPassword: string) => Promise<void>;
   /**
    * A valid access token, refreshed if it is about to expire. Pass `force`
    * when a call was rejected server-side despite looking valid locally (a
@@ -163,6 +173,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         const t = await token();
         if (!t) throw new Error("not signed in");
         await api.changePassword(t, currentPassword, newPassword);
+      },
+      forgotPassword: async (email) => {
+        const redirectTo = Linking.createURL("auth-callback");
+        await api.forgotPassword(email.trim(), redirectTo);
+      },
+      completePasswordReset: async (redirectUrl, newPassword) => {
+        // This session comes from the recovery link, not a normal sign-in —
+        // sessionFromRedirect doesn't care about that distinction, it's the
+        // same access/refresh token shape either way.
+        const recovery = sessionFromRedirect(redirectUrl);
+        await api.resetPassword(recovery.accessToken, newPassword);
+        await store(recovery);
       },
       token,
     }),

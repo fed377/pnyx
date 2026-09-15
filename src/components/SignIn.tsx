@@ -13,9 +13,69 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GoogleIcon } from "./GoogleIcon";
 import { Btn } from "./Primitives";
+import { Sheet } from "./Sheet";
 import { API_URL } from "@/api/client";
 import { useSession } from "@/state/session";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
+
+function ForgotPasswordSheet({ open, onClose, initialEmail }: { open: boolean; onClose: () => void; initialEmail: string }) {
+  const { forgotPassword } = useSession();
+  const [email, setEmail] = useState(initialEmail);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const close = () => {
+    onClose();
+    // Reset for next time, after the close animation would have finished reading it.
+    setTimeout(() => setSent(false), 300);
+  };
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await forgotPassword(email);
+      setSent(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} title="Reset your password" onClose={close}>
+      {sent ? (
+        <View style={{ gap: s[3] }}>
+          <Text style={styles.sheetBody}>
+            If an account exists for {email.trim()}, a reset link is on its way. Open it on this device to set a new
+            password.
+          </Text>
+          <Btn label="Done" onPress={close} wide />
+        </View>
+      ) : (
+        <View style={{ gap: s[3] }}>
+          <Text style={styles.sheetBody}>We&apos;ll email a link to set a new password.</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Email"
+            placeholderTextColor={c.textFaint}
+            accessibilityLabel="Email"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            style={styles.input}
+          />
+          <Btn
+            label={busy ? "Sending…" : "Send reset link"}
+            variant="accent"
+            wide
+            disabled={busy || email.trim().length < 4}
+            onPress={() => void submit()}
+          />
+        </View>
+      )}
+    </Sheet>
+  );
+}
 
 /**
  * Google's own branding guidelines for "Sign in with Google" — white surface,
@@ -51,6 +111,7 @@ export function SignIn({ onSkip }: { onSkip?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const submit = async () => {
     setError(null);
@@ -157,6 +218,12 @@ export function SignIn({ onSkip }: { onSkip?: () => void }) {
               style={styles.input}
             />
 
+            {mode === "in" && (
+              <Pressable onPress={() => setForgotOpen(true)} accessibilityRole="button" style={styles.forgot}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </Pressable>
+            )}
+
             {error && <Text style={styles.error}>{error}</Text>}
             {notice && <Text style={styles.notice}>{notice}</Text>}
 
@@ -185,6 +252,8 @@ export function SignIn({ onSkip }: { onSkip?: () => void }) {
           </Pressable>
         )}
       </ScrollView>
+
+      <ForgotPasswordSheet open={forgotOpen} onClose={() => setForgotOpen(false)} initialEmail={email} />
     </KeyboardAvoidingView>
   );
 }
@@ -226,6 +295,9 @@ const styles = StyleSheet.create({
   dividerText: { color: c.textFaint, fontSize: f.xs },
   error: { color: c.down, fontSize: f.sm },
   notice: { color: c.up, fontSize: f.sm },
+  forgot: { alignSelf: "flex-end" },
+  forgotText: { color: c.textDim, fontSize: f.xs, textDecorationLine: "underline" },
+  sheetBody: { color: c.textDim, fontSize: f.sm, lineHeight: 20 },
   host: { color: c.textFaint, fontSize: f.xs, textAlign: "center", marginTop: s[2] },
   warn: {
     padding: s[4],
