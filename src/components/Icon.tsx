@@ -1,5 +1,6 @@
 import type { ColorValue } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { c } from "@/theme/tokens";
 
 export type IconName =
   | "home"
@@ -66,13 +67,13 @@ const FILLABLE: IconName[] = ["home", "feed", "people", "profile", "heart", "thu
 export function Icon({
   name,
   size = 22,
-  color,
+  color = c.text,
   filled = false,
   strokeWidth = 1.6,
 }: {
   name: IconName;
   size?: number;
-  color: ColorValue;
+  color?: ColorValue;
   filled?: boolean;
   strokeWidth?: number;
 }) {

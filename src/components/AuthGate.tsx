@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
@@ -13,8 +12,7 @@ import { SignIn } from "./SignIn";
  */
 export function AuthGate() {
   const { ready, session, configured } = useSession();
-  const { hydrated, state } = useStore();
-  const [skipped, setSkipped] = useState(false);
+  const { hydrated, state, dispatch } = useStore();
 
   // Reading the stored session, or the local store: cover the app so no
   // content — or the onboarding gate below, decided from a stale default — flashes past.
@@ -26,12 +24,15 @@ export function AuthGate() {
     );
   }
 
-  const signedInOrExploring = !configured || session !== null || skipped;
+  // `skipped` lives in the store (not local state) specifically so "forget"/log
+  // out resets it too — otherwise logging out fell straight through to
+  // Onboarding instead of back to this sign-in screen.
+  const signedInOrExploring = !configured || session !== null || state.skipped;
 
   if (!signedInOrExploring) {
     return (
       <View style={[StyleSheet.absoluteFill, styles.cover]}>
-        <SignIn onSkip={() => setSkipped(true)} />
+        <SignIn onSkip={() => dispatch({ type: "skip" })} />
       </View>
     );
   }

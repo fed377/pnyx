@@ -9,6 +9,7 @@ export type Author = {
   positions: Positions;
   isMe: boolean;
   locked: boolean;
+  avatarUrl?: string;
 };
 
 export function useAuthor(authorId: string): Author {
@@ -21,6 +22,7 @@ export function useAuthor(authorId: string): Author {
       positions,
       isMe: true,
       locked: !unlocked,
+      avatarUrl: state.profile.avatarUrl,
     };
   }
   const p = peopleById[authorId];
@@ -28,5 +30,13 @@ export function useAuthor(authorId: string): Author {
     // An author we have not loaded (someone outside your ranked list).
     return { id: authorId, name: "Someone", handle: "unknown", positions: ORIGIN, isMe: false, locked: true };
   }
-  return { id: p.id, name: p.name, handle: p.handle, positions: p.positions, isMe: false, locked: false };
+  return {
+    id: p.id,
+    name: p.name,
+    handle: p.handle,
+    positions: p.positions,
+    isMe: false,
+    locked: false,
+    avatarUrl: p.avatarUrl,
+  };
 }

@@ -43,6 +43,7 @@ export function toPerson(row: ApiPerson): Person {
     bio: row.profile.bio,
     tier: row.profile.privacyTier,
     city: row.profile.city,
+    avatarUrl: row.profile.avatarUrl,
     // A private person's coordinates are withheld; they sit at the origin for
     // drawing purposes only — their alignment number still came from the server.
     positions: row.positions ?? ORIGIN,

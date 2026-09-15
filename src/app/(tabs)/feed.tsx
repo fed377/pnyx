@@ -1,15 +1,13 @@
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
+import { TopBar } from "@/components/Chrome";
 import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
-import { Media } from "@/components/Media";
+import { Media, isVideoUrl } from "@/components/Media";
+import { Card } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
-import {
-  RAIL_GAP,
-  RAIL_LABEL_GAP,
-  VoteControls,
-} from "@/components/VoteControls";
+import { VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
@@ -24,21 +22,20 @@ import {
 } from "react-native";
 import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
 
+import { compactCount, timeAgoLong } from "@/lib/format";
 import { rankReels } from "@/lib/feed";
-import { nearestPoint } from "@/lib/grids";
+import { GRID_LIST, nearestPoint } from "@/lib/grids";
 import type { Content } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { c, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+import { c, display, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
-/**
- * Rail glyphs are laid out edge to edge — no padded boxes — so the gap in the
- * stylesheet is the gap you see, and every item on the rail sits the same
- * distance from its neighbour. Touch targets come from hitSlop instead.
- */
-const RAIL_SIZE = 52;
-const RAIL_ICON = 26;
-const RAIL_SLOP = { top: 10, bottom: 10, left: 12, right: 12 };
+/** The grid this post's scores are most confident on — shown as the card's category chip. */
+function primaryGrid(content: Content) {
+  return GRID_LIST.reduce((best, g) =>
+    content.scores[g.id].confidence > content.scores[best.id].confidence ? g : best,
+  );
+}
 
 function Reel({
   content,
@@ -49,7 +46,7 @@ function Reel({
   height: number;
   playing: boolean;
 }) {
-  const { vote, reactionOf, pendingUntilOf, isVoteLocked, isFollowing, people } =
+  const { vote, reactionOf, pendingUntilOf, isVoteLocked, isFollowing, people, peopleById, alignmentWith } =
     useStore();
   const router = useRouter();
   const toast = useToast();
@@ -62,6 +59,9 @@ function Reel({
   const myVote = reactionOf(content.id);
   const friends = people.filter((p) => isFollowing(p.id));
   const type = nearestPoint("values", author.positions.values);
+  const grid = useMemo(() => primaryGrid(content), [content]);
+  const person = own ? null : peopleById[content.authorId];
+  const alignment = person ? Math.round(alignmentWith(person)) : null;
 
   const share = async () => {
     try {
@@ -83,25 +83,61 @@ function Reel({
         playing={playing}
       />
 
-      {/*
-       * Caption and rail sit side by side, both anchored to the bottom, so the
-       * rail starts level with the caption instead of climbing the screen.
-       * Neither has a panel behind it: the text carries its own shadow, and the
-       * detail grows upward over the video when the caption is opened.
-       */}
       <View style={styles.stack} pointerEvents="box-none">
-        <View style={styles.bottomRow} pointerEvents="box-none">
+        <Card tone="ink" style={styles.card}>
           <Pressable
-            style={styles.caption}
             onPress={() => setExpanded((e) => !e)}
             accessibilityRole="button"
             accessibilityState={{ expanded }}
             accessibilityLabel={
               expanded
-                ? "Hide the full caption and the vote split"
-                : "Show the full caption and how everyone voted"
+                ? "Hide the vote split and extra detail"
+                : "Show the vote split and extra detail"
             }
           >
+            <View style={styles.chipRow}>
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>{grid.label}</Text>
+              </View>
+              {isVideoUrl(content.mediaUrl) && (
+                <View style={styles.chip}>
+                  <Icon name="play" size={11} color="#fff" filled />
+                </View>
+              )}
+            </View>
+
+            <AnimatedPressable
+              scaleTo={0.97}
+              style={styles.byline}
+              accessibilityRole="link"
+              accessibilityLabel={`Open ${author.name}'s profile`}
+              onPress={() =>
+                router.push(own ? "/profile" : { pathname: "/u/[id]", params: { id: author.id } })
+              }
+            >
+              <Avatar
+                name={author.name}
+                positions={author.positions}
+                size={30}
+                locked={author.locked}
+                badge={false}
+                photoUrl={author.avatarUrl}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {own ? "You" : author.name}
+                </Text>
+                <Text style={styles.sub} numberOfLines={1}>
+                  {author.locked ? "Unrevealed" : type.name}
+                  {alignment !== null && ` · ${alignment}% aligned`}
+                </Text>
+              </View>
+            </AnimatedPressable>
+
+            <Text style={styles.take} numberOfLines={expanded ? undefined : 3}>
+              {content.text}
+            </Text>
+
             {expanded && (
               <Animated.View
                 entering={FadeIn.duration(180)}
@@ -110,94 +146,59 @@ function Reel({
                 style={styles.detail}
               >
                 {own ? (
-                  <Text style={styles.hint}>
-                    Your own reel — other people decide where it sits.
-                  </Text>
+                  <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
                 ) : (
                   myVote !== undefined && (
-                    <VoteResult
-                      content={content}
-                      friends={friends}
-                      myVote={myVote}
-                      onDark
-                    />
+                    <VoteResult content={content} friends={friends} myVote={myVote} onDark />
                   )
                 )}
-                {content.context && (
-                  <Text style={styles.context}>{content.context}</Text>
-                )}
+                {content.context && <Text style={styles.context}>{content.context}</Text>}
                 {content.music && (
                   <View style={styles.music}>
-                    <Icon name="feed" size={13} color="rgba(236,237,243,0.7)" />
+                    <Icon name="feed" size={13} color="rgba(255,255,255,0.7)" />
                     <Text style={styles.context}>{content.music}</Text>
                   </View>
                 )}
-                <Text style={styles.context}>
-                  {author.name} · {author.locked ? "Unrevealed" : type.name}
-                </Text>
               </Animated.View>
             )}
-
-            <AnimatedPressable
-              scaleTo={0.97}
-              style={styles.byline}
-              accessibilityRole="link"
-              accessibilityLabel={`Open ${author.name}'s profile`}
-              onPress={() =>
-                router.push({ pathname: "/u/[id]", params: { id: author.id } })
-              }
-            >
-              <Avatar
-                name={author.name}
-                positions={author.positions}
-                size={28}
-              />
-              <Text style={styles.handle}>@{author.handle}</Text>
-            </AnimatedPressable>
-
-            <Text style={styles.take} numberOfLines={expanded ? undefined : 2}>
-              {content.text}
-            </Text>
           </Pressable>
 
-          <View style={styles.rail} pointerEvents="box-none">
+          <View style={styles.actions}>
             <VoteControls
-              layout="rail"
-              size={RAIL_SIZE}
-              overlay
+              layout="pill"
+              size={38}
+              counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
               current={myVote}
               pendingUntil={pendingUntilOf(content.id)}
               locked={isVoteLocked(content.id)}
-              onLockedPress={() =>
-                toast("Your vote is counted — it can't be changed")
-              }
+              onLockedPress={() => toast("Your vote is counted — it can't be changed")}
               disabled={own}
               onDisabledPress={() => toast("You can't vote on your own post")}
               onVote={(power) => vote(content.id, power)}
             />
             <AnimatedPressable
               onPress={() => setComments(true)}
-              hitSlop={RAIL_SLOP}
-              scaleTo={0.85}
-              style={styles.railBtn}
+              scaleTo={0.9}
+              style={styles.ghostPill}
               accessibilityRole="button"
               accessibilityLabel={`${content.comments.length} comments`}
             >
-              <Icon name="comment" size={RAIL_ICON} color={c.text} />
-              <Text style={styles.railLabel}>{content.comments.length}</Text>
+              <Icon name="comment" size={18} color="#fff" />
+              <Text style={styles.pillCount}>{compactCount(content.comments.length)}</Text>
             </AnimatedPressable>
             <AnimatedPressable
               onPress={share}
-              hitSlop={RAIL_SLOP}
-              scaleTo={0.85}
-              style={styles.railBtn}
+              scaleTo={0.9}
+              style={styles.ghostPill}
               accessibilityRole="button"
               accessibilityLabel="Share this reel"
             >
-              <Icon name="share" size={RAIL_ICON} color={c.text} />
+              <Icon name="share" size={18} color="#fff" />
             </AnimatedPressable>
           </View>
-        </View>
+
+          <Text style={styles.timestamp}>{timeAgoLong(content.createdAt)}</Text>
+        </Card>
       </View>
 
       <CommentsSheet
@@ -280,19 +281,16 @@ export default function FeedScreen() {
           }
         />
       )}
+      <View style={styles.topOverlay} pointerEvents="box-none">
+        <TopBar showWordmark={false} tint="dark" />
+      </View>
     </BlurBackdrop>
   );
 }
 
-/** Keeps caption text legible over video without putting a panel behind it. */
-const shadow = {
-  textShadowColor: "rgba(0,0,0,0.75)",
-  textShadowOffset: { width: 0, height: 1 },
-  textShadowRadius: 6,
-} as const;
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
+  topOverlay: { position: "absolute", left: 0, right: 0, top: 0 },
   stack: {
     position: "absolute",
     left: 0,
@@ -300,30 +298,42 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     justifyContent: "flex-end",
+    paddingHorizontal: s[4],
     paddingBottom: TAB_BAR_CLEARANCE,
   },
-  bottomRow: {
+  card: { borderRadius: r.lg, gap: s[3] },
+  chipRow: { flexDirection: "row", gap: s[2] },
+  chip: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: s[4],
-    paddingBottom: s[4],
-    gap: s[3],
+    alignItems: "center",
+    paddingHorizontal: s[3],
+    height: 26,
+    borderRadius: r.full,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    ...squircle,
   },
-  caption: { flex: 1, gap: s[2] },
-  detail: { gap: s[2], marginBottom: s[1] },
+  chipText: { color: "#fff", fontSize: f.xs, fontWeight: "600" },
   byline: { flexDirection: "row", alignItems: "center", gap: s[2] },
-  handle: { color: c.text, fontSize: f.sm, fontWeight: "600", ...shadow },
-  take: {
-    color: c.text,
-    fontSize: f.md,
-    fontWeight: "500",
-    lineHeight: 21,
-    ...shadow,
-  },
-  context: { color: "rgba(236,237,243,0.78)", fontSize: f.xs, ...shadow },
+  name: { color: c.app, fontSize: f.sm, fontFamily: display.semibold },
+  sub: { color: "rgba(255,255,255,0.6)", fontSize: f.xs, marginTop: 1 },
+  take: { color: c.app, fontSize: f.md, fontFamily: display.semibold, lineHeight: 22 },
+  detail: { gap: s[2] },
+  context: { color: "rgba(255,255,255,0.7)", fontSize: f.xs },
   music: { flexDirection: "row", alignItems: "center", gap: 6 },
-  hint: { color: "rgba(236,237,243,0.6)", fontSize: f.xs, ...shadow },
-  rail: { alignItems: "center", gap: RAIL_GAP },
-  railBtn: { alignItems: "center", gap: RAIL_LABEL_GAP },
-  railLabel: { color: c.text, fontSize: f.xs, ...shadow },
+  hint: { color: "rgba(255,255,255,0.6)", fontSize: f.xs },
+  actions: { flexDirection: "row", alignItems: "center", gap: s[2] },
+  ghostPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 38,
+    paddingHorizontal: s[3],
+    borderRadius: r.full,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    ...squircle,
+  },
+  pillCount: { color: "#fff", fontSize: f.sm, fontWeight: "600" },
+  timestamp: { color: "rgba(255,255,255,0.5)", fontSize: f.xs },
 });

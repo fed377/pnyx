@@ -10,7 +10,7 @@ const ROUTES: [url: string, expected: RegExp][] = [
   ["/", /more reactions/i],
   ["/feed", /^@[a-z0-9._]+$/i],
   ["/people", /Most aligned/i],
-  ["/profile", /The five grids/i],
+  ["/profile", /Five grids/i],
   ["/u/mara", /Mara Colombo/],
   ["/u/konsta", /Kept private/i],
   ["/settings", /Forget me/i],
@@ -18,7 +18,7 @@ const ROUTES: [url: string, expected: RegExp][] = [
   ["/messages", /Mara Colombo/],
   ["/messages/m1", /Exactly the complaint/i],
   ["/contribute", /Only Speakers can post/i],
-  ["/notifications", /loved your take on shared rooms/i],
+  ["/notifications", /loved your take/i],
 ];
 
 describe("startup", () => {

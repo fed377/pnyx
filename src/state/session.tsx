@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { api, apiConfigured, type Session } from "@/api/client";
+import { signInWithGoogleNative } from "@/api/googleNative";
 import { sessionFromRedirect } from "@/api/oauth";
 
 const KEY = "pnyx.session.v1";
@@ -21,9 +22,12 @@ type SessionStore = {
   configured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<SignUpResult>;
-  /** Opens Google in a browser and comes back through the app's deep link. */
+  /** The system Google account picker when a native build has one configured;
+   * otherwise opens Google in a browser and comes back through the app's deep link. */
   signInWithGoogle: () => Promise<OAuthResult>;
   signOut: () => Promise<void>;
+  /** Re-verifies `currentPassword` server-side before setting `newPassword`. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   /**
    * A valid access token, refreshed if it is about to expire. Pass `force`
    * when a call was rejected server-side despite looking valid locally (a
@@ -111,6 +115,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         return { pending: false };
       },
       signInWithGoogle: async () => {
+        // Prefer the system account picker (a custom dev build only — native
+        // modules don't exist in Expo Go or on web). Only "unavailable" falls
+        // through to the browser flow — an explicit cancel is reported as one,
+        // not silently retried through a second, different prompt.
+        const native = await signInWithGoogleNative();
+        if (native.status === "cancelled") return { cancelled: true };
+        if (native.status === "ok") {
+          await store(await api.googleToken(native.idToken));
+          return { cancelled: false };
+        }
+
         // In Expo Go this is an exp:// URL; in a build it is pnyx://. Whichever
         // it is, it has to be allowlisted in Supabase's URL configuration.
         const redirectTo = Linking.createURL("auth-callback");
@@ -124,6 +139,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         await store(null);
+      },
+      changePassword: async (currentPassword, newPassword) => {
+        const t = await token();
+        if (!t) throw new Error("not signed in");
+        await api.changePassword(t, currentPassword, newPassword);
       },
       token,
     }),

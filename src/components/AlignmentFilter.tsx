@@ -22,7 +22,7 @@ export function AlignmentFilter() {
         accessibilityState={{ expanded: open }}
         style={styles.toggle}
       >
-        <Icon name="filter" size={17} color={c.textDim} />
+        <Icon name="filter" size={17} color={c.text} />
         <Text style={styles.label}>Alignment filter</Text>
         <Text style={styles.value}>{value === 0 ? "Off" : `${value}%+`}</Text>
       </AnimatedPressable>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AccessibilityInfo, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useStore } from "@/state/store";
-import { c, f, r, squircle } from "@/theme/tokens";
+import { c, display, f, r, squircle } from "@/theme/tokens";
 
 /** Counts up to `value` once, on mount — the tick-up in spec §6.3. */
 export function useTickUp(value: number, ms = 1000, enabled = true) {
@@ -105,6 +105,6 @@ const styles = StyleSheet.create({
   pillNum: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   pillSym: { color: c.textDim, fontSize: 10 },
   dialValue: { position: "absolute", flexDirection: "row", alignItems: "baseline" },
-  dialNum: { color: c.text, fontSize: 26, fontWeight: "600" },
+  dialNum: { color: c.text, fontSize: 26, fontFamily: display.semibold },
   dialSym: { color: c.textDim, fontSize: 12, marginLeft: 1 },
 });

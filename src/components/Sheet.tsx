@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 
@@ -9,11 +9,14 @@ export function Sheet({
   title,
   onClose,
   children,
+  closeLabel,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** A text button ("Done") instead of the default X close icon. */
+  closeLabel?: string;
 }) {
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -22,9 +25,15 @@ export function Sheet({
         <View style={styles.sheet}>
           <View style={styles.head}>
             <Text style={styles.title}>{title}</Text>
-            <AnimatedPressable onPress={onClose} hitSlop={8} scaleTo={0.85} accessibilityRole="button" accessibilityLabel="Close">
-              <Icon name="close" size={20} color={c.textDim} />
-            </AnimatedPressable>
+            {closeLabel ? (
+              <AnimatedPressable onPress={onClose} hitSlop={8} scaleTo={0.9} accessibilityRole="button" accessibilityLabel={closeLabel}>
+                <Text style={styles.closeLabel}>{closeLabel}</Text>
+              </AnimatedPressable>
+            ) : (
+              <AnimatedPressable onPress={onClose} hitSlop={8} scaleTo={0.85} accessibilityRole="button" accessibilityLabel="Close">
+                <Icon name="close" size={20} color={c.text} />
+              </AnimatedPressable>
+            )}
           </View>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             {children}
@@ -55,6 +64,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: c.lineSoft,
   },
-  title: { color: c.text, fontSize: f.md, fontWeight: "600" },
+  title: { color: c.text, fontSize: f.md, fontFamily: display.semibold },
+  closeLabel: { color: c.textDim, fontSize: f.sm, fontWeight: "600" },
   body: { padding: s[4], paddingBottom: s[6] },
 });

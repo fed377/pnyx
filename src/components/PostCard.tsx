@@ -1,21 +1,28 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
 import { timeAgo } from "@/lib/format";
-import { nearestPoint } from "@/lib/grids";
+import { GRID_LIST } from "@/lib/grids";
 import type { Content } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { c, f, r, s } from "@/theme/tokens";
-import { AlignmentPill } from "./Alignment";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
 import { isVideoUrl, Media } from "./Media";
+import { Chip } from "./Primitives";
 import { useToast } from "./Toast";
 import { VoteControls } from "./VoteControls";
 import { VoteResult } from "./VoteResult";
+
+/** The grid this post's scores are most confident on — shown as the card's category chip. */
+function primaryGrid(content: Content) {
+  return GRID_LIST.reduce((best, g) =>
+    content.scores[g.id].confidence > content.scores[best.id].confidence ? g : best,
+  );
+}
 
 /**
  * Video posts show as a paused thumbnail until tapped, instead of autoplaying
@@ -49,7 +56,14 @@ function VideoThumb({ content }: { content: Content }) {
   );
 }
 
-export function PostCard({ content }: { content: Content }) {
+export function PostCard({
+  content,
+  onOpenPhoto,
+}: {
+  content: Content;
+  /** Opens the full-screen photo viewer at this post, when it has an image. */
+  onOpenPhoto?: (id: string) => void;
+}) {
   const { vote, reactionOf, pendingUntilOf, isVoteLocked, alignmentWith, isFollowing, people, peopleById, myId } =
     useStore();
   const author = useAuthor(content.authorId);
@@ -61,8 +75,8 @@ export function PostCard({ content }: { content: Content }) {
   const own = content.authorId === myId;
   const friends = people.filter((p) => isFollowing(p.id));
   const person = own ? null : peopleById[content.authorId];
-  const type = nearestPoint("values", author.positions.values);
   const topComment = content.comments[0];
+  const grid = useMemo(() => primaryGrid(content), [content]);
 
   const share = async () => {
     try {
@@ -75,6 +89,7 @@ export function PostCard({ content }: { content: Content }) {
   return (
     <View style={styles.post}>
       <View style={styles.head}>
+        <Chip label={grid.label} />
         <AnimatedPressable
           scaleTo={0.98}
           style={styles.author}
@@ -82,17 +97,19 @@ export function PostCard({ content }: { content: Content }) {
           accessibilityLabel={`Open ${author.name}'s profile`}
           onPress={() => router.push(own ? "/profile" : `/u/${author.id}`)}
         >
-          <Avatar name={author.name} positions={author.positions} size={40} locked={author.locked} />
-          <View style={styles.who}>
-            <Text style={styles.name} numberOfLines={1}>
-              {author.name}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              @{author.handle} · {author.locked ? "Unrevealed" : type.name} · {timeAgo(content.createdAt)}
-            </Text>
-          </View>
+          <Avatar
+            name={author.name}
+            positions={author.positions}
+            size={22}
+            locked={author.locked}
+            badge={false}
+            photoUrl={author.avatarUrl}
+          />
+          <Text style={styles.name} numberOfLines={1}>
+            {own ? "You" : author.name}
+            {person && <Text style={styles.namePct}> · {Math.round(alignmentWith(person))}%</Text>}
+          </Text>
         </AnimatedPressable>
-        {person && <AlignmentPill value={alignmentWith(person)} />}
       </View>
 
       {content.type === "video" ? (
@@ -102,7 +119,15 @@ export function PostCard({ content }: { content: Content }) {
         </>
       ) : content.type === "image" ? (
         <>
-          <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} />
+          <AnimatedPressable
+            onPress={() => onOpenPhoto?.(content.id)}
+            scaleTo={0.98}
+            disabled={!onOpenPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Open photo"
+          >
+            <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} />
+          </AnimatedPressable>
           <Text style={styles.caption}>{content.text}</Text>
         </>
       ) : (
@@ -129,7 +154,7 @@ export function PostCard({ content }: { content: Content }) {
             accessibilityRole="button"
             accessibilityLabel={`${content.comments.length} comments`}
           >
-            <Icon name="comment" size={18} color={c.textDim} />
+            <Icon name="comment" size={18} color={c.text} />
             <Text style={styles.ghostText}>{content.comments.length}</Text>
           </AnimatedPressable>
           <AnimatedPressable
@@ -139,10 +164,12 @@ export function PostCard({ content }: { content: Content }) {
             accessibilityRole="button"
             accessibilityLabel="Share this post"
           >
-            <Icon name="share" size={18} color={c.textDim} />
+            <Icon name="share" size={18} color={c.text} />
           </AnimatedPressable>
         </View>
       </View>
+
+      <Text style={styles.timestamp}>{timeAgo(content.createdAt)}</Text>
 
       {own && (
         <Text style={styles.note}>
@@ -169,14 +196,30 @@ export function PostCard({ content }: { content: Content }) {
 }
 
 const styles = StyleSheet.create({
-  post: { gap: s[3] },
-  head: { flexDirection: "row", alignItems: "center", gap: s[3] },
-  author: { flexDirection: "row", alignItems: "center", gap: s[3], flex: 1 },
-  who: { flex: 1 },
+  post: {
+    gap: s[3],
+    padding: s[4],
+    borderRadius: r.lg,
+    backgroundColor: c.surface,
+    ...squircle,
+  },
+  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: s[3] },
+  author: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingLeft: 4,
+    paddingRight: s[3],
+    paddingVertical: 4,
+    borderRadius: r.full,
+    backgroundColor: c.surface3,
+    ...squircle,
+  },
   name: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  meta: { color: c.textFaint, fontSize: f.xs },
-  take: { color: c.text, fontSize: 21, fontWeight: "600", lineHeight: 27, letterSpacing: -0.3 },
-  caption: { color: c.text, fontSize: f.md, lineHeight: 22 },
+  namePct: { color: c.text, fontWeight: "600" },
+  take: { color: c.text, fontSize: 21, fontFamily: display.semibold, lineHeight: 27, letterSpacing: -0.3 },
+  caption: { color: c.text, fontSize: f.md, fontWeight: "500", lineHeight: 22 },
+  timestamp: { color: c.textFaint, fontSize: f.xs },
   playOverlay: {
     position: "absolute",
     left: 0,

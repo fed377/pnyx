@@ -1,66 +1,73 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AlignmentPill } from "@/components/Alignment";
 import { PageHeader } from "@/components/Chrome";
 import { Icon } from "@/components/Icon";
 import { Media } from "@/components/Media";
-import { CONTENT_BY_ID, CONVERSATIONS, ME_ID, PEOPLE_BY_ID } from "@/lib/data";
 import { POWER_LABEL } from "@/lib/feed";
-import { timeAgo } from "@/lib/format";
-import type { ChatMessage, VotePower } from "@/lib/types";
+import type { VotePower } from "@/lib/types";
+import { useAuthor } from "@/state/useAuthor";
+import { useConversation } from "@/state/useConversation";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 
 /** A forwarded post carries the sender's vote on it (spec section 6.7). */
-function ForwardedPost({ contentId, vote }: { contentId: string; vote?: VotePower }) {
-  const content = CONTENT_BY_ID[contentId];
+function ForwardedPost({ contentId, vote, senderName }: { contentId: string; vote?: VotePower; senderName: string }) {
+  const { contentById } = useStore();
+  const content = contentById[contentId];
+  const author = useAuthor(content?.authorId ?? "");
   if (!content) return null;
-  const author = PEOPLE_BY_ID[content.authorId];
 
   return (
     <View style={styles.fwd}>
-      <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} ratio={16 / 9} rounded={false} />
-      <Text style={styles.fwdText}>{content.text}</Text>
-      <Text style={styles.fwdMeta}>
-        @{author.handle}
-        {vote !== undefined && (
-          <Text style={{ color: vote > 0 ? c.up : c.down }}> · they {POWER_LABEL[vote].toLowerCase()} it</Text>
-        )}
-      </Text>
+      <View style={styles.fwdHead}>
+        <Media
+          id={content.id}
+          scores={content.scores}
+          mediaUrl={content.mediaUrl}
+          ratio={1}
+          rounded
+          style={styles.fwdThumb}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.fwdName}>{author.name}</Text>
+          <Text style={styles.fwdText} numberOfLines={2}>
+            {content.text}
+          </Text>
+        </View>
+      </View>
+      {vote !== undefined && (
+        <View style={[styles.fwdPill, { backgroundColor: vote > 0 ? c.upSoft : c.downSoft }]}>
+          <Icon name={vote > 0 ? "heart" : "heartBreak"} size={12} color={vote > 0 ? c.up : c.down} filled />
+          <Text style={styles.fwdPillText}>
+            {senderName} {POWER_LABEL[vote].toLowerCase()} this
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
 export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { alignmentWith, accent, accentSoft } = useStore();
+  const { alignmentWith, myId, peopleById } = useStore();
   const insets = useSafeAreaInsets();
-  const [extra, setExtra] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
 
-  const convo = useMemo(() => CONVERSATIONS.find((x) => x.id === id), [id]);
+  const { messages, loading, found, send: sendMessage } = useConversation(id ?? "");
 
-  if (!convo) return <Redirect href="/messages" />;
+  if (!id || !found) return <Redirect href="/messages" />;
 
-  const person = PEOPLE_BY_ID[convo.personId];
-  const messages = [...convo.messages, ...extra];
+  const person = peopleById[id];
+  const name = person?.name ?? "Someone";
 
   const send = () => {
     const text = draft.trim();
     if (!text) return;
-    setExtra((x) => [...x, { id: `local-${Date.now()}`, from: ME_ID, text, at: Date.now() }]);
     setDraft("");
+    void sendMessage({ text });
   };
 
   return (
@@ -69,31 +76,33 @@ export default function ThreadScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={0}
     >
-      <PageHeader title={person.name} action={<AlignmentPill value={alignmentWith(person)} />} />
+      <PageHeader title={name} centered action={person && <AlignmentPill value={alignmentWith(person)} />} />
 
-      <ScrollView contentContainerStyle={styles.list}>
-        {messages.map((m) => {
-          const mine = m.from === ME_ID;
-          return (
-            <View
-              key={m.id}
-              style={[styles.bubble, mine && { alignSelf: "flex-end", backgroundColor: accentSoft }]}
-            >
-              {m.contentId && <ForwardedPost contentId={m.contentId} vote={m.vote} />}
-              {m.text && <Text style={styles.bubbleText}>{m.text}</Text>}
-              <Text style={styles.time}>{timeAgo(m.at)}</Text>
-            </View>
-          );
-        })}
-      </ScrollView>
+      {loading && messages.length === 0 ? (
+        <ActivityIndicator style={{ marginTop: s[6] }} color={c.textFaint} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {messages.map((m) => {
+            const mine = m.from === myId;
+            return (
+              <View key={m.id} style={[styles.bubble, mine && styles.bubbleMine]}>
+                {m.contentId && (
+                  <ForwardedPost contentId={m.contentId} vote={m.vote} senderName={name.split(" ")[0]} />
+                )}
+                {m.text && <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.text}</Text>}
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
 
       <View style={[styles.composer, { paddingBottom: insets.bottom + s[3] }]}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder={`Message ${person.name.split(" ")[0]}`}
+          placeholder="Message"
           placeholderTextColor={c.textFaint}
-          accessibilityLabel={`Message ${person.name}`}
+          accessibilityLabel={`Message ${name}`}
           style={styles.input}
           onSubmitEditing={send}
           returnKeyType="send"
@@ -105,7 +114,9 @@ export default function ThreadScreen() {
           accessibilityLabel="Send message"
           style={[styles.send, !draft.trim() && { opacity: 0.4 }]}
         >
-          <Icon name="send" size={18} color={accent} />
+          <View style={{ transform: [{ rotate: "-90deg" }] }}>
+            <Icon name="chevron" size={16} color={c.app} />
+          </View>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -123,30 +134,48 @@ const styles = StyleSheet.create({
     backgroundColor: c.surface,
     ...squircle,
   },
+  bubbleMine: { alignSelf: "flex-end", backgroundColor: c.text },
   bubbleText: { color: c.text, fontSize: f.sm, lineHeight: 19 },
-  time: { color: c.textFaint, fontSize: 10, marginTop: 4 },
-  fwd: { marginBottom: s[2], borderRadius: r.sm, overflow: "hidden", ...squircle },
-  fwdText: { color: c.text, fontSize: f.xs, lineHeight: 17, paddingHorizontal: s[3], paddingTop: s[2] },
-  fwdMeta: { color: c.textFaint, fontSize: 10, paddingHorizontal: s[3], paddingBottom: s[2], paddingTop: 4 },
+  bubbleTextMine: { color: c.app },
+  fwd: { gap: s[2] },
+  fwdHead: { flexDirection: "row", gap: s[2] },
+  fwdThumb: { width: 44, height: 44 },
+  fwdName: { color: c.text, fontSize: f.xs, fontWeight: "600" },
+  fwdText: { color: c.textDim, fontSize: f.xs, lineHeight: 17, marginTop: 1 },
+  fwdPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: s[2],
+    height: 24,
+    borderRadius: r.full,
+  },
+  fwdPillText: { color: c.text, fontSize: 11, fontWeight: "600" },
   composer: {
     flexDirection: "row",
     alignItems: "center",
     gap: s[2],
     paddingHorizontal: s[4],
     paddingTop: s[3],
-    borderTopWidth: 1,
-    borderTopColor: c.line,
     backgroundColor: c.app,
   },
   input: {
     flex: 1,
     color: c.text,
     fontSize: f.sm,
-    paddingHorizontal: s[3],
+    paddingHorizontal: s[4],
     paddingVertical: 10,
-    borderRadius: r.sm,
+    borderRadius: r.full,
     backgroundColor: c.surface2,
     ...squircle,
   },
-  send: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  send: {
+    width: 36,
+    height: 36,
+    borderRadius: r.full,
+    backgroundColor: c.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -1,35 +1,67 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
-import { AlignmentFilter } from "@/components/AlignmentFilter";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
-import { Icon } from "@/components/Icon";
-import { Empty, LockedRow, Note, SegTabs } from "@/components/Primitives";
-import { nearestPoint } from "@/lib/grids";
-import type { Person } from "@/lib/types";
+import { Chip, Empty, LockedRow, Note, SegTabs } from "@/components/Primitives";
+import { GRID_LIST, nearestPoint } from "@/lib/grids";
+import type { GridId, Person } from "@/lib/types";
+import { usePeopleSearch } from "@/state/peopleSearch";
 import { useStore } from "@/state/store";
-import { c, f, r, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+import { c, display, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
+const MOST_ALIGNED_LIMIT = 6;
+const FRIENDS_FIRST_THRESHOLD = 50;
+
+const capitalize = (w: string) => w[0]!.toUpperCase() + w.slice(1);
+
+function MostAligned({ people }: { people: { p: Person; a: number }[] }) {
+  const router = useRouter();
+  if (people.length === 0) return null;
+
+  return (
+    <View style={{ gap: s[3] }}>
+      <Text style={styles.subhead}>Most aligned in the world</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mostRow}>
+        {people.map(({ p, a }) => (
+          <AnimatedPressable
+            key={p.id}
+            scaleTo={0.93}
+            style={styles.mostItem}
+            accessibilityRole="link"
+            accessibilityLabel={`Open ${p.name}'s profile, ${Math.round(a)} percent aligned`}
+            onPress={() => router.push({ pathname: "/u/[id]", params: { id: p.id } })}
+          >
+            <Avatar name={p.name} positions={p.positions} size={64} badge={false} photoUrl={p.avatarUrl} />
+            <Text style={styles.mostPct}>{Math.round(a)}%</Text>
+            <Text style={styles.mostName} numberOfLines={1}>
+              {p.name.split(" ")[0]}
+            </Text>
+          </AnimatedPressable>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
 
 function PersonRow({
   person,
   alignment,
-  rank,
+  gridFocus,
   index,
 }: {
   person: Person;
   alignment: number;
-  rank?: number;
+  gridFocus: GridId;
   index: number;
 }) {
   const router = useRouter();
-  const type = nearestPoint("values", person.positions.values);
+  const type = nearestPoint(gridFocus, person.positions[gridFocus]);
 
   return (
     <Animated.View entering={FadeInDown.duration(240).delay(enterDelay(index))}>
@@ -40,12 +72,14 @@ function PersonRow({
         accessibilityLabel={`Open ${person.name}'s profile, ${Math.round(alignment)} percent aligned`}
         onPress={() => router.push({ pathname: "/u/[id]", params: { id: person.id } })}
       >
-        {rank !== undefined && <Text style={styles.rank}>{rank}</Text>}
-        <Avatar name={person.name} positions={person.positions} size={44} />
+        <Avatar name={person.name} positions={person.positions} size={44} photoUrl={person.avatarUrl} />
         <View style={styles.rowBody}>
-          <Text style={styles.rowName}>{person.name}</Text>
+          <Text style={styles.rowName} numberOfLines={1}>
+            {person.name} <Text style={styles.rowPronouns}>{person.pronouns}</Text>
+          </Text>
           <Text style={styles.rowMeta} numberOfLines={1}>
-            @{person.handle} · {type.name} · {person.city}
+            {type.animal ? `${capitalize(type.animal)} · ` : ""}
+            {type.name}.
           </Text>
         </View>
         <AlignmentPill value={alignment} />
@@ -55,9 +89,12 @@ function PersonRow({
 }
 
 export default function PeopleScreen() {
-  const { alignmentWith, state, isFollowing, people: everyone, refresh, loading, mode, accent } = useStore();
-  const [query, setQuery] = useState("");
+  const { alignmentWith, state, dispatch, isFollowing, people: everyone, refresh, loading, mode, accent } =
+    useStore();
+  const { query } = usePeopleSearch();
   const [tab, setTab] = useState<"world" | "following" | "followers">("world");
+  const [gridFocus, setGridFocus] = useState<GridId | "all">("all");
+  const friendsFirst = state.alignmentFilter >= FRIENDS_FIRST_THRESHOLD;
 
   const ranked = useMemo(
     () =>
@@ -82,7 +119,7 @@ export default function PeopleScreen() {
 
   return (
     <BlurBackdrop style={styles.screen}>
-      <TopBar />
+      <TopBar showWordmark={false} />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -92,31 +129,26 @@ export default function PeopleScreen() {
           ) : undefined
         }
       >
-        <View style={styles.search}>
-          <Icon name="search" size={18} color={c.textFaint} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search by name or handle"
-            placeholderTextColor={c.textFaint}
-            accessibilityLabel="Search people"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-          {searching && (
-            <AnimatedPressable
-              onPress={() => setQuery("")}
-              hitSlop={8}
-              scaleTo={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-            >
-              <Icon name="close" size={16} color={c.textDim} />
-            </AnimatedPressable>
-          )}
-        </View>
+        <Text style={styles.title}>People</Text>
 
-        <AlignmentFilter />
+        <MostAligned people={ranked.slice(0, MOST_ALIGNED_LIMIT)} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          <Chip
+            label="Any alignment"
+            selected={!friendsFirst}
+            onPress={() => dispatch({ type: "filter", value: 0 })}
+          />
+          <Chip
+            label="Friends first"
+            selected={friendsFirst}
+            onPress={() => dispatch({ type: "filter", value: FRIENDS_FIRST_THRESHOLD })}
+          />
+          <Chip label="All" selected={gridFocus === "all"} onPress={() => setGridFocus("all")} />
+          {GRID_LIST.map((g) => (
+            <Chip key={g.id} label={g.label} selected={gridFocus === g.id} onPress={() => setGridFocus(g.id)} />
+          ))}
+        </ScrollView>
 
         {!searching && (
           <SegTabs
@@ -134,23 +166,26 @@ export default function PeopleScreen() {
           <Note icon="globe">The ten people in the world closest to your five grids, right now.</Note>
         )}
 
-        {list.length === 0 ? (
-          <Empty>
-            {searching ? `No one matches "${query.trim()}".` : "Nobody here clears your alignment filter yet."}
-          </Empty>
-        ) : (
-          <View>
-            {list.map(({ p, a }, i) => (
-              <PersonRow
-                key={p.id}
-                person={p}
-                alignment={a}
-                rank={!searching && tab === "world" ? i + 1 : undefined}
-                index={i}
-              />
-            ))}
-          </View>
-        )}
+        <View>
+          <Text style={styles.subhead}>Everyone, by alignment</Text>
+          {list.length === 0 ? (
+            <Empty>
+              {searching ? `No one matches "${query.trim()}".` : "Nobody here clears your alignment filter yet."}
+            </Empty>
+          ) : (
+            <View>
+              {list.map(({ p, a }, i) => (
+                <PersonRow
+                  key={p.id}
+                  person={p}
+                  alignment={a}
+                  gridFocus={gridFocus === "all" ? "values" : gridFocus}
+                  index={i}
+                />
+              ))}
+            </View>
+          )}
+        </View>
 
         {hiddenByPremium > 0 && (
           <LockedRow>
@@ -168,21 +203,18 @@ export default function PeopleScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
   content: { padding: s[4], paddingBottom: TAB_BAR_CLEARANCE, gap: s[5] },
-  search: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: s[2],
-    height: 44,
-    paddingHorizontal: s[3],
-    borderRadius: r.full,
-    backgroundColor: c.surface,
-  },
-  searchInput: { flex: 1, color: c.text, fontSize: f.sm, paddingVertical: 0 },
+  title: { color: c.text, fontSize: 34, fontFamily: display.bold, letterSpacing: -0.6 },
+  subhead: { color: c.text, fontSize: f.md, fontWeight: "600" },
+  mostRow: { gap: s[4], paddingRight: s[4] },
+  mostItem: { alignItems: "center", gap: 4, width: 68 },
+  mostPct: { color: c.text, fontSize: f.sm, fontWeight: "700", marginTop: 4 },
+  mostName: { color: c.textDim, fontSize: f.xs },
+  chipRow: { gap: s[2], paddingRight: s[4] },
   row: { flexDirection: "row", alignItems: "center", gap: s[3], paddingVertical: s[3], paddingHorizontal: s[2] },
-  rank: { width: 18, color: c.textFaint, fontSize: f.sm, textAlign: "right" },
   rowBody: { flex: 1 },
   rowName: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  rowMeta: { color: c.textFaint, fontSize: f.xs },
+  rowPronouns: { color: c.textFaint, fontWeight: "400" },
+  rowMeta: { color: c.textFaint, fontSize: f.xs, marginTop: 2 },
   lockedText: { color: c.textDim, fontSize: f.sm, lineHeight: 19 },
   lockedStrong: { color: c.text, fontWeight: "600" },
 });

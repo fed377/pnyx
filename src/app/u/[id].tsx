@@ -4,7 +4,6 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { PageHeader } from "@/components/Chrome";
 import { Btn } from "@/components/Primitives";
 import { ProfileView } from "@/components/ProfileView";
-import { CONVERSATIONS } from "@/lib/data";
 import { affinity } from "@/lib/feed";
 import { GRID_IDS } from "@/lib/grids";
 import type { GridId, PrivacyTier } from "@/lib/types";
@@ -40,22 +39,24 @@ export default function PersonProfileScreen() {
   if (!person) return <Redirect href="/people" />;
 
   const following = isFollowing(person.id);
-  const convo = CONVERSATIONS.find((x) => x.personId === person.id);
+  const alignment = alignmentWith(person);
 
   return (
     <View style={styles.screen}>
-      <PageHeader title={`@${person.handle}`} />
+      <PageHeader title={person.handle} />
       <ScrollView contentContainerStyle={styles.content}>
         <ProfileView
           name={person.name}
           handle={person.handle}
           pronouns={person.pronouns}
+          photoUrl={person.avatarUrl}
           bio={person.bio}
-          city={person.city}
           positions={person.positions}
-          alignment={alignmentWith(person)}
-          animateAlignment
+          alignment={alignment}
+          alignmentCaption="aligned"
           hiddenGrids={hiddenGridsFor(person.tier)}
+          stats={{ posts: archive.posts.length }}
+          mostAligned={{ label: person.name.split(" ")[0] || person.handle, name: "you", pct: alignment }}
           loved={archive.loved}
           hated={archive.hated}
           posts={archive.posts}
@@ -63,17 +64,13 @@ export default function PersonProfileScreen() {
             <>
               <Btn
                 label={following ? "Following" : "Follow"}
-                variant={following ? "default" : "accent"}
+                variant={following ? "ink" : "outline"}
                 onPress={() => void toggleFollow(person.id)}
               />
               <Btn
                 label="Message"
                 icon="message"
-                onPress={() =>
-                  convo
-                    ? router.push({ pathname: "/messages/[id]", params: { id: convo.id } })
-                    : router.push("/messages")
-                }
+                onPress={() => router.push({ pathname: "/messages/[id]", params: { id: person.id } })}
               />
             </>
           }

@@ -1,32 +1,50 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
-import { AlignmentFilter } from "@/components/AlignmentFilter";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
+import { HotTakeViewer } from "@/components/HotTakeViewer";
+import { PhotoViewer } from "@/components/PhotoViewer";
 import { PostCard } from "@/components/PostCard";
-import { Btn, Empty, SectionTitle } from "@/components/Primitives";
-import { Sheet } from "@/components/Sheet";
+import { Btn, Chip, Empty, Progress, SectionTitle } from "@/components/Primitives";
 import { UNLOCK_AT } from "@/lib/algorithm";
-import { HOT_TAKES } from "@/lib/data";
-import type { HotTake } from "@/lib/types";
+import { useHotTakes } from "@/state/useHotTakes";
 import { useStore } from "@/state/store";
-import { c, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+import { c, display, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** Even on all four sides, and the one value the button's concentric radius is derived from. */
 const UNLOCK_PADDING = s[4];
 
+/** "Friends first" narrows to people you're closely aligned with — a simple on/off
+ * stand-in for the full 0-100 slider still available on People. */
+const FRIENDS_FIRST_THRESHOLD = 50;
+
+function AlignmentToggle() {
+  const { state, dispatch } = useStore();
+  const friendsFirst = state.alignmentFilter >= FRIENDS_FIRST_THRESHOLD;
+
+  return (
+    <View style={styles.toggleRow}>
+      <Chip
+        label="Any alignment"
+        selected={!friendsFirst}
+        onPress={() => dispatch({ type: "filter", value: 0 })}
+      />
+      <Chip
+        label="Friends first"
+        selected={friendsFirst}
+        onPress={() => dispatch({ type: "filter", value: FRIENDS_FIRST_THRESHOLD })}
+      />
+    </View>
+  );
+}
+
 function UnlockBanner() {
-  const { voteCount, unlockProgress, unlocked, accent, accentSoft } = useStore();
+  const { voteCount, unlockProgress, unlocked, accentSoft } = useStore();
   const router = useRouter();
-  const width = useSharedValue(0);
-  useEffect(() => {
-    width.value = withTiming(unlockProgress * 100, { duration: 420 });
-  }, [unlockProgress, width]);
-  const meterStyle = useAnimatedStyle(() => ({ width: `${width.value}%` }));
   if (unlocked) return null;
 
   return (
@@ -45,13 +63,7 @@ function UnlockBanner() {
       <Text style={styles.unlockBody}>
         Your type stays hidden until PNYX has enough of your opinions to be sure of it.
       </Text>
-      <View
-        style={styles.meter}
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: UNLOCK_AT, now: voteCount }}
-      >
-        <Animated.View style={[{ height: "100%", backgroundColor: accent }, meterStyle]} />
-      </View>
+      <Progress value={unlockProgress} />
       <Btn
         label="Open the Feed"
         variant="accent"
@@ -69,7 +81,9 @@ function UnlockBanner() {
 
 export default function HomeScreen() {
   const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, mode, myId } = useStore();
-  const [take, setTake] = useState<HotTake | null>(null);
+  const [takeIndex, setTakeIndex] = useState<number | null>(null);
+  const { items: hotTakes } = useHotTakes();
+  const visibleTakes = useMemo(() => hotTakes.filter((t) => peopleById[t.authorId]), [hotTakes, peopleById]);
 
   const posts = useMemo(() => {
     const min = state.alignmentFilter;
@@ -87,11 +101,14 @@ export default function HomeScreen() {
       });
   }, [state.alignmentFilter, state.follows, alignmentWith, source, peopleById, myId]);
 
-  const takePerson = take ? (peopleById[take.authorId] ?? null) : null;
+  const photos = useMemo(() => posts.filter((p) => p.type === "image"), [posts]);
+  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
+
+  const firstName = state.profile.name.split(" ")[0] || state.profile.handle;
 
   return (
     <BlurBackdrop style={styles.screen}>
-      <TopBar showBell />
+      <TopBar showNotifications />
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -101,24 +118,31 @@ export default function HomeScreen() {
           ) : undefined
         }
       >
+        <View>
+          <Text style={styles.greeting}>Hello, {firstName}!</Text>
+          <Text style={styles.greetingSub}>Here&apos;s what people really think.</Text>
+        </View>
+
+        <AlignmentToggle />
+
         <UnlockBanner />
 
         <View>
-          <SectionTitle>Hot Takes</SectionTitle>
+          <SectionTitle>Hot takes</SectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.takesRow}>
-            {HOT_TAKES.filter((t) => peopleById[t.authorId]).map((t) => {
+            {visibleTakes.map((t, i) => {
               const p = peopleById[t.authorId];
               return (
                 <AnimatedPressable
                   key={t.id}
-                  onPress={() => setTake(t)}
+                  onPress={() => setTakeIndex(i)}
                   scaleTo={0.92}
                   style={styles.take}
                   accessibilityRole="button"
                   accessibilityLabel={`Hot take from ${p.name}`}
                 >
-                  <View style={[styles.takeRing, { borderColor: accent }]}>
-                    <Avatar name={p.name} positions={p.positions} size={54} badge={false} />
+                  <View style={styles.takeRing}>
+                    <Avatar name={p.name} positions={p.positions} size={54} badge={false} photoUrl={p.avatarUrl} />
                   </View>
                   <Text style={styles.takeName} numberOfLines={1}>
                     {p.handle}
@@ -129,8 +153,6 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        <AlignmentFilter />
-
         {posts.length === 0 ? (
           <Empty>
             Nobody clears {state.alignmentFilter}% alignment yet. Lower the filter, or vote on more reels to sharpen
@@ -140,28 +162,33 @@ export default function HomeScreen() {
           <View style={{ gap: s[5] }}>
             {posts.map((post, i) => (
               <Animated.View key={post.id} entering={FadeInDown.duration(260).delay(enterDelay(i))}>
-                <PostCard content={post} />
+                <PostCard
+                  content={post}
+                  onOpenPhoto={
+                    post.type === "image"
+                      ? (id) => setPhotoIndex(photos.findIndex((p) => p.id === id))
+                      : undefined
+                  }
+                />
               </Animated.View>
             ))}
           </View>
         )}
       </ScrollView>
 
-      <Sheet open={Boolean(take)} title="Hot Take" onClose={() => setTake(null)}>
-        {take && takePerson && (
-          <View style={{ gap: s[4] }}>
-            <View style={styles.takeWho}>
-              <Avatar name={takePerson.name} positions={takePerson.positions} size={40} />
-              <View>
-                <Text style={styles.takeWhoName}>{takePerson.name}</Text>
-                <Text style={styles.takeWhoMeta}>@{takePerson.handle} · expires in 14h</Text>
-              </View>
-            </View>
-            <Text style={styles.takeText}>{take.text}</Text>
-            <Text style={styles.takeNote}>Hot Takes disappear after a day and don&apos;t move your grids.</Text>
-          </View>
-        )}
-      </Sheet>
+      {takeIndex !== null && (
+        <HotTakeViewer
+          takes={visibleTakes}
+          index={takeIndex}
+          onIndexChange={setTakeIndex}
+          peopleById={peopleById}
+          onClose={() => setTakeIndex(null)}
+        />
+      )}
+
+      {photoIndex !== null && (
+        <PhotoViewer items={photos} index={photoIndex} onIndexChange={setPhotoIndex} onClose={() => setPhotoIndex(null)} />
+      )}
     </BlurBackdrop>
   );
 }
@@ -169,6 +196,9 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
   content: { padding: s[4], paddingBottom: TAB_BAR_CLEARANCE, gap: s[5] },
+  greeting: { color: c.text, fontSize: 30, fontFamily: display.bold, letterSpacing: -0.5 },
+  greetingSub: { color: c.textDim, fontSize: f.md, marginTop: 2 },
+  toggleRow: { flexDirection: "row", gap: s[2] },
   unlock: {
     padding: UNLOCK_PADDING,
     borderRadius: r.lg,
@@ -176,24 +206,19 @@ const styles = StyleSheet.create({
     ...squircle,
   },
   unlockHead: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  unlockNum: { color: c.text, fontSize: 44, fontWeight: "700", letterSpacing: -1.2 },
+  unlockNum: { color: c.text, fontSize: 44, fontFamily: display.bold, letterSpacing: -1.2 },
   unlockUnit: { color: c.textDim, fontSize: f.md, fontWeight: "500" },
   unlockBody: { color: c.textDim, fontSize: f.sm, lineHeight: 19 },
-  meter: { height: 4, borderRadius: r.full, backgroundColor: c.surface3, overflow: "hidden" },
   takesRow: { gap: s[4], paddingRight: s[4] },
   take: { alignItems: "center", gap: 6, width: 64 },
   takeRing: {
     width: 64,
     height: 64,
     borderRadius: r.full,
-    borderWidth: 2,
+    borderWidth: 1.5,
+    borderColor: c.line,
     alignItems: "center",
     justifyContent: "center",
   },
   takeName: { color: c.textDim, fontSize: f.xs },
-  takeWho: { flexDirection: "row", alignItems: "center", gap: s[3] },
-  takeWhoName: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  takeWhoMeta: { color: c.textFaint, fontSize: f.xs },
-  takeText: { color: c.text, fontSize: f.xl, fontWeight: "600", lineHeight: 30, letterSpacing: -0.4 },
-  takeNote: { color: c.textDim, fontSize: f.sm },
 });

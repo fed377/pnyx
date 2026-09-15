@@ -14,16 +14,15 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { PageHeader } from "@/components/Chrome";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Icon } from "@/components/Icon";
-import { Btn } from "@/components/Primitives";
+import { Btn, Chip, IconTile } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
 import { GRID_LIST } from "@/lib/grids";
 import type { GridId } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s, squircle } from "@/theme/tokens";
-
-type Step = "categories" | "warning" | "compose";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
 
 type Picked = {
   uri: string;
@@ -51,30 +50,22 @@ function Preview({ picked }: { picked: Picked }) {
   });
 
   if (picked.kind === "video") {
-    return <VideoView style={styles.preview} player={player} nativeControls={false} contentFit="cover" />;
+    return <VideoView style={styles.thumb} player={player} nativeControls={false} contentFit="cover" />;
   }
-  return <Image source={{ uri: picked.uri }} style={styles.preview} contentFit="cover" />;
+  return <Image source={{ uri: picked.uri }} style={styles.thumb} contentFit="cover" />;
 }
-
-const WARNINGS = [
-  ["This affects your score.", "Everything you publish is scored on the same five grids your own position sits on."],
-  ["This is a serious app.", "PNYX is for what you actually think, not for engagement bait."],
-  ["Opinions only.", "Posts go through moderation and the terms of service before they reach anyone's feed."],
-  ["You can't vote on your own post.", "Other people decide where it sits."],
-] as const;
 
 const MAX = 220;
 
 export default function ContributeScreen() {
-  const { state, publish, accent, accentSoft } = useStore();
+  const { state, publish } = useStore();
   const router = useRouter();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState<Step>("categories");
   const [picked, setPicked] = useState<GridId[]>([]);
   const [media, setMedia] = useState<Picked | null>(null);
   const [text, setText] = useState("");
-  const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // The keyboard overlays the screen rather than resizing it, so the scroller
@@ -94,10 +85,16 @@ export default function ContributeScreen() {
   if (state.profile.tier !== "speaker") {
     return (
       <View style={styles.screen}>
-        <PageHeader title="Contribute" />
+        <View style={[styles.header, { paddingTop: insets.top + s[2] }]}>
+          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Cancel">
+            <Text style={styles.headerSide}>Cancel</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Contribute</Text>
+          <View style={{ width: 50 }} />
+        </View>
         <View style={styles.content}>
           <View style={styles.gate}>
-            <Icon name="lock" size={22} color={c.textFaint} />
+            <Icon name="lock" size={22} color={c.text} />
             <Text style={styles.gateTitle}>Only Speakers can post</Text>
             <Text style={styles.gateBody}>
               Posting puts an opinion in front of everyone and it gets scored like any other. That&apos;s reserved for
@@ -134,9 +131,11 @@ export default function ContributeScreen() {
     });
   };
 
+  const canPost = text.trim().length >= 8 && picked.length > 0 && media !== null && !busy;
+
   const submit = async () => {
     const body = text.trim();
-    if (!body || picked.length === 0 || !media) return;
+    if (!canPost || !media) return;
     setBusy(true);
     try {
       // The server scores the post; the client no longer guesses at it.
@@ -157,11 +156,24 @@ export default function ContributeScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <PageHeader title="Contribute" />
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <View style={[styles.header, { paddingTop: insets.top + s[2] }]}>
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Cancel">
+          <Text style={styles.headerSide}>Cancel</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Contribute</Text>
+        <Pressable
+          onPress={() => void submit()}
+          disabled={!canPost}
+          accessibilityRole="button"
+          accessibilityLabel="Post"
+        >
+          <Text style={[styles.headerSide, styles.headerPost, !canPost && styles.headerPostDisabled]}>
+            {busy ? "Posting…" : "Post"}
+          </Text>
+        </Pressable>
+      </View>
+
       <ScrollView
         ref={scroller}
         contentContainerStyle={[styles.content, { paddingBottom: s[7] + keyboard }]}
@@ -170,127 +182,66 @@ export default function ContributeScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {step === "categories" && (
-          <>
-            <Text style={styles.title}>What is this about?</Text>
-            <Text style={styles.lead}>
-              Pick the grids your post actually touches. It decides which part of everyone&apos;s profile it can move.
+        <View style={styles.warn}>
+          <Icon name="filter" size={18} color="#fff" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.warnHead}>Opinions only.</Text>
+            <Text style={styles.warnBody}>
+              Posting affects your score. This is a serious app — posts go through moderation and the terms of
+              service, and you can&apos;t vote on your own take.
             </Text>
-            <View style={{ gap: s[2] }}>
-              {GRID_LIST.map((grid) => {
-                const on = picked.includes(grid.id);
-                return (
-                  <Pressable
-                    key={grid.id}
-                    onPress={() => toggle(grid.id)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
-                    style={[styles.cat, on && { backgroundColor: accentSoft }]}
-                  >
-                    <View style={[styles.mark, on && { backgroundColor: accent }]}>
-                      {on && <Icon name="check" size={14} color={c.onAccent} />}
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.catLabel}>{grid.label}</Text>
-                      <Text style={styles.catAxes}>
-                        {grid.axisX.neg} ↔ {grid.axisX.pos} · {grid.axisY.neg} ↔ {grid.axisY.pos}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Btn
-              label="Continue"
-              variant="accent"
-              wide
-              disabled={picked.length === 0}
-              onPress={() => setStep("warning")}
-            />
-          </>
-        )}
+          </View>
+        </View>
 
-        {step === "warning" && (
-          <>
-            <Text style={styles.title}>Before you post</Text>
-            <View style={{ gap: s[3] }}>
-              {WARNINGS.map(([head, body]) => (
-                <View key={head} style={[styles.warn, { borderLeftColor: accent }]}>
-                  <Text style={styles.warnHead}>{head}</Text>
-                  <Text style={styles.warnBody}>{body}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.actions}>
-              <Btn label="Back" onPress={() => setStep("categories")} style={{ flex: 1 }} />
-              <Btn label="I understand" variant="accent" onPress={() => setStep("compose")} style={{ flex: 1 }} />
-            </View>
-          </>
-        )}
+        <View>
+          <Text style={styles.fieldLabel}>What is it mostly about?</Text>
+          <View style={styles.chipRow}>
+            {GRID_LIST.map((grid) => (
+              <Chip key={grid.id} label={grid.label} selected={picked.includes(grid.id)} onPress={() => toggle(grid.id)} />
+            ))}
+          </View>
+        </View>
 
-        {step === "compose" && (
-          <>
-            <Text style={styles.title}>Say it plainly</Text>
+        <View>
+          <Text style={styles.fieldLabel}>Your take</Text>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={MAX}
+            placeholder="Say what you really think."
+            placeholderTextColor={c.textFaint}
+            accessibilityLabel="Your take"
+            style={styles.textarea}
+            // Bring the field above the keyboard.
+            onFocus={() => setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 120)}
+          />
+          <Text style={styles.counter}>{MAX - text.length} characters left</Text>
+        </View>
 
-            <Pressable
+        <View>
+          <Text style={styles.fieldLabel}>Add a photo or video</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mediaRow}>
+            <AnimatedPressable
               onPress={() => void pick()}
+              scaleTo={0.93}
+              style={styles.addTile}
               accessibilityRole="button"
               accessibilityLabel={media ? "Change the photo or video" : "Choose a photo or video"}
-              style={styles.picker}
             >
-              {media ? (
-                <>
-                  <Preview picked={media} />
-                  <Text style={styles.pickerSwap}>
-                    {media.kind === "video" ? "Video" : "Photo"} selected · tap to change
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Icon name="plus" size={22} color={c.textFaint} />
-                  <Text style={styles.pickerLabel}>Choose a photo or video</Text>
-                  <Text style={styles.pickerHint}>Every post carries something to look at.</Text>
-                </>
-              )}
-            </Pressable>
+              <IconTile icon="plus" size={32} />
+            </AnimatedPressable>
+            {media && (
+              <AnimatedPressable onPress={() => void pick()} scaleTo={0.96} accessibilityRole="button" accessibilityLabel="Change photo">
+                <Preview picked={media} />
+              </AnimatedPressable>
+            )}
+          </ScrollView>
+        </View>
 
-            <View>
-              <Text style={styles.fieldLabel}>Your take</Text>
-              <TextInput
-                value={text}
-                onChangeText={setText}
-                multiline
-                maxLength={MAX}
-                accessibilityLabel="Your take"
-                style={styles.textarea}
-                // Bring the field and the Post button above the keyboard.
-                onFocus={() => setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 120)}
-              />
-              <Text style={styles.counter}>{MAX - text.length} characters left</Text>
-            </View>
-            <Pressable
-              onPress={() => setAgreed((a) => !a)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: agreed }}
-              style={styles.check}
-            >
-              <View style={[styles.mark, agreed && { backgroundColor: accent }]}>
-                {agreed && <Icon name="check" size={14} color={c.onAccent} />}
-              </View>
-              <Text style={styles.checkLabel}>I&apos;ve read the terms and this is my own opinion.</Text>
-            </Pressable>
-            <View style={styles.actions}>
-              <Btn label="Back" onPress={() => setStep("warning")} style={{ flex: 1 }} />
-              <Btn
-                label={busy ? "Posting…" : "Post"}
-                variant="accent"
-                disabled={!agreed || !media || busy || text.trim().length < 8}
-                onPress={() => void submit()}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </>
-        )}
+        <Text style={styles.footnote}>
+          Respect moderation. By posting you accept the terms. You cannot vote on your own take.
+        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -298,80 +249,54 @@ export default function ContributeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
-  content: { padding: s[4], gap: s[4] },
-  title: { color: c.text, fontSize: f.xl, fontWeight: "600", letterSpacing: -0.4 },
-  lead: { color: c.textDim, fontSize: f.sm, lineHeight: 20, marginTop: -s[2] },
-  cat: {
+  header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: s[3],
-    padding: s[3],
-    borderRadius: r.md,
-    backgroundColor: c.surface2,
-    ...squircle,
-  },
-  mark: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    backgroundColor: c.surface3,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 2,
-    ...squircle,
-  },
-  catLabel: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  catAxes: { color: c.textDim, fontSize: f.xs, marginTop: 2 },
-  warn: {
-    paddingVertical: s[3],
+    justifyContent: "space-between",
     paddingHorizontal: s[4],
-    borderLeftWidth: 2,
-    backgroundColor: c.surface,
-    borderTopRightRadius: r.sm,
-    borderBottomRightRadius: r.sm,
+    paddingBottom: s[2],
+  },
+  headerTitle: { color: c.text, fontSize: f.md, fontFamily: display.semibold },
+  headerSide: { color: c.textDim, fontSize: f.sm, minWidth: 50 },
+  headerPost: { color: c.text, fontWeight: "600", textAlign: "right" },
+  headerPostDisabled: { color: c.textFaint },
+  content: { padding: s[4], gap: s[4] },
+  warn: {
+    flexDirection: "row",
+    gap: s[3],
+    padding: s[4],
+    borderRadius: r.lg,
+    backgroundColor: c.text,
     ...squircle,
   },
-  warnHead: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  warnBody: { color: c.textDim, fontSize: f.sm, lineHeight: 19, marginTop: 2 },
-  actions: { flexDirection: "row", gap: s[2] },
-  fieldLabel: {
-    color: c.textFaint,
-    fontSize: f.xs,
-    letterSpacing: 0.9,
-    textTransform: "uppercase",
-    marginBottom: 5,
-  },
+  warnHead: { color: c.app, fontSize: f.md, fontFamily: display.semibold },
+  warnBody: { color: "rgba(255,255,255,0.7)", fontSize: f.xs, lineHeight: 17, marginTop: 2 },
+  fieldLabel: { color: c.text, fontSize: f.sm, fontWeight: "600", marginBottom: s[2] },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: s[2] },
   textarea: {
     color: c.text,
     fontSize: f.md,
+    fontFamily: display.regular,
     minHeight: 120,
     textAlignVertical: "top",
     padding: s[3],
-    borderRadius: r.sm,
-    backgroundColor: c.surface2,
+    borderRadius: r.md,
+    backgroundColor: c.surface,
     ...squircle,
   },
   counter: { color: c.textFaint, fontSize: f.xs, textAlign: "right", marginTop: s[2] },
-  picker: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: s[2],
-    padding: s[4],
-    minHeight: 180,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: c.line,
+  mediaRow: { gap: s[2], paddingRight: s[4] },
+  addTile: {
+    width: 72,
+    height: 72,
     borderRadius: r.md,
     backgroundColor: c.surface,
-    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
     ...squircle,
   },
-  pickerLabel: { color: c.text, fontSize: f.sm, fontWeight: "600" },
-  pickerHint: { color: c.textFaint, fontSize: f.xs },
-  pickerSwap: { color: c.textDim, fontSize: f.xs, marginTop: s[2] },
-  preview: { width: "100%", height: 220, borderRadius: r.sm, backgroundColor: c.surface2, ...squircle },
-  check: { flexDirection: "row", alignItems: "center", gap: s[3] },
-  checkLabel: { color: c.textDim, fontSize: f.sm, flex: 1 },
+  thumb: { width: 72, height: 72, borderRadius: r.md, backgroundColor: c.surface2, ...squircle },
+  footnote: { color: c.textFaint, fontSize: f.xs, lineHeight: 17 },
   gate: {
     alignItems: "flex-start",
     gap: s[3],

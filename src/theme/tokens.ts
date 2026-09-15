@@ -1,28 +1,36 @@
 import { Platform } from "react-native";
 
-/** Cool neutral ramp — no pure black, no pure white. */
+/**
+ * Warm neutral ramp — monochrome by brief (black, greys, white; colour is
+ * reserved for meaningful data — grid positions, the vote up/down semantics —
+ * never for UI chrome). Matches the Figma handoff's light design.
+ */
 export const c = {
-  bg: "#08080d",
-  app: "#0b0b11",
-  surface: "#13131b",
-  surface2: "#1a1a24",
-  surface3: "#22222e",
-  line: "#24242f",
-  lineSoft: "#1c1c26",
-  text: "#ecedf3",
-  textDim: "#9797a9",
-  textFaint: "#66667a",
+  bg: "#eeece8",
+  app: "#f2f0ec",
+  surface: "#faf9f6",
+  surface2: "#f0eeea",
+  surface3: "#e6e3dd",
+  line: "#dcd9d2",
+  lineSoft: "#e8e5df",
+  text: "#161513",
+  textDim: "#6b6862",
+  textFaint: "#9a9690",
   up: "#3fbf8f",
   upSoft: "rgba(63,191,143,0.14)",
   down: "#e5626f",
   downSoft: "rgba(229,98,111,0.14)",
   onAccent: "#ffffff",
-  scrim: "rgba(4,4,8,0.62)",
-  overlay: "rgba(8,8,13,0.66)",
+  scrim: "rgba(20,19,17,0.5)",
+  overlay: "rgba(10,10,9,0.55)",
 } as const;
 
-/** Shown in place of the Mind-grid color while a profile is still locked — a calm, undetermined blue, not a brand color. */
-export const LOCKED_ACCENT = "#4F86D1";
+/**
+ * The one exception to the monochrome brief: a brushed-steel gradient reserved
+ * for "live"/in-progress state (an uploading or processing button, a toggle
+ * that's on) — never decoration. Light-to-dark slate, per the Figma component sheet.
+ */
+export const STEEL_GRADIENT = ["#aeb4bf", "#767c88"] as const;
 
 /** 4px base scale. */
 export const s = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48 } as const;
@@ -40,14 +48,30 @@ export const squircle = { borderCurve: "continuous" } as const;
 
 export const f = { xs: 11, sm: 13, md: 15, lg: 18, xl: 24, xxl: 34 } as const;
 
-/** Height of the floating tab bar — icons only, no labels to make room for. */
-export const NAV_H = 52;
 /**
- * The floating tab bar's margin from the screen edge — the same on the left,
- * the right and the bottom, so the pill sits evenly inside the screen. Small
- * enough to sit close to the edge without touching it.
+ * Familjen Grotesk — the display typeface from the Figma component sheet's
+ * Specimens page, used for every "Display/*" role (wordmark through the
+ * post composer). Smaller "Text/*" roles (body copy, captions, labels) stay
+ * on the system font, which is why this isn't just a global fontFamily.
+ */
+export const display = {
+  regular: "FamiljenGrotesk_400Regular",
+  medium: "FamiljenGrotesk_500Medium",
+  semibold: "FamiljenGrotesk_600SemiBold",
+  bold: "FamiljenGrotesk_700Bold",
+} as const;
+
+/** Height of the floating tab bar — tall enough for an icon and a label under it. */
+export const NAV_H = 64;
+/**
+ * The floating tab bar's margin from the bottom edge — small enough to sit
+ * close to the edge without touching it (see the `barBottom` calc in
+ * `(tabs)/_layout.tsx`, which floors the safe-area inset at this value).
  */
 export const NAV_INSET = s[2];
+/** The bar's margin from the left/right edges — wider than the vertical
+ * inset on purpose, so the floating pill doesn't read as edge-to-edge. */
+export const NAV_SIDE_INSET = s[4];
 /** Bottom clearance scrollable tab-screen content needs now that the tab bar floats over it. */
 export const TAB_BAR_CLEARANCE = NAV_INSET + NAV_H + s[3];
 

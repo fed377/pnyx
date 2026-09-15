@@ -6,13 +6,14 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "pnyx",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.anonymous.pnyx"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0B0B11",
+        "backgroundColor": "#F2F0EC",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -29,17 +30,25 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0B0B11",
+          "backgroundColor": "#F2F0EC",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-image",
+      "expo-web-browser",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.631658990231-rvu80d47p7c3vaee9o3dnskfd6vgrdof"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0B0B11"
+    "backgroundColor": "#F2F0EC"
   }
 }

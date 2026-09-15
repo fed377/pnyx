@@ -58,7 +58,7 @@ export function VoteResult({
           <View style={styles.friendsRow}>
             {votes.map(({ person, power }) => (
               <View key={person.id} style={styles.friend}>
-                <Avatar name={person.name} positions={person.positions} size={26} badge={false} />
+                <Avatar name={person.name} positions={person.positions} size={26} badge={false} photoUrl={person.avatarUrl} />
                 <Text style={[styles.friendVote, { color: power > 0 ? c.up : c.down }]}>{POWER_LABEL[power]}</Text>
               </View>
             ))}

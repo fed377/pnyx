@@ -10,10 +10,35 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AnimatedPressable } from "./AnimatedPressable";
+import { GoogleIcon } from "./GoogleIcon";
 import { Btn } from "./Primitives";
 import { API_URL } from "@/api/client";
 import { useSession } from "@/state/session";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
+
+/**
+ * Google's own branding guidelines for "Sign in with Google" — white surface,
+ * a hairline border rather than a filled pill, and the logomark unmodified —
+ * so this deliberately breaks from the app's own Btn styling instead of
+ * reusing it.
+ */
+function GoogleButton({ onPress, disabled }: { onPress: () => void; disabled?: boolean }) {
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Google"
+      accessibilityState={{ disabled }}
+      scaleTo={0.97}
+      style={[styles.googleBtn, disabled && { opacity: 0.5 }]}
+    >
+      <GoogleIcon size={18} />
+      <Text style={styles.googleLabel}>Continue with Google</Text>
+    </AnimatedPressable>
+  );
+}
 
 export function SignIn({ onSkip }: { onSkip?: () => void }) {
   const { signIn, signUp, signInWithGoogle, configured } = useSession();
@@ -149,7 +174,7 @@ export function SignIn({ onSkip }: { onSkip?: () => void }) {
               <View style={styles.rule} />
             </View>
 
-            <Btn label="Continue with Google" wide disabled={busy} onPress={() => void google()} />
+            <GoogleButton disabled={busy} onPress={() => void google()} />
             <Text style={styles.host}>{API_URL}</Text>
           </>
         )}
@@ -167,7 +192,7 @@ export function SignIn({ onSkip }: { onSkip?: () => void }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
   content: { padding: s[5], paddingBottom: s[7], gap: s[3] },
-  wordmark: { color: c.text, fontSize: 24, fontWeight: "700", letterSpacing: 6 },
+  wordmark: { color: c.text, fontSize: 24, fontFamily: display.bold, letterSpacing: 6 },
   tagline: { color: c.textDim, fontSize: f.md, lineHeight: 22, marginBottom: s[5], maxWidth: 300 },
   switcher: { flexDirection: "row", gap: s[1], marginBottom: s[2] },
   switchBtn: { paddingVertical: s[2], paddingHorizontal: s[3], borderRadius: r.full },
@@ -182,6 +207,20 @@ const styles = StyleSheet.create({
     backgroundColor: c.surface2,
     ...squircle,
   },
+  googleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: s[2],
+    minHeight: 44,
+    paddingHorizontal: s[4],
+    borderRadius: r.full,
+    borderWidth: 1,
+    borderColor: "#747775",
+    backgroundColor: "#fff",
+    ...squircle,
+  },
+  googleLabel: { color: "#1f1f1f", fontSize: f.sm, fontWeight: "500" },
   divider: { flexDirection: "row", alignItems: "center", gap: s[3], marginVertical: s[1] },
   rule: { flex: 1, height: 1, backgroundColor: c.line },
   dividerText: { color: c.textFaint, fontSize: f.xs },

@@ -106,9 +106,31 @@ The flow is: app asks the API for the URL → `expo-web-browser` opens it → Go
 session. It uses the implicit flow, which is what Supabase returns for a plain `/authorize`
 request; the tokens live in a deep-link fragment, never in a logged query string.
 
-Note this works in Expo Go because it is browser-based. The *native* Google account picker
-(`@react-native-google-signin`) would need a custom dev build and SHA-1 fingerprints — worth
-doing before launch for the better UX, but not required to ship the flow.
+Note this works in Expo Go because it is browser-based. The app also has a *native* path
+(`@react-native-google-signin`) — the real system account picker instead of a browser —
+which `signInWithGoogle()` tries first and falls back from automatically if it isn't set up.
+
+**Native account picker setup** (needs a custom dev build; does nothing in Expo Go):
+
+1. **Google Cloud** — same Credentials page as above, two more OAuth client IDs:
+   - Type **iOS**, bundle ID `com.anonymous.pnyx` (matches `app.json`'s `ios.bundleIdentifier`).
+     Note the **iOS URL scheme** it gives you (the reversed client ID,
+     `com.googleusercontent.apps.XXXX`) and paste it into `app.json`'s
+     `@react-native-google-signin/google-signin` plugin config, replacing
+     `REPLACE_WITH_REVERSED_IOS_CLIENT_ID`.
+   - Type **Android**, package `com.anonymous.pnyx`, with the SHA-1 of your dev build's signing
+     key (`cd android && ./gradlew signingReport` after `npx expo prebuild`, or from EAS's
+     credentials for an EAS build).
+2. **`.env`** — set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` to the **Web application** client ID from
+   the browser-flow setup above (this is the audience Supabase's `signInWithIdToken` checks
+   the token against — reuse it, don't create a third client for this), and
+   `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` to the new iOS client ID. Leave both blank to keep every
+   platform on the browser flow.
+3. Rebuild the dev client (`npx expo prebuild` + `npx expo run:ios` / `run:android`, or an EAS
+   dev build) — a native module can't be picked up by Metro alone.
+
+The app hands the resulting Google ID token to `POST /auth/google/token`, which calls
+Supabase's `signInWithIdToken` — no redirect_to allowlist to maintain for this path.
 
 ### How it fits together
 

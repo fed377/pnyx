@@ -26,6 +26,7 @@ export type ApiProfile = {
   pronouns: string;
   bio: string;
   city: string;
+  avatarUrl?: string;
   privacyTier: PrivacyTier;
   gridPublic: Record<GridId, boolean>;
   premium: boolean;
@@ -62,6 +63,58 @@ export type ApiPerson = {
   following: boolean;
   follower: boolean;
   positions: Positions | null;
+};
+
+export type ApiMessage = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  body?: string;
+  contentId?: string;
+  voteSnapshot?: VotePower;
+  createdAt: string;
+};
+
+export type ApiConversation = {
+  id: string;
+  otherUserId: string;
+  createdAt: string;
+  lastMessage: ApiMessage | null;
+};
+
+export type ApiNotification = {
+  id: string;
+  userId: string;
+  actorId?: string;
+  kind: "vote" | "follow" | "alignment" | "reply";
+  body: string;
+  contentId?: string;
+  pct?: number;
+  readAt?: string;
+  createdAt: string;
+};
+
+export type ApiHotTake = {
+  id: string;
+  authorId: string;
+  category: GridId;
+  body: string;
+  up: number;
+  down: number;
+  comments: number;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type ApiComment = {
+  id: string;
+  contentId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  up: number;
+  down: number;
+  myVote: 1 | -1 | null;
 };
 
 export type ApiVoteResult = {
@@ -187,17 +240,32 @@ export const api = {
   signIn: (email: string, password: string) =>
     request<Session>("/auth/signin", { method: "POST", body: { email, password } }),
 
-  /** Supabase's Google authorize URL, for the app to open in a browser. */
+  /** Supabase's Google authorize URL, for the app to open in a browser — the
+   * fallback path for Expo Go / web, where the native account picker isn't available. */
   googleUrl: (redirect: string) =>
     request<{ url: string }>(`/auth/google/url?redirect=${encodeURIComponent(redirect)}`),
+
+  /** Exchanges a Google ID token from the native system account picker for a
+   * session, via Supabase's signInWithIdToken — no browser round-trip. */
+  googleToken: (idToken: string) =>
+    request<Session>("/auth/google/token", { method: "POST", body: { idToken } }),
 
   refresh: (refreshToken: string) =>
     request<Session>("/auth/refresh", { method: "POST", body: { refreshToken } }),
 
   me: (token: string) => request<ApiMe>("/me", { token }),
 
-  updateMe: (token: string, patch: Partial<Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "privacyTier" | "gridPublic">>) =>
-    request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
+  updateMe: (
+    token: string,
+    patch: Partial<Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic">>,
+  ) => request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
+
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/auth/change-password", {
+      method: "POST",
+      token,
+      body: { currentPassword, newPassword },
+    }),
 
   /** Own votes, oldest first, with score snapshots — enough to redraw history. */
   myVotes: (token: string) => request<{ items: Vote[] }>("/me/votes", { token }),
@@ -241,4 +309,44 @@ export const api = {
       mediaType: string;
     },
   ) => request<ApiContent>("/content", { method: "POST", token, body: input }),
+
+  conversations: (token: string) => request<{ items: ApiConversation[] }>("/conversations", { token }),
+
+  /** Opens (or starts) the 1:1 thread with `otherUserId`. */
+  openConversation: (token: string, otherUserId: string) =>
+    request<{ conversationId: string; otherUserId: string; messages: ApiMessage[] }>(
+      `/conversations/with/${otherUserId}`,
+      { token },
+    ),
+
+  messages: (token: string, conversationId: string) =>
+    request<{ items: ApiMessage[] }>(`/conversations/${conversationId}/messages`, { token }),
+
+  sendMessage: (
+    token: string,
+    conversationId: string,
+    input: { body?: string; contentId?: string; votePower?: VotePower },
+  ) => request<ApiMessage>(`/conversations/${conversationId}/messages`, { method: "POST", token, body: input }),
+
+  notifications: (token: string, limit = 50) =>
+    request<{ items: ApiNotification[] }>(`/notifications?limit=${limit}`, { token }),
+
+  hotTakes: (token: string, limit = 30) =>
+    request<{ items: ApiHotTake[] }>(`/hot-takes?limit=${limit}`, { token }),
+
+  postHotTake: (token: string, category: GridId, body: string) =>
+    request<ApiHotTake>("/hot-takes", { method: "POST", token, body: { category, body } }),
+
+  comments: (token: string, contentId: string) =>
+    request<{ items: ApiComment[] }>(`/content/${contentId}/comments`, { token }),
+
+  addComment: (token: string, contentId: string, body: string) =>
+    request<ApiComment>(`/content/${contentId}/comments`, { method: "POST", token, body: { body } }),
+
+  voteComment: (token: string, commentId: string, power: 1 | -1) =>
+    request<{ up: number; down: number; myVote: 1 | -1 | null }>(`/comments/${commentId}/vote`, {
+      method: "POST",
+      token,
+      body: { power },
+    }),
 };

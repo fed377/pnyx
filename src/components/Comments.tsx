@@ -1,14 +1,53 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { PEOPLE_BY_ID } from "@/lib/data";
-import type { Comment, Content } from "@/lib/types";
-import { useStore } from "@/state/store";
-import { c, f, mixHex, r, s, squircle } from "@/theme/tokens";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { timeAgo } from "@/lib/format";
+import type { Content } from "@/lib/types";
+import { useAuthor } from "@/state/useAuthor";
+import { useComments } from "@/state/useComments";
+import type { LiveComment } from "@/state/useComments";
+import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
-/** Comments are votable too (spec section 5). Votes here stay local to the session. */
+function CommentRow({ cm, onVote }: { cm: LiveComment; onVote: (commentId: string, power: 1 | -1) => void }) {
+  const author = useAuthor(cm.authorId);
+  const v = cm.myVote;
+  return (
+    <View style={styles.comment}>
+      <Avatar name={author.name} positions={author.positions} size={32} badge={false} photoUrl={author.avatarUrl} />
+      <View style={styles.body}>
+        <Text style={styles.who}>
+          {author.isMe ? "You" : author.name} <Text style={styles.time}>{timeAgo(cm.at)}</Text>
+        </Text>
+        <Text style={styles.text}>{cm.text}</Text>
+        <View style={styles.votes}>
+          <Pressable
+            onPress={() => onVote(cm.id, 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Agree with this comment"
+            style={styles.voteBtn}
+          >
+            <Icon name="thumbUp" size={14} color={v === 1 ? c.up : c.textFaint} filled={v === 1} />
+            <Text style={[styles.voteNum, v === 1 && { color: c.up }]}>{cm.up}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onVote(cm.id, -1)}
+            accessibilityRole="button"
+            accessibilityLabel="Disagree with this comment"
+            style={styles.voteBtn}
+          >
+            <Icon name="thumbDown" size={14} color={v === -1 ? c.down : c.textFaint} filled={v === -1} />
+            <Text style={[styles.voteNum, v === -1 && { color: c.down }]}>{cm.down}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** Comments are votable too (spec section 5) — real per-user votes, changeable
+ * and toggle-off-able, backed by the server in remote mode. */
 export function CommentsSheet({
   content,
   open,
@@ -18,79 +57,35 @@ export function CommentsSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const { state, positions, accent } = useStore();
-  const [votes, setVotes] = useState<Record<string, 1 | -1>>({});
-  const [added, setAdded] = useState<Comment[]>([]);
+  const { items: all, loading, addComment, castVote } = useComments(content.id, content.comments, content.createdAt);
   const [draft, setDraft] = useState("");
-
-  const all = [...added, ...content.comments];
-
-  const cast = (id: string, dir: 1 | -1) =>
-    setVotes((v) => {
-      const next = { ...v };
-      if (next[id] === dir) delete next[id];
-      else next[id] = dir;
-      return next;
-    });
 
   const submit = () => {
     const text = draft.trim();
     if (!text) return;
-    setAdded((a) => [{ id: `local-${Date.now()}`, authorId: "me", text, up: 0, down: 0 }, ...a]);
     setDraft("");
+    void addComment(text);
   };
 
   return (
-    <Sheet open={open} title={`${all.length} comment${all.length === 1 ? "" : "s"}`} onClose={onClose}>
-      <View style={{ gap: s[4] }}>
-        {all.map((cm) => {
-          const mine = cm.authorId === "me";
-          const person = mine ? null : PEOPLE_BY_ID[cm.authorId];
-          const v = votes[cm.id];
-          return (
-            <View key={cm.id} style={styles.comment}>
-              <Avatar
-                name={mine ? state.profile.name : person!.name}
-                positions={mine ? positions : person!.positions}
-                size={32}
-                badge={false}
-              />
-              <View style={styles.body}>
-                <Text style={styles.who}>{mine ? "You" : `@${person!.handle}`}</Text>
-                <Text style={styles.text}>{cm.text}</Text>
-              </View>
-              <View style={styles.votes}>
-                <Pressable
-                  onPress={() => cast(cm.id, 1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Agree with this comment"
-                  style={[styles.chip, v === 1 && { backgroundColor: mixHex(c.up, c.surface2, 0.3) }]}
-                >
-                  <Icon name="thumbUp" size={13} color={v === 1 ? c.up : c.textFaint} filled={v === 1} />
-                  <Text style={[styles.chipNum, v === 1 && { color: c.up }]}>{cm.up + (v === 1 ? 1 : 0)}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => cast(cm.id, -1)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Disagree with this comment"
-                  style={[styles.chip, v === -1 && { backgroundColor: mixHex(c.down, c.surface2, 0.3) }]}
-                >
-                  <Icon name="thumbDown" size={13} color={v === -1 ? c.down : c.textFaint} filled={v === -1} />
-                  <Text style={[styles.chipNum, v === -1 && { color: c.down }]}>{cm.down + (v === -1 ? 1 : 0)}</Text>
-                </Pressable>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+    <Sheet open={open} title={`${all.length} repl${all.length === 1 ? "y" : "ies"}`} onClose={onClose} closeLabel="Done">
+      {loading && all.length === 0 ? (
+        <ActivityIndicator style={{ marginVertical: s[4] }} color={c.textFaint} />
+      ) : (
+        <View style={{ gap: s[4] }}>
+          {all.map((cm) => (
+            <CommentRow key={cm.id} cm={cm} onVote={(id, power) => void castVote(id, power)} />
+          ))}
+        </View>
+      )}
 
       <View style={styles.form}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder="Say what you actually think"
+          placeholder="Reply"
           placeholderTextColor={c.textFaint}
-          accessibilityLabel="Write a comment"
+          accessibilityLabel="Write a reply"
           style={styles.input}
           onSubmitEditing={submit}
           returnKeyType="send"
@@ -99,10 +94,12 @@ export function CommentsSheet({
           onPress={submit}
           disabled={!draft.trim()}
           accessibilityRole="button"
-          accessibilityLabel="Post comment"
+          accessibilityLabel="Post reply"
           style={[styles.send, !draft.trim() && { opacity: 0.4 }]}
         >
-          <Icon name="send" size={18} color={accent} />
+          <View style={{ transform: [{ rotate: "-90deg" }] }}>
+            <Icon name="chevron" size={16} color={c.app} />
+          </View>
         </Pressable>
       </View>
     </Sheet>
@@ -111,20 +108,13 @@ export function CommentsSheet({
 
 const styles = StyleSheet.create({
   comment: { flexDirection: "row", gap: s[3], alignItems: "flex-start" },
-  body: { flex: 1 },
-  who: { color: c.textFaint, fontSize: f.xs },
+  body: { flex: 1, gap: 2 },
+  who: { color: c.text, fontSize: f.sm, fontWeight: "600" },
+  time: { color: c.textFaint, fontWeight: "400" },
   text: { color: c.text, fontSize: f.sm, lineHeight: 19 },
-  votes: { gap: 4 },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: r.full,
-    backgroundColor: c.surface2,
-  },
-  chipNum: { color: c.textFaint, fontSize: f.xs },
+  votes: { flexDirection: "row", gap: s[4], marginTop: 4 },
+  voteBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  voteNum: { color: c.textFaint, fontSize: f.xs, fontWeight: "600" },
   form: {
     flexDirection: "row",
     alignItems: "center",
@@ -138,11 +128,18 @@ const styles = StyleSheet.create({
     flex: 1,
     color: c.text,
     fontSize: f.sm,
-    paddingHorizontal: s[3],
+    paddingHorizontal: s[4],
     paddingVertical: 10,
-    borderRadius: r.sm,
+    borderRadius: r.full,
     backgroundColor: c.surface2,
     ...squircle,
   },
-  send: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  send: {
+    width: 36,
+    height: 36,
+    borderRadius: r.full,
+    backgroundColor: c.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

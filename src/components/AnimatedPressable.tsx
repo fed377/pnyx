@@ -5,6 +5,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import type { AnimatedStyle } from "react-native-reanimated";
 
 const Wrapped = Animated.createAnimatedComponent(Pressable);
 
@@ -25,7 +26,10 @@ export function AnimatedPressable({
   onPressOut,
   disabled,
   ...rest
-}: Omit<PressableProps, "style"> & { scaleTo?: number; style?: StyleProp<ViewStyle> }) {
+}: Omit<PressableProps, "style"> & {
+  scaleTo?: number;
+  style?: StyleProp<ViewStyle> | AnimatedStyle<ViewStyle> | (StyleProp<ViewStyle> | AnimatedStyle<ViewStyle>)[];
+}) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 

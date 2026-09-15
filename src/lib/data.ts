@@ -512,13 +512,69 @@ export const CONTENT_BY_ID: Record<string, Content> = Object.fromEntries(
 
 /* ── Hot Takes (ephemeral, Home) ──────────────────────────────────────────── */
 
+const MIN = 60_000;
+
 export const HOT_TAKES: HotTake[] = [
-  { id: "h1", authorId: "dario", text: "Bike lanes painted next to parked cars are a dare, not infrastructure." },
-  { id: "h2", authorId: "elena", text: "Panettone is a winter food and August panettone is a scam." },
-  { id: "h3", authorId: "nkechi", text: "Live albums are better than studio albums and it isn't close." },
-  { id: "h4", authorId: "siv", text: "Subtitles on, always, in every language, including your own." },
-  { id: "h5", authorId: "tobia", text: "Homework should end at fourteen." },
-  { id: "h6", authorId: "yaz", text: "A gallery with a queue is doing something right." },
+  {
+    id: "h1",
+    authorId: "dario",
+    text: "Bike lanes painted next to parked cars are a dare, not infrastructure.",
+    category: "culture",
+    up: 41,
+    down: 30,
+    comments: 6,
+    createdAt: NOW - 20 * MIN,
+  },
+  {
+    id: "h2",
+    authorId: "elena",
+    text: "Panettone is a winter food and August panettone is a scam.",
+    category: "values",
+    up: 88,
+    down: 12,
+    comments: 14,
+    createdAt: NOW - 45 * MIN,
+  },
+  {
+    id: "h3",
+    authorId: "nkechi",
+    text: "Live albums are better than studio albums and it isn't close.",
+    category: "mind",
+    up: 63,
+    down: 41,
+    comments: 9,
+    createdAt: NOW - 1.5 * 60 * MIN,
+  },
+  {
+    id: "h4",
+    authorId: "siv",
+    text: "Subtitles on, always, in every language, including your own.",
+    category: "focus",
+    up: 120,
+    down: 18,
+    comments: 22,
+    createdAt: NOW - 3 * 60 * MIN,
+  },
+  {
+    id: "h5",
+    authorId: "tobia",
+    text: "Homework should end at fourteen.",
+    category: "soul",
+    up: 54,
+    down: 47,
+    comments: 11,
+    createdAt: NOW - 5 * 60 * MIN,
+  },
+  {
+    id: "h6",
+    authorId: "yaz",
+    text: "A gallery with a queue is doing something right.",
+    category: "culture",
+    up: 29,
+    down: 8,
+    comments: 3,
+    createdAt: NOW - 8 * 60 * MIN,
+  },
 ];
 
 /* ── Messages ─────────────────────────────────────────────────────────────── */
@@ -566,12 +622,42 @@ export const CONVERSATIONS: Conversation[] = [
 
 /* ── Notifications ────────────────────────────────────────────────────────── */
 
-export type Notification = { id: string; personId: string; text: string; at: number };
+export type NotificationKind = "vote" | "follow" | "alignment" | "reply";
+
+export type Notification = {
+  id: string;
+  personId: string;
+  text: string;
+  at: number;
+  kind: NotificationKind;
+  /** "alignment" only — the new percentage. */
+  pct?: number;
+  /** "vote"/"reply" only — real content to pull a thumbnail from, when it has media. */
+  contentId?: string;
+};
 
 export const NOTIFICATIONS: Notification[] = [
-  { id: "n1", personId: "mara", text: "loved your take on shared rooms", at: NOW - 2 * 3_600_000 },
-  { id: "n2", personId: "noor", text: "started following you", at: NOW - 7 * 3_600_000 },
-  { id: "n3", personId: "tobia", text: "replied to your comment", at: NOW - 19 * 3_600_000 },
-  { id: "n4", personId: "yaz", text: "your alignment with her passed 70%", at: NOW - 2 * DAY },
-  { id: "n5", personId: "dario", text: "hated a post you loved", at: NOW - 3 * DAY },
+  { id: "n1", personId: "mara", text: "loved your take.", at: NOW - 9 * 60_000, kind: "vote", contentId: POSTS[0].id },
+  {
+    id: "n2",
+    personId: "rui",
+    text: `replied: "${POSTS[1].comments[0]?.text ?? "Good point."}"`,
+    at: NOW - 35 * 60_000,
+    kind: "reply",
+    contentId: POSTS[1].id,
+  },
+  { id: "n3", personId: "bea", text: "started following you.", at: NOW - 3_600_000, kind: "follow" },
+  { id: "n4", personId: "elena", text: "are now 74% aligned.", at: NOW - 3 * 3_600_000, kind: "alignment", pct: 74 },
+  { id: "n5", personId: "dario", text: "liked your take.", at: NOW - 6 * 3_600_000, kind: "vote", contentId: POSTS[2].id },
+  {
+    id: "n6",
+    personId: "siv",
+    text: `replied: "${POSTS[3].comments[0]?.text ?? "Interesting."}"`,
+    at: NOW - 11 * 3_600_000,
+    kind: "reply",
+  },
+  { id: "n7", personId: "noor", text: "liked your take.", at: NOW - DAY, kind: "vote", contentId: POSTS[4].id },
+  { id: "n8", personId: "konsta", text: "started following you.", at: NOW - DAY - 3_600_000, kind: "follow" },
+  { id: "n9", personId: "tobia", text: "disliked your take.", at: NOW - 2 * DAY, kind: "vote" },
+  { id: "n10", personId: "yaz", text: "loved your take.", at: NOW - 3 * DAY, kind: "vote", contentId: POSTS[5].id },
 ];

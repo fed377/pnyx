@@ -8,7 +8,7 @@ import { computePositions, totalAlignment, UNLOCK_AT, VOTE_GRACE_MS } from "@/li
 import { ALL_CONTENT, ME_DEFAULTS, ME_ID, PEOPLE, POSTS, REELS } from "@/lib/data";
 import { GRID_IDS, nearestPoint } from "@/lib/grids";
 import type { Content, GridId, Person, Positions, PrivacyTier, Vote, VotePower } from "@/lib/types";
-import { c, LOCKED_ACCENT, mixHex } from "@/theme/tokens";
+import { c, mixHex } from "@/theme/tokens";
 import { useSession } from "./session";
 
 const STORAGE_KEY = "pnyx.state.v1";
@@ -20,6 +20,7 @@ export type Profile = {
   bio: string;
   city: string;
   tier: PrivacyTier;
+  avatarUrl?: string;
 };
 
 type State = {
@@ -29,12 +30,18 @@ type State = {
   reactions: Record<string, VotePower>;
   follows: Record<string, boolean>;
   gridPublic: Record<GridId, boolean>;
+  /** Local notification preferences — nothing actually delivers push notifications
+   * yet, but the toggles themselves are real, persisted state. */
+  notifPrefs: { votes: boolean; replies: boolean; alignments: boolean };
   myPosts: Content[];
   premium: boolean;
   /** Minimum alignment % for the filter used across Home and People. */
   alignmentFilter: number;
   /** Has completed the onboarding screen (username, birthday, bio). */
   onboarded: boolean;
+  /** Chose "Explore without an account" on the sign-in screen — skips back to
+   * it on the next "forget"/log-out instead of leaving the gate permanently open. */
+  skipped: boolean;
   /**
    * ISO date (YYYY-MM-DD), self-reported at onboarding. Kept only for the
    * under-16 gate — there's no backend column for it yet (see PNYX
@@ -51,10 +58,12 @@ const initialState: State = {
   reactions: {},
   follows: initialFollows,
   gridPublic: { values: true, mind: true, soul: true, culture: false, focus: true },
+  notifPrefs: { votes: true, replies: true, alignments: false },
   myPosts: [],
   premium: false,
   alignmentFilter: 0,
   onboarded: false,
+  skipped: false,
   birthday: null,
 };
 
@@ -66,10 +75,12 @@ type Action =
   | { type: "setFollow"; personId: string; following: boolean }
   | { type: "profile"; patch: Partial<Profile> }
   | { type: "gridPublic"; grid: GridId; value: boolean }
+  | { type: "notifPref"; key: keyof State["notifPrefs"]; value: boolean }
   | { type: "filter"; value: number }
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
   | { type: "onboard"; birthday: string }
+  | { type: "skip" }
   | { type: "forget" };
 
 function reducer(state: State, action: Action): State {
@@ -94,6 +105,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, profile: { ...state.profile, ...action.patch } };
     case "gridPublic":
       return { ...state, gridPublic: { ...state.gridPublic, [action.grid]: action.value } };
+    case "notifPref":
+      return { ...state, notifPrefs: { ...state.notifPrefs, [action.key]: action.value } };
     case "filter":
       return { ...state, alignmentFilter: action.value };
     case "premium":
@@ -102,6 +115,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, myPosts: [action.content, ...state.myPosts] };
     case "onboard":
       return { ...state, onboarded: true, birthday: action.birthday };
+    case "skip":
+      return { ...state, skipped: true };
     case "forget":
       return { ...initialState, profile: { ...ME_DEFAULTS, tier: "active" } };
     default:
@@ -116,6 +131,7 @@ function merge(raw: string): State {
     ...parsed,
     profile: { ...initialState.profile, ...parsed.profile },
     gridPublic: { ...initialState.gridPublic, ...parsed.gridPublic },
+    notifPrefs: { ...initialState.notifPrefs, ...parsed.notifPrefs },
     follows: { ...initialFollows, ...parsed.follows },
   };
 }
@@ -156,6 +172,7 @@ type Store = {
   posts: Content[];
   people: Person[];
   peopleById: Record<string, Person>;
+  contentById: Record<string, Content>;
 
   /**
    * Casts a reaction — but it doesn't take effect right away. It sits
@@ -166,6 +183,9 @@ type Store = {
   vote: (contentId: string, power: VotePower) => void;
   toggleFollow: (personId: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
+  /** Uploads a picked photo (through the same signed-URL flow post media
+   * uses) and saves it as the profile's avatar. */
+  saveAvatar: (fileUri: string, mediaType: string) => Promise<void>;
   forgetMe: () => Promise<void>;
   publish: (input: PublishInput) => Promise<void>;
   /** Saves the handle and bio (remotely too, when signed in) and records the birthday locally. */
@@ -293,6 +313,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           pronouns: me.pronouns,
           bio: me.bio,
           city: me.city,
+          avatarUrl: me.avatarUrl,
           tier: me.privacyTier,
         },
       });
@@ -496,6 +517,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...(patch.pronouns !== undefined ? { pronouns: patch.pronouns } : {}),
             ...(patch.bio !== undefined ? { bio: patch.bio } : {}),
             ...(patch.city !== undefined ? { city: patch.city } : {}),
+            ...(patch.avatarUrl !== undefined ? { avatarUrl: patch.avatarUrl } : {}),
             ...(patch.tier !== undefined ? { privacyTier: patch.tier } : {}),
           }),
         );
@@ -504,6 +526,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     },
     [remote, token, callWithRetry],
+  );
+
+  const saveAvatar = useCallback(
+    async (fileUri: string, mediaType: string) => {
+      if (!remote) {
+        // Offline there is nowhere to upload to, so the local file URI stands in
+        // (same fallback `publish` uses for offline post media).
+        await saveProfile({ avatarUrl: fileUri });
+        return;
+      }
+      const t = await token();
+      if (!t) throw new Error("not signed in");
+      const ticket = await callWithRetry(t, (tok) => api.uploadTicket(tok, mediaType));
+      if (!ticket) throw new Error("not signed in");
+      await uploadToSignedUrl(ticket.uploadUrl, fileUri, mediaType);
+      await saveProfile({ avatarUrl: ticket.publicUrl });
+    },
+    [remote, token, callWithRetry, saveProfile],
   );
 
   const completeOnboarding = useCallback(
@@ -586,7 +626,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const unlocked = voteCount >= UNLOCK_AT;
-  const accent = unlocked ? nearestPoint("mind", positions.mind).hex! : LOCKED_ACCENT;
+  // Black and white until a real color is actually earned — no placeholder
+  // hue standing in for the Mind-grid color before then.
+  const accent = unlocked ? nearestPoint("mind", positions.mind).hex! : c.text;
 
   const value = useMemo<Store>(
     () => ({
@@ -610,9 +652,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       posts,
       people,
       peopleById,
+      contentById,
       vote,
       toggleFollow,
       saveProfile,
+      saveAvatar,
       forgetMe,
       publish,
       completeOnboarding,
@@ -630,7 +674,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       mode, myId, hydrated, loading, error, refresh, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, vote, toggleFollow, saveProfile, forgetMe, publish, completeOnboarding,
+      reels, posts, people, peopleById, contentById, vote, toggleFollow, saveProfile, saveAvatar, forgetMe, publish, completeOnboarding,
       alignments, pending,
     ],
   );

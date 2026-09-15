@@ -1,3 +1,4 @@
+import { compactCount } from "@/lib/format";
 import type { VotePower } from "@/lib/types";
 import { c, f, s } from "@/theme/tokens";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -62,12 +63,14 @@ export function VoteControls({
   locked = false,
   onLockedPress,
   overlay = false,
+  counts,
 }: {
   current?: VotePower;
   /** Timestamp this content's pending vote commits at, if one is pending. */
   pendingUntil?: number;
   onVote: (power: VotePower) => void;
-  layout?: "row" | "rail";
+  /** "pill" is a labeled capsule (icon + count) for a card sitting on a dark surface. */
+  layout?: "row" | "rail" | "pill";
   size?: number;
   disabled?: boolean;
   onDisabledPress?: () => void;
@@ -76,6 +79,8 @@ export function VoteControls({
   onLockedPress?: () => void;
   /** Sits on top of a reel, so the buttons need their own contrast. */
   overlay?: boolean;
+  /** Shown next to the glyph in "pill" layout, e.g. the global up/down split. */
+  counts?: { up: number; down: number };
 }) {
   const [holding, setHolding] = useState<Dir | null>(null);
   const [preview, setPreview] = useState(false);
@@ -211,9 +216,10 @@ export function VoteControls({
     // No chrome around the button, and no colour on the glyph either — a vote
     // reads as a *filled* icon rather than a tinted one. The progress ring is
     // the only thing that carries the direction's colour.
-    const fg = overlay ? "#fff" : active || isHolding ? c.text : c.textDim;
+    const fg = overlay || layout === "pill" ? "#fff" : active || isHolding ? c.text : c.textDim;
     // A settled vote keeps its full presence; the road not taken fades out.
     const opacity = disabled ? 0.35 : locked && !active ? 0.28 : 1;
+    const count = layout === "pill" ? (dir === 1 ? counts?.up : counts?.down) : undefined;
 
     return (
       <View key={dir} style={styles.slot}>
@@ -243,9 +249,15 @@ export function VoteControls({
                   }, hold for one and a half seconds to ${dir === 1 ? "love" : "hate"}.`
           }
           hitSlop={slop}
-          style={[styles.btn, { width: box, height: box, opacity }]}
+          style={[
+            styles.btn,
+            layout === "pill"
+              ? [styles.pillBtn, { height: box, borderRadius: box / 2, opacity }]
+              : { width: box, height: box, opacity },
+            layout === "row" && !overlay && { borderWidth: 1.5, borderColor: c.line, borderRadius: box / 2 },
+          ]}
         >
-          {(isHolding || isPending) && (
+          {(isHolding || isPending) && layout !== "pill" && (
             <View style={[StyleSheet.absoluteFill, styles.ring]}>
               <Svg
                 width={ringR * 2 + 6}
@@ -281,6 +293,7 @@ export function VoteControls({
               filled={active || isHolding}
             />
           </Reanimated.View>
+          {count !== undefined && <Text style={styles.pillCount}>{compactCount(count)}</Text>}
         </Pressable>
         {layout === "rail" && <Text style={styles.caption}>{label}</Text>}
       </View>
@@ -300,6 +313,15 @@ const styles = StyleSheet.create({
   rail: { flexDirection: "column", alignItems: "center", gap: RAIL_GAP },
   slot: { alignItems: "center", gap: RAIL_LABEL_GAP },
   btn: { alignItems: "center", justifyContent: "center" },
+  pillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: s[3],
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  pillCount: { color: "#fff", fontSize: f.sm, fontWeight: "600" },
   ring: { alignItems: "center", justifyContent: "center", overflow: "visible" },
   caption: {
     color: "rgba(236,237,243,0.85)",

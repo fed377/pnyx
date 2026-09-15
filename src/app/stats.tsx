@@ -11,12 +11,14 @@ import { GRID_LIST, nearestPoint, orientationOf } from "@/lib/grids";
 import { POWER_LABEL } from "@/lib/feed";
 import type { Person, Positions, Vote, VotePower } from "@/lib/types";
 import { useStore } from "@/state/store";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
 
 /** Placeholder rarity figure — real numbers need a population to count against. */
 function rarity(label: string): number {
   return 3 + Math.floor(hashSeed(label) * 900);
 }
+
+const capitalize = (w: string) => w[0]!.toUpperCase() + w.slice(1);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -73,18 +75,61 @@ export default function StatisticsScreen() {
 
   return (
     <View style={styles.screen}>
-      <PageHeader title="Statistics" />
+      <PageHeader title="Statistics" centered />
       <ScrollView contentContainerStyle={styles.content}>
-        <Note icon="stats">{`${voteCount} reactions recorded · the last 250 count toward your position.`}</Note>
+        <View>
+          <Text style={styles.hero}>How you&apos;ve moved.</Text>
+          <Text style={styles.heroSub}>
+            Types unlocked after {UNLOCK_AT} reactions. You have {voteCount}.
+          </Text>
+        </View>
 
-        {!unlocked && (
-          <LockedRow>
-            <Text style={styles.lockedText}>
-              Grids keep moving before the unlock, but the named type appears at{" "}
-              <Text style={styles.strong}>{UNLOCK_AT}</Text> reactions.
-            </Text>
-          </LockedRow>
-        )}
+        <View style={{ gap: s[5] }}>
+          {GRID_LIST.map((grid) => {
+            const p = positions[grid.id];
+            const near = nearestPoint(grid.id, p);
+            const isValues = grid.id === "values";
+            const headline = unlocked ? (isValues && near.animal ? capitalize(near.animal) : near.name) : "Locked";
+            const subline = unlocked ? (isValues ? `${near.name}.` : orientationOf(grid.id, p)) : "Unlocks with more reactions.";
+            const meaning = unlocked ? near.meaning : `${UNLOCK_AT - voteCount} more reactions to reveal this grid.`;
+
+            return (
+              <View key={grid.id}>
+                <Text style={styles.gridLabel}>{grid.label}</Text>
+                <View style={styles.gridCard}>
+                  <GridPlot
+                    gridId={grid.id}
+                    position={p}
+                    trail={history.map((h) => h[grid.id])}
+                    size={80}
+                    labels={false}
+                    accent={c.text}
+                  />
+                  <View style={styles.gridBody}>
+                    <Text style={styles.gridName}>{headline}</Text>
+                    <Text style={styles.gridSub}>{subline}</Text>
+                    <Text style={styles.gridMeaning}>{meaning}</Text>
+                    {unlocked && (
+                      <Text style={styles.gridRarity}>
+                        {rarity(`${grid.label}-${near.name}`)}% of people share this type.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.axisRow}>
+                  <Text style={styles.axisText}>
+                    ↔ {grid.axisX.neg} to {grid.axisX.pos}
+                  </Text>
+                  <Text style={styles.axisText}>
+                    ↕ {grid.axisY.neg} to {grid.axisY.pos}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+
+        <Note icon="stats">{`${voteCount} reactions recorded · the last 250 count toward your position.`}</Note>
 
         {total > 0 && (
           <View>
@@ -143,7 +188,7 @@ export default function StatisticsScreen() {
 
             {match && match.score > 0 && (
               <Card style={styles.matchCard}>
-                <Avatar name={match.person.name} positions={match.person.positions} size={40} />
+                <Avatar name={match.person.name} positions={match.person.positions} size={40} photoUrl={match.person.avatarUrl} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.matchLabel}>Your closest match right now</Text>
                   <Text style={styles.matchName}>{match.person.name}</Text>
@@ -169,28 +214,6 @@ export default function StatisticsScreen() {
             </View>
           </View>
         )}
-
-        {GRID_LIST.map((grid) => {
-          const p = positions[grid.id];
-          const near = nearestPoint(grid.id, p);
-          const trail = history.map((h) => h[grid.id]);
-          return (
-            <View key={grid.id} style={styles.statgrid}>
-              <GridPlot gridId={grid.id} position={p} trail={trail} size={126} />
-              <View style={styles.statBody}>
-                <Text style={styles.statGridName}>{grid.label.toUpperCase()}</Text>
-                <View style={styles.statNameRow}>
-                  {near.hex && <View style={[styles.swatch, { backgroundColor: near.hex }]} />}
-                  <Text style={styles.statName}>{unlocked ? near.name : "Unrevealed"}</Text>
-                </View>
-                <Text style={[styles.statOrient, { color: accent }]}>{orientationOf(grid.id, p)}</Text>
-                <Text style={styles.statMeta}>
-                  Shared by {rarity(`${grid.label}-${near.name}`)} people in your region
-                </Text>
-              </View>
-            </View>
-          );
-        })}
 
         {state.premium ? (
           <Note icon="check">Premium active — full history retained.</Note>
@@ -229,7 +252,7 @@ const styles = StyleSheet.create({
     backgroundColor: c.surface,
     ...squircle,
   },
-  tileNum: { color: c.text, fontSize: f.lg, fontWeight: "700" },
+  tileNum: { color: c.text, fontSize: f.lg, fontFamily: display.bold },
   tileLabel: { color: c.textFaint, fontSize: 10, textAlign: "center" },
   breakdown: { gap: s[3], marginBottom: s[3] },
   breakdownTitle: { color: c.textFaint, fontSize: f.xs, letterSpacing: 1.1, textTransform: "uppercase" },
@@ -242,20 +265,22 @@ const styles = StyleSheet.create({
   matchLabel: { color: c.textFaint, fontSize: f.xs },
   matchName: { color: c.text, fontSize: f.sm, fontWeight: "600" },
   matchScore: { fontSize: f.lg, fontWeight: "700" },
-  statgrid: {
+  hero: { color: c.text, fontSize: 32, fontFamily: display.bold, letterSpacing: -0.6 },
+  heroSub: { color: c.textDim, fontSize: f.sm, marginTop: 2 },
+  gridLabel: { color: c.text, fontSize: f.sm, fontWeight: "600", marginBottom: s[2] },
+  gridCard: {
     flexDirection: "row",
-    alignItems: "center",
     gap: s[4],
     padding: s[4],
-    borderRadius: r.md,
+    borderRadius: r.lg,
     backgroundColor: c.surface,
     ...squircle,
   },
-  statBody: { flex: 1 },
-  statGridName: { color: c.textFaint, fontSize: f.xs, letterSpacing: 1.1 },
-  statNameRow: { flexDirection: "row", alignItems: "center", gap: s[2], marginTop: 2 },
-  swatch: { width: 11, height: 11, borderRadius: 3 },
-  statName: { color: c.text, fontSize: f.lg, fontWeight: "600" },
-  statOrient: { fontSize: f.xs },
-  statMeta: { color: c.textFaint, fontSize: f.xs, marginTop: s[2] },
+  gridBody: { flex: 1, gap: 3 },
+  gridName: { color: c.text, fontSize: f.lg, fontFamily: display.semibold },
+  gridSub: { color: c.text, fontSize: f.sm, fontWeight: "600" },
+  gridMeaning: { color: c.textDim, fontSize: f.sm, lineHeight: 19, marginTop: 2 },
+  gridRarity: { color: c.textFaint, fontSize: f.xs, marginTop: 2 },
+  axisRow: { flexDirection: "row", flexWrap: "wrap", gap: s[3], marginTop: s[2] },
+  axisText: { color: c.textFaint, fontSize: f.xs },
 });

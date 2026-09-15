@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
 import { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { AlignmentPill } from "@/components/Alignment";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { Btn, SectionTitle } from "@/components/Primitives";
+import { useToast } from "@/components/Toast";
 import { ProfileView } from "@/components/ProfileView";
 
 import type { Person } from "@/lib/types";
@@ -36,7 +37,7 @@ function AlignedRow({
             accessibilityLabel={`Open ${p.name}'s profile`}
             onPress={() => router.push({ pathname: "/u/[id]", params: { id: p.id } })}
           >
-            <Avatar name={p.name} positions={p.positions} size={48} />
+            <Avatar name={p.name} positions={p.positions} size={48} photoUrl={p.avatarUrl} />
             <Text style={styles.handle} numberOfLines={1}>
               {p.handle}
             </Text>
@@ -51,6 +52,15 @@ function AlignedRow({
 export default function ProfileScreen() {
   const { state, positions, unlocked, alignmentWith, isFollowing, people, reels, posts } = useStore();
   const router = useRouter();
+  const toast = useToast();
+
+  const share = async () => {
+    try {
+      await Share.share({ message: `@${state.profile.handle} on PNYX` });
+    } catch {
+      toast("Couldn't share your profile");
+    }
+  };
 
   const seen = useMemo(() => [...reels, ...posts], [reels, posts]);
   const loved = useMemo(() => seen.filter((x) => state.reactions[x.id] === 2), [seen, state.reactions]);
@@ -72,26 +82,40 @@ export default function ProfileScreen() {
     [alignmentWith, people],
   );
 
+  const closest = useMemo(
+    () => [...people].sort((a, b) => alignmentWith(b) - alignmentWith(a))[0],
+    [alignmentWith, people],
+  );
+
+  const firstName = state.profile.name.split(" ")[0] || state.profile.handle;
+
   return (
     <BlurBackdrop style={styles.screen}>
-      <TopBar />
+      <TopBar wordmark={firstName.toLowerCase()} />
       <ScrollView contentContainerStyle={styles.content}>
         <ProfileView
           name={state.profile.name}
           handle={state.profile.handle}
           pronouns={state.profile.pronouns}
+          photoUrl={state.profile.avatarUrl}
           bio={state.profile.bio}
-          city={state.profile.city}
           positions={positions}
           alignment={100}
+          alignmentCaption="you"
           locked={!unlocked}
+          stats={{
+            posts: state.myPosts.length,
+            followers: people.filter((p) => p.follower).length,
+            following: people.filter((p) => isFollowing(p.id)).length,
+          }}
+          mostAligned={closest ? { label: "you", name: closest.name, pct: alignmentWith(closest) } : undefined}
           loved={loved}
           hated={hated}
           posts={state.myPosts}
           actions={
             <>
-              <Btn label="Edit profile" icon="settings" onPress={() => router.push("/settings")} />
-              <Btn label="Statistics" icon="stats" onPress={() => router.push("/stats")} />
+              <Btn label="Edit page" variant="ink" onPress={() => router.push("/settings")} />
+              <Btn label="Share" variant="outline" icon="share" onPress={() => void share()} />
             </>
           }
           footer={

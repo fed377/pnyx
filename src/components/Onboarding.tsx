@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Btn, Field } from "./Primitives";
 import { useStore } from "@/state/store";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, display, f, r, s, squircle } from "@/theme/tokens";
 
 const MIN_AGE = 16;
 const BIO_MAX = 160;
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.app },
   center: { alignItems: "center", justifyContent: "center", paddingHorizontal: s[5] },
   content: { padding: s[5], paddingBottom: s[7], gap: s[4] },
-  wordmark: { color: c.text, fontSize: 24, fontWeight: "700", letterSpacing: 6 },
+  wordmark: { color: c.text, fontSize: 24, fontFamily: display.bold, letterSpacing: 6 },
   tagline: { color: c.textDim, fontSize: f.md, lineHeight: 22, marginBottom: s[2], maxWidth: 300 },
   field: { gap: 6 },
   label: {
@@ -270,6 +270,6 @@ const styles = StyleSheet.create({
     backgroundColor: c.surface,
     ...squircle,
   },
-  blockTitle: { color: c.text, fontSize: f.lg, fontWeight: "700" },
+  blockTitle: { color: c.text, fontSize: f.lg, fontFamily: display.bold },
   blockBody: { color: c.textDim, fontSize: f.sm, lineHeight: 20 },
 });
