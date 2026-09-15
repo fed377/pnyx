@@ -1,3 +1,4 @@
+import Constants, { AppOwnership } from "expo-constants";
 import { Platform } from "react-native";
 
 /**
@@ -5,12 +6,21 @@ import { Platform } from "react-native";
  * module, so it only exists in a custom dev build, never in Expo Go and never
  * on web. Everything here degrades to "not available" instead of throwing,
  * so `session.tsx` can fall back to the browser-based flow unconditionally.
+ *
+ * `appOwnership === "expo"` means literally running inside the Expo Go app —
+ * unlike `executionEnvironment`, which reports the same "storeClient" value
+ * for both Expo Go and a real expo-dev-client build, this is the one signal
+ * that actually distinguishes "the native module cannot possibly exist" from
+ * "it's a custom build and might." It's marked deprecated in favor of
+ * executionEnvironment, but that replacement can't make this distinction, so
+ * this is deliberate, not an oversight.
  */
+const isExpoGo = Constants.appOwnership === AppOwnership.Expo;
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
 
-export const googleNativeConfigured = Platform.OS !== "web" && WEB_CLIENT_ID.length > 0;
+export const googleNativeConfigured = Platform.OS !== "web" && !isExpoGo && WEB_CLIENT_ID.length > 0;
 
 let configured = false;
 
