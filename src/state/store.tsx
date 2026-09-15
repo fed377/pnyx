@@ -80,6 +80,10 @@ type Action =
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
   | { type: "onboard"; birthday: string }
+  /** The server's own record of onboarding completion, applied on refresh —
+   * unlike "onboard", this never touches birthday (never sent to the server
+   * at all) and can be true without this device ever having run Onboarding. */
+  | { type: "onboardedFromServer"; value: boolean }
   | { type: "skip" }
   | { type: "forget" };
 
@@ -115,6 +119,11 @@ function reducer(state: State, action: Action): State {
       return { ...state, myPosts: [action.content, ...state.myPosts] };
     case "onboard":
       return { ...state, onboarded: true, birthday: action.birthday };
+    case "onboardedFromServer":
+      // One-directional: the server can confirm "yes, already onboarded"
+      // (true) but a false here must never un-onboard someone who just
+      // finished the form this session, ahead of that PATCH landing.
+      return action.value ? { ...state, onboarded: true } : state;
     case "skip":
       return { ...state, skipped: true };
     case "forget":
@@ -305,6 +314,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setServerPositions(me.positions);
       setServerVoteCount(me.voteCount);
+      // Onboarding-completion is an account fact, not a device one — this is
+      // what lets a sign-out/sign-in, a reinstall, or a second device see an
+      // already-onboarded account correctly instead of showing Onboarding
+      // again just because local state doesn't remember it.
+      dispatch({ type: "onboardedFromServer", value: me.onboarded });
       dispatch({
         type: "profile",
         patch: {
@@ -550,8 +564,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (input: { handle: string; bio: string; birthday: string }) => {
       await saveProfile({ handle: input.handle, bio: input.bio });
       dispatch({ type: "onboard", birthday: input.birthday });
+      // Not routed through saveProfile: `onboarded` isn't a Profile field
+      // (it's not something Settings ever lets you edit back and forth) —
+      // this is the one place it's ever set, and it needs to reach the
+      // server so it outlives this device (see the "onboardedFromServer"
+      // reducer case and its comment for why that matters).
+      if (remote) {
+        const t = await token();
+        if (t) {
+          try {
+            await callWithRetry(t, (tok) => api.updateMe(tok, { onboarded: true }));
+          } catch {
+            // The local flag above already unblocked this session; a failed
+            // sync here just means refresh() will need to try again later
+            // rather than someone being stuck re-onboarding right now.
+          }
+        }
+      }
     },
-    [saveProfile],
+    [saveProfile, remote, token, callWithRetry],
   );
 
   const forgetMe = useCallback(async () => {

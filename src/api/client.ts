@@ -30,6 +30,9 @@ export type ApiProfile = {
   privacyTier: PrivacyTier;
   gridPublic: Record<GridId, boolean>;
   premium: boolean;
+  /** Account-level, not device-level — survives sign-out and a second device,
+   * unlike the client's own local "has completed onboarding" flag used to. */
+  onboarded: boolean;
   createdAt: string;
 };
 
@@ -257,7 +260,9 @@ export const api = {
 
   updateMe: (
     token: string,
-    patch: Partial<Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic">>,
+    patch: Partial<
+      Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic" | "onboarded">
+    >,
   ) => request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
 
   /** False for a Google-only account — nothing to type a "current password" against. */
