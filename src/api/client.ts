@@ -299,8 +299,11 @@ export const api = {
   home: (token: string, limit = 40) =>
     request<{ items: ApiContent[] }>(`/home?limit=${limit}`, { token }),
 
-  people: (token: string, limit = 25) =>
-    request<{ items: ApiPerson[] }>(`/people?limit=${limit}`, { token }),
+  people: (token: string, limit = 25, query?: string) =>
+    request<{ items: ApiPerson[] }>(
+      `/people?limit=${limit}${query ? `&q=${encodeURIComponent(query)}` : ""}`,
+      { token },
+    ),
 
   person: (token: string, id: string) => request<ApiMe>(`/people/${id}`, { token }),
 

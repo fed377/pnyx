@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
@@ -89,12 +89,22 @@ function PersonRow({
 }
 
 export default function PeopleScreen() {
-  const { alignmentWith, state, dispatch, isFollowing, people: everyone, refresh, loading, mode, accent } =
+  const { alignmentWith, state, dispatch, isFollowing, people: everyone, refresh, loading, mode, accent, searchPeople } =
     useStore();
   const { query } = usePeopleSearch();
   const [tab, setTab] = useState<"world" | "following" | "followers">("world");
   const [gridFocus, setGridFocus] = useState<GridId | "all">("all");
   const friendsFirst = state.alignmentFilter >= FRIENDS_FIRST_THRESHOLD;
+
+  // `everyone` is capped to the top-25 alignment window (spec §6.3) — a client-
+  // side filter over it could never find someone outside that set, so a real
+  // search re-queries the whole user base and merges whatever it finds back
+  // into the store. Debounced so every keystroke doesn't fire its own request.
+  useEffect(() => {
+    if (mode !== "remote" || !query.trim()) return;
+    const timer = setTimeout(() => void searchPeople(query), 300);
+    return () => clearTimeout(timer);
+  }, [mode, query, searchPeople]);
 
   const ranked = useMemo(
     () =>

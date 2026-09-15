@@ -165,6 +165,14 @@ type Store = {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  /**
+   * Remote mode only: `people` is capped to the top 25 by alignment (spec
+   * §6.3's world list), so searching it client-side could never surface
+   * someone outside that set. Queries the real user base instead and merges
+   * whatever it finds into `people`/`peopleById`. A no-op locally — the
+   * offline sample set already *is* the whole population.
+   */
+  searchPeople: (query: string) => Promise<void>;
 
   state: State;
   dispatch: (a: Action) => void;
@@ -350,6 +358,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, [remote, token, callWithRetry]);
+
+  const searchPeople = useCallback(
+    async (query: string) => {
+      if (!remote || !query.trim()) return;
+      const t = await token();
+      if (!t) return;
+      const result = await api.people(t, 50, query.trim());
+      setServerPeople((prev) => {
+        const byId = new Map((prev ?? []).map((p) => [p.id, p]));
+        for (const row of result.items) byId.set(row.profile.id, toPerson(row));
+        return [...byId.values()];
+      });
+      setAlignments((prev) => ({
+        ...prev,
+        ...Object.fromEntries(result.items.map((p) => [p.profile.id, p.total])),
+      }));
+    },
+    [remote, token],
+  );
 
   // Coming back to the app re-fetches: something may have changed on the server
   // (a post approved, someone else's vote) while it was in the background.
@@ -669,6 +696,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loading,
       error,
       refresh,
+      searchPeople,
       state,
       dispatch,
       positions,
@@ -704,7 +732,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     }),
     [
-      mode, myId, hydrated, loading, error, refresh, state, positions, voteCount, unlocked, accent,
+      mode, myId, hydrated, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
       reels, posts, people, peopleById, contentById, vote, toggleFollow, saveProfile, saveAvatar, forgetMe, publish, completeOnboarding,
       alignments, pending,
     ],
