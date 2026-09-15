@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { HotTakeViewer } from "@/components/HotTakeViewer";
+import { Icon } from "@/components/Icon";
 import { PhotoViewer } from "@/components/PhotoViewer";
 import { PostCard } from "@/components/PostCard";
 import { Btn, Chip, Empty, Progress, SectionTitle } from "@/components/Primitives";
@@ -81,9 +82,19 @@ function UnlockBanner() {
 
 export default function HomeScreen() {
   const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, mode, myId } = useStore();
+  const router = useRouter();
   const [takeIndex, setTakeIndex] = useState<number | null>(null);
-  const { items: hotTakes } = useHotTakes();
+  const { items: hotTakes, refresh: refreshHotTakes } = useHotTakes();
   const visibleTakes = useMemo(() => hotTakes.filter((t) => peopleById[t.authorId]), [hotTakes, peopleById]);
+
+  // Posting a hot take happens on a separate screen (`/hot-take`) that shares
+  // no state with this one's own useHotTakes() instance — refetch whenever
+  // Home regains focus so a just-posted take actually shows up back here.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshHotTakes();
+    }, [refreshHotTakes]),
+  );
 
   const posts = useMemo(() => {
     const min = state.alignmentFilter;
@@ -130,6 +141,20 @@ export default function HomeScreen() {
         <View>
           <SectionTitle>Hot takes</SectionTitle>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.takesRow}>
+            <AnimatedPressable
+              onPress={() => router.push("/hot-take")}
+              scaleTo={0.92}
+              style={styles.take}
+              accessibilityRole="button"
+              accessibilityLabel="Post a hot take"
+            >
+              <View style={[styles.takeRing, styles.takeAdd]}>
+                <Icon name="plus" size={22} color={c.textDim} />
+              </View>
+              <Text style={styles.takeName} numberOfLines={1}>
+                New
+              </Text>
+            </AnimatedPressable>
             {visibleTakes.map((t, i) => {
               const p = peopleById[t.authorId];
               return (
@@ -220,5 +245,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  takeAdd: { borderStyle: "dashed", backgroundColor: c.surface2 },
   takeName: { color: c.textDim, fontSize: f.xs },
 });

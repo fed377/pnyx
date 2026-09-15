@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/api/client";
 import { HOT_TAKES } from "@/lib/data";
-import type { HotTake } from "@/lib/types";
+import type { GridId, HotTake } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
 
+const fromApi = (r: Awaited<ReturnType<typeof api.postHotTake>>): HotTake => ({
+  id: r.id,
+  authorId: r.authorId,
+  text: r.body,
+  category: r.category,
+  up: r.up,
+  down: r.down,
+  comments: r.comments,
+  createdAt: Date.parse(r.createdAt),
+});
+
 /** Real, still-active hot takes in remote mode; the sample set offline. */
 export function useHotTakes() {
-  const { mode } = useStore();
+  const { mode, myId } = useStore();
   const { token } = useSession();
   const remote = mode === "remote";
 
@@ -24,18 +35,7 @@ export function useHotTakes() {
     setLoading(true);
     try {
       const res = await api.hotTakes(t);
-      setItems(
-        res.items.map((r) => ({
-          id: r.id,
-          authorId: r.authorId,
-          text: r.body,
-          category: r.category,
-          up: r.up,
-          down: r.down,
-          comments: r.comments,
-          createdAt: Date.parse(r.createdAt),
-        })),
-      );
+      setItems(res.items.map(fromApi));
     } finally {
       setLoading(false);
     }
@@ -45,5 +45,31 @@ export function useHotTakes() {
     void load();
   }, [load]);
 
-  return { items: items ?? [], loading, refresh: load };
+  const post = useCallback(
+    async (category: GridId, text: string) => {
+      if (!remote) {
+        // Offline there is nowhere to post to — a local-only stub, same
+        // fallback `publish` uses for an offline post.
+        const stub: HotTake = {
+          id: `local-${Date.now()}`,
+          authorId: myId,
+          text,
+          category,
+          up: 0,
+          down: 0,
+          comments: 0,
+          createdAt: Date.now(),
+        };
+        setItems((prev) => [stub, ...(prev ?? [])]);
+        return;
+      }
+      const t = await token();
+      if (!t) throw new Error("not signed in");
+      const row = await api.postHotTake(t, category, text);
+      setItems((prev) => [fromApi(row), ...(prev ?? [])]);
+    },
+    [remote, token, myId],
+  );
+
+  return { items: items ?? [], loading, refresh: load, post };
 }
