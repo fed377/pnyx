@@ -126,8 +126,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return { cancelled: false };
         }
 
-        // In Expo Go this is an exp:// URL; in a build it is pnyx://. Whichever
-        // it is, it has to be allowlisted in Supabase's URL configuration.
+        // In Expo Go this is an expo:// URL (exp:// on older Expo Go builds);
+        // in a real build it is pnyx://. Whichever it is, it has to be
+        // allowlisted in Supabase's URL configuration.
         const redirectTo = Linking.createURL("auth-callback");
         const { url } = await api.googleUrl(redirectTo);
 
