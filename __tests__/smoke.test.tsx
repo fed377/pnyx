@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fireEvent } from "@testing-library/react-native";
 import { act, renderRouter, screen } from "expo-router/testing-library";
-import { VOTE_GRACE_MS } from "@/lib/algorithm";
 
 const APP = "./src/app";
 
@@ -48,6 +47,18 @@ describe("every route renders", () => {
 
 describe("voting", () => {
   it("shows the reaction at once, and counts it after the grace window", async () => {
+    // Fake timers are what let VOTE_GRACE_MS (7s of real time) resolve
+    // inside a test at all. Note what this does NOT do: manually drive the
+    // clock via advanceTimersByTime/runOnlyPendingTimers after this point.
+    // @testing-library/react-native's own findBy*/waitFor already advances
+    // fake time in small act()-wrapped steps internally (see its
+    // wait-for.js) to reach whatever it's waiting for — interleaving a
+    // second, manual timer-advance after that corrupts the same act()
+    // bookkeeping enough to silently drop the next dispatch. So the fix
+    // is to let findByLabelText's own polling carry us to the commit,
+    // by asserting on the specific post-commit value it's polling for,
+    // not to drive the clock ourselves.
+    jest.useFakeTimers();
     await renderRouter(APP, { initialUrl: "/" });
 
     // Read the count off the banner's own label — the number and the unit are
@@ -57,64 +68,70 @@ describe("voting", () => {
     expect(before).toBeGreaterThan(0);
 
     const like = screen.getAllByLabelText(/^Like\./)[0];
-    fireEvent(like, "pressIn");
-    fireEvent(like, "pressOut");
+    // fireEvent auto-wraps in act(), but doesn't flush the microtask queue —
+    // wrapping explicitly and awaiting it here settles the optimistic
+    // "pending vote" render synchronously, so the two findBy* calls right
+    // below resolve on their first synchronous check instead of needing
+    // waitFor's own internal fake-timer-advancing loop to see it appear.
+    // That loop is exactly what corrupts the *next* dispatch otherwise —
+    // see the note above this test.
+    await act(async () => {
+      fireEvent(like, "pressIn");
+      fireEvent(like, "pressOut");
+    });
 
     // The reaction lands immediately, even though the vote is still cancellable.
-    expect(await screen.findByText(/How everyone voted/i)).toBeTruthy();
-    expect(await screen.findByText(/You · Liked/)).toBeTruthy();
+    expect(screen.getByText(/How everyone voted/i)).toBeTruthy();
+    expect(screen.getByText(/You · Liked/)).toBeTruthy();
 
     // The count only moves once the grace window closes and the vote commits.
     expect(screen.queryByLabelText(`${before - 1} more reactions`)).toBeNull();
-    await act(async () => {
-      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
-    });
-    // The commit dispatches from an async callback; let it settle.
-    await act(async () => {
-      await Promise.resolve();
-    });
 
-    const counted = await screen.findByLabelText(/^\d+ more reactions$/);
+    const counted = await screen.findByLabelText(`${before - 1} more reactions`);
     expect(
       Number(String(counted.props.accessibilityLabel).match(/\d+/)![0]),
     ).toBe(before - 1);
+    jest.useRealTimers();
   });
 
   it("locks the buttons once the vote is counted", async () => {
+    // See the note on the test above: fake timers are required for
+    // VOTE_GRACE_MS to resolve at all, but the clock must only ever be
+    // driven by findBy*/waitFor's own internal advancing — never manually
+    // afterward, since interleaving both corrupts act() bookkeeping and
+    // silently drops whichever dispatch comes next.
+    jest.useFakeTimers();
     await renderRouter(APP, { initialUrl: "/" });
     await screen.findByLabelText(/^\d+ more reactions$/);
 
     const like = screen.getAllByLabelText(/^Like\./)[0];
-    fireEvent(like, "pressIn");
-    fireEvent(like, "pressOut");
     await act(async () => {
-      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
-    });
-    await act(async () => {
-      await Promise.resolve();
+      fireEvent(like, "pressIn");
+      fireEvent(like, "pressOut");
     });
 
     // The vote it landed on is final, and the other direction is inert.
+    // findByLabelText's own internal fake-timer advancing is what carries
+    // this across the grace window — nothing here drives the clock by hand.
     expect(await screen.findByLabelText(/This vote is final/)).toBeTruthy();
     const other = screen.getAllByLabelText(
       /unavailable, your vote is already counted/,
     )[0];
 
     const before = Number(
-      String(
-        (await screen.findByLabelText(/^\d+ more reactions$/)).props
-          .accessibilityLabel,
-      ).match(/\d+/)![0],
+      String(screen.getByLabelText(/^\d+ more reactions$/).props.accessibilityLabel).match(/\d+/)![0],
     );
-    fireEvent(other, "pressIn");
-    fireEvent(other, "pressOut");
+    // The other direction is disabled once locked — begin()/release() both
+    // short-circuit on `disabled`, so this is a genuine no-op, not another
+    // pending vote to wait out.
     await act(async () => {
-      jest.advanceTimersByTime(VOTE_GRACE_MS + 50);
-      await Promise.resolve();
+      fireEvent(other, "pressIn");
+      fireEvent(other, "pressOut");
     });
-    const after = await screen.findByLabelText(/^\d+ more reactions$/);
+    const after = screen.getByLabelText(/^\d+ more reactions$/);
     expect(
       Number(String(after.props.accessibilityLabel).match(/\d+/)![0]),
     ).toBe(before);
+    jest.useRealTimers();
   });
 });

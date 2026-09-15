@@ -12,6 +12,7 @@ import { VoteResult } from "@/components/VoteResult";
 import { useRouter } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import {
+  Dimensions,
   FlatList,
   Pressable,
   RefreshControl,
@@ -127,6 +128,9 @@ function Reel({
                 <Text style={styles.name} numberOfLines={1}>
                   {own ? "You" : author.name}
                 </Text>
+                <Text style={styles.handle} numberOfLines={1}>
+                  @{author.handle}
+                </Text>
                 <Text style={styles.sub} numberOfLines={1}>
                   {author.locked ? "Unrevealed" : type.name}
                   {alignment !== null && ` · ${alignment}% aligned`}
@@ -220,7 +224,11 @@ export default function FeedScreen() {
     mode,
     accent,
   } = useStore();
-  const [height, setHeight] = useState(0);
+  // Seeded from the window so the first reel paints immediately — onLayout
+  // still refines it for split-screen/foldable cases, but nothing should
+  // wait on a measurement pass to show its first frame (and test renderers
+  // never fire onLayout at all, which left this screen permanently blank).
+  const [height, setHeight] = useState(() => Dimensions.get("window").height);
   const [visible, setVisible] = useState(0);
 
   // Only the reel actually on screen plays; the rest stay paused.
@@ -316,6 +324,7 @@ const styles = StyleSheet.create({
   chipText: { color: "#fff", fontSize: f.xs, fontWeight: "600" },
   byline: { flexDirection: "row", alignItems: "center", gap: s[2] },
   name: { color: c.app, fontSize: f.sm, fontFamily: display.semibold },
+  handle: { color: "rgba(255,255,255,0.75)", fontSize: f.xs, marginTop: 1 },
   sub: { color: "rgba(255,255,255,0.6)", fontSize: f.xs, marginTop: 1 },
   take: { color: c.app, fontSize: f.md, fontFamily: display.semibold, lineHeight: 22 },
   detail: { gap: s[2] },
