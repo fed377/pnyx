@@ -260,11 +260,14 @@ export const api = {
     patch: Partial<Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic">>,
   ) => request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
 
-  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+  /** False for a Google-only account — nothing to type a "current password" against. */
+  passwordStatus: (token: string) => request<{ hasPassword: boolean }>("/auth/password-status", { token }),
+
+  changePassword: (token: string, currentPassword: string | undefined, newPassword: string) =>
     request<{ ok: boolean }>("/auth/change-password", {
       method: "POST",
       token,
-      body: { currentPassword, newPassword },
+      body: { ...(currentPassword ? { currentPassword } : {}), newPassword },
     }),
 
   /** Own votes, oldest first, with score snapshots — enough to redraw history. */

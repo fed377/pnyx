@@ -26,8 +26,14 @@ type SessionStore = {
    * otherwise opens Google in a browser and comes back through the app's deep link. */
   signInWithGoogle: () => Promise<OAuthResult>;
   signOut: () => Promise<void>;
-  /** Re-verifies `currentPassword` server-side before setting `newPassword`. */
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** False for a Google-only account — there is no password to change. */
+  hasPassword: () => Promise<boolean>;
+  /**
+   * Re-verifies `currentPassword` server-side before setting `newPassword` —
+   * except for an account with no password yet (Google-only), where there is
+   * nothing to verify and `currentPassword` should be omitted.
+   */
+  changePassword: (currentPassword: string | undefined, newPassword: string) => Promise<void>;
   /**
    * A valid access token, refreshed if it is about to expire. Pass `force`
    * when a call was rejected server-side despite looking valid locally (a
@@ -146,6 +152,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         await store(null);
+      },
+      hasPassword: async () => {
+        const t = await token();
+        if (!t) return false;
+        const res = await api.passwordStatus(t);
+        return res.hasPassword;
       },
       changePassword: async (currentPassword, newPassword) => {
         const t = await token();

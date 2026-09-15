@@ -108,7 +108,7 @@ function InfoRow({
 
 export default function SettingsScreen() {
   const { state, dispatch, positions, saveProfile, saveAvatar, forgetMe, mode } = useStore();
-  const { signOut, changePassword } = useSession();
+  const { signOut, changePassword, hasPassword: fetchHasPassword } = useSession();
   const toast = useToast();
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [about, setAbout] = useState(false);
@@ -116,6 +116,20 @@ export default function SettingsScreen() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [pillTrackWidth, setPillTrackWidth] = useState(0);
   const onPillTrackLayout = (e: LayoutChangeEvent) => setPillTrackWidth(e.nativeEvent.layout.width);
+
+  // Null while unknown — a Google-only account has no password to change,
+  // so the button/sheet need to know which form to show before they render.
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (mode !== "remote") return;
+    let alive = true;
+    fetchHasPassword().then((v) => {
+      if (alive) setHasPassword(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [mode, fetchHasPassword]);
 
   const leave = async () => {
     await signOut();
@@ -272,7 +286,12 @@ export default function SettingsScreen() {
           </Text>
           <View style={{ flexDirection: "row", gap: s[2] }}>
             {mode === "remote" && (
-              <Btn label="Change password" variant="outline" onPress={() => setChangingPassword(true)} style={{ flex: 1 }} />
+              <Btn
+                label={hasPassword === false ? "Set password" : "Change password"}
+                variant="outline"
+                onPress={() => setChangingPassword(true)}
+                style={{ flex: 1 }}
+              />
             )}
             <Btn label="Log out" onPress={() => void leave()} style={{ flex: 1 }} />
           </View>
@@ -315,6 +334,7 @@ export default function SettingsScreen() {
         open={changingPassword}
         onClose={() => setChangingPassword(false)}
         changePassword={changePassword}
+        hasPassword={hasPassword !== false}
       />
     </View>
   );
@@ -324,10 +344,13 @@ function ChangePasswordSheet({
   open,
   onClose,
   changePassword,
+  hasPassword,
 }: {
   open: boolean;
   onClose: () => void;
-  changePassword: (current: string, next: string) => Promise<void>;
+  changePassword: (current: string | undefined, next: string) => Promise<void>;
+  /** False for a Google-only account — no "current password" field, nothing to verify. */
+  hasPassword: boolean;
 }) {
   const toast = useToast();
   const [current, setCurrent] = useState("");
@@ -352,8 +375,8 @@ function ChangePasswordSheet({
     }
     setBusy(true);
     try {
-      await changePassword(current, next);
-      toast("Password changed.");
+      await changePassword(hasPassword ? current : undefined, next);
+      toast(hasPassword ? "Password changed." : "Password set. You can now also sign in with email and password.");
       reset();
       onClose();
     } catch (e) {
@@ -366,17 +389,27 @@ function ChangePasswordSheet({
   return (
     <Sheet
       open={open}
-      title="Change password"
+      title={hasPassword ? "Change password" : "Set a password"}
       onClose={() => {
         reset();
         onClose();
       }}
     >
       <View style={{ gap: s[3] }}>
-        <Field label="Current password" value={current} onChangeText={setCurrent} secureTextEntry />
+        {!hasPassword && (
+          <Text style={styles.note}>
+            Your account was created with Google and has no password yet — set one to also be able to sign in with
+            email and password.
+          </Text>
+        )}
+        {hasPassword && <Field label="Current password" value={current} onChangeText={setCurrent} secureTextEntry />}
         <Field label="New password" value={next} onChangeText={setNext} placeholder="At least 8 characters" secureTextEntry />
         <Field label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry />
-        <Btn label={busy ? "Changing…" : "Change password"} onPress={() => void submit()} disabled={busy} />
+        <Btn
+          label={busy ? (hasPassword ? "Changing…" : "Setting…") : hasPassword ? "Change password" : "Set password"}
+          onPress={() => void submit()}
+          disabled={busy}
+        />
       </View>
     </Sheet>
   );
