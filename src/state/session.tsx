@@ -127,8 +127,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
 
         // In Expo Go this is an expo:// URL (exp:// on older Expo Go builds);
-        // in a real build it is pnyx://. Whichever it is, it has to be
-        // allowlisted in Supabase's URL configuration.
+        // in a real build it is pnyx://. The API wraps this in an https://
+        // bridge page before handing it to Supabase (see pnyx-backend's
+        // /auth/mobile-redirect) — Supabase's redirect_to validation is
+        // unreliable for custom app schemes even when allowlisted, silently
+        // falling back to the project's Site URL instead of erroring.
+        // openAuthSessionAsync's second argument still watches for this raw
+        // deep link, not the bridge URL: that's what makes the OS intercept
+        // the *final* hop the bridge page makes, regardless of how it got there.
         const redirectTo = Linking.createURL("auth-callback");
         const { url } = await api.googleUrl(redirectTo);
 
