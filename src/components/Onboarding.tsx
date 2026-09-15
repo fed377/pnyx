@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import {
   KeyboardAvoidingView,
@@ -43,17 +43,36 @@ function ageOn(birth: Date, today = new Date()): number {
 
 /** One more thing before you're in: a username, a birthday (checked against the minimum age), and a bio. */
 export function Onboarding() {
-  const { state, completeOnboarding } = useStore();
+  const { state, completeOnboarding, mode } = useStore();
   const insets = useSafeAreaInsets();
 
-  const [handle, setHandle] = useState(state.profile.handle);
+  // In remote mode, `state.profile` starts out as the local sample persona
+  // (see store.tsx's initialState) until the real server profile has loaded
+  // — a first-time Google/email sign-up must never see that leak into these
+  // fields. Offline/"explore without an account" mode is the one place that
+  // sample persona is genuinely correct to pre-fill from, so it keeps doing
+  // so unchanged.
+  const [handle, setHandle] = useState(mode === "remote" ? "" : state.profile.handle);
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
-  const [bio, setBio] = useState(state.profile.bio);
+  const [bio, setBio] = useState(mode === "remote" ? "" : state.profile.bio);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tooYoung, setTooYoung] = useState(false);
+
+  // Once the real profile arrives (handle is server-derived from the Google
+  // account's email; name comes straight from Google), adopt it — but only
+  // if the field is still exactly what it started as, so it never clobbers
+  // something the user has already started typing.
+  const [handleTouched, setHandleTouched] = useState(false);
+  const [bioTouched, setBioTouched] = useState(false);
+  useEffect(() => {
+    if (mode === "remote" && !handleTouched && state.profile.handle) setHandle(state.profile.handle);
+  }, [mode, state.profile.handle, handleTouched]);
+  useEffect(() => {
+    if (mode === "remote" && !bioTouched && state.profile.bio) setBio(state.profile.bio);
+  }, [mode, state.profile.bio, bioTouched]);
 
   const monthRef = useRef<TextInput>(null);
   const yearRef = useRef<TextInput>(null);
@@ -131,7 +150,10 @@ export function Onboarding() {
             <Text style={styles.at}>@</Text>
             <TextInput
               value={handle}
-              onChangeText={setHandle}
+              onChangeText={(v) => {
+                setHandle(v);
+                setHandleTouched(true);
+              }}
               placeholder="yourname"
               placeholderTextColor={c.textFaint}
               accessibilityLabel="Username"
@@ -197,7 +219,10 @@ export function Onboarding() {
         <Field
           label="Bio"
           value={bio}
-          onChangeText={(v) => setBio(v.slice(0, BIO_MAX))}
+          onChangeText={(v) => {
+            setBio(v.slice(0, BIO_MAX));
+            setBioTouched(true);
+          }}
           placeholder="What do you actually think?"
           multiline
           maxLength={BIO_MAX}
