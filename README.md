@@ -93,18 +93,25 @@ tapping it opens Supabase and shows `provider is not enabled`.
 **2. Supabase** — Dashboard → Authentication
 
 - *Providers → Google*: enable it, paste the client ID and secret, save.
-- *URL Configuration → Redirect URLs*: add the deep links the app comes back on.
-  In Expo Go that is `exp://127.0.0.1:8081/--/auth-callback` (and the same with your LAN
-  IP if you are not using `adb reverse`). In a real build it is `pnyx://auth-callback`.
-  Miss this step and Google succeeds but the app never receives the session.
+- *URL Configuration → Redirect URLs*: add the **API's own bridge page**, not the app's deep
+  link — `https://<your-api-host>/auth/mobile-redirect`. Supabase's `redirect_to` validation
+  turned out unreliable for custom app schemes (`exp://`, `pnyx://`) even when correctly
+  allowlisted, silently falling back to the project's Site URL instead of erroring. So the
+  API tells Supabase to come back to this same-origin https page instead, and the page's own
+  inline script finishes the last hop to the real deep link client-side (`req.protocol`/
+  `req.hostname`-derived, never client-supplied — see `authRoutes.ts`'s `bridgeFor`). The
+  deep link itself is re-validated against an allowlist both server- and page-side, so this
+  can't become an open redirect. Miss this step and Google succeeds but the app never
+  receives the session.
 
 **3. Nothing to change in the app.** The API hands it the authorize URL, so there is still
 no Supabase key in the client.
 
 The flow is: app asks the API for the URL → `expo-web-browser` opens it → Google → Supabase
-→ deep link back with the tokens in the URL fragment → `src/api/oauth.ts` parses them into a
-session. It uses the implicit flow, which is what Supabase returns for a plain `/authorize`
-request; the tokens live in a deep-link fragment, never in a logged query string.
+→ the bridge page above → deep link back with the tokens in the URL fragment →
+`src/api/oauth.ts` parses them into a session. It uses the implicit flow, which is what
+Supabase returns for a plain `/authorize` request; the tokens live in a deep-link fragment,
+never in a logged query string.
 
 Note this works in Expo Go because it is browser-based. The app also has a *native* path
 (`@react-native-google-signin`) — the real system account picker instead of a browser —
@@ -172,11 +179,10 @@ forbids voting on your own posts, not seeing them. A post still awaiting moderat
 only to you, labelled "In review". Nothing auto-polls — pull down to refresh, and the app
 re-fetches whenever it returns to the foreground.
 
-### Not yet served by the API
+### Served by the API in remote mode
 
-Messages, notifications and Hot Takes still read from `lib/data`. Their tables exist in the
-schema but there are no endpoints, so those three surfaces remain sample data even when
-signed in. Comments come back empty from the server for the same reason.
+Messages, notifications, Hot Takes and comments all have real endpoints and read live data
+once signed in — none of them fall back to `lib/data` in remote mode any more.
 
 ## Layout
 
@@ -217,7 +223,8 @@ Each one needs a backend to replace it:
    that post's own grid scores. Profile pictures are monograms ringed in the person's Mind colour,
    with the personality icon overlaid as §6.2 requires.
 3. **State is on-device** in `AsyncStorage` under `pnyx.state.v1`. "Forget Me" really clears it.
-4. **Rarity figures** on Statistics are placeholders.
+4. **Rarity figures** on Statistics are placeholders — genuinely so offline (there's no
+   population to measure against with no backend); remote mode computes real ones server-side.
 5. **Privacy tiers** on other people's profiles map to: Speaker reveals all five grids, Active
    hides Culture and Focus, Private hides all five. Not pinned down by the spec.
 6. **App icons are still the Expo defaults** in `assets/images/` — they need real artwork before
