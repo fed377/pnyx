@@ -32,7 +32,7 @@ const fromApi = (r: ApiComment): LiveComment => ({
  * in-memory-only state, same as before — there is nowhere to persist to.
  */
 export function useComments(contentId: string, seed: Comment[], seedAt: number) {
-  const { mode, myId } = useStore();
+  const { mode, myId, bumpCommentCount } = useStore();
   const { token } = useSession();
   const remote = mode === "remote";
 
@@ -89,8 +89,9 @@ export function useComments(contentId: string, seed: Comment[], seedAt: number) 
       if (!t) return;
       const row = await api.addComment(t, contentId, text);
       setRemoteItems((prev) => [...(prev ?? []), fromApi(row)]);
+      bumpCommentCount(contentId);
     },
-    [remote, token, contentId, myId],
+    [remote, token, contentId, myId, bumpCommentCount],
   );
 
   const castVote = useCallback(

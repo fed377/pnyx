@@ -185,10 +185,10 @@ function Reel({
               scaleTo={0.9}
               style={styles.ghostPill}
               accessibilityRole="button"
-              accessibilityLabel={`${content.comments.length} comments`}
+              accessibilityLabel={`${content.commentCount} comments`}
             >
               <Icon name="comment" size={18} color="#fff" />
-              <Text style={styles.pillCount}>{compactCount(content.comments.length)}</Text>
+              <Text style={styles.pillCount}>{compactCount(content.commentCount)}</Text>
             </AnimatedPressable>
             <AnimatedPressable
               onPress={share}

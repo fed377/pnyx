@@ -106,10 +106,10 @@ function Frame({ content, index, onIndexChange, count, onClose }: {
             scaleTo={0.9}
             style={styles.pill}
             accessibilityRole="button"
-            accessibilityLabel={`${content.comments.length} comments`}
+            accessibilityLabel={`${content.commentCount} comments`}
           >
             <Icon name="comment" size={16} color="#fff" />
-            <Text style={styles.pillCount}>{content.comments.length}</Text>
+            <Text style={styles.pillCount}>{content.commentCount}</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={share}

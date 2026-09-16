@@ -204,6 +204,9 @@ type Store = {
    * movement equation and reach the server. See `pendingUntilOf`.
    */
   vote: (contentId: string, power: VotePower) => void;
+  /** Local +1 to a content's own commentCount, for immediate feedback right
+   * after a comment actually posts — see the function's own comment. */
+  bumpCommentCount: (contentId: string) => void;
   toggleFollow: (personId: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
   saveNotifPrefs: (patch: Partial<State["notifPrefs"]>) => Promise<void>;
@@ -492,6 +495,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [contentById, remote, token, callWithRetry],
   );
 
+  /** Optimistic +1, called once a comment has actually posted (the network
+   * call itself happens in useComments) — otherwise the post/reel action row
+   * kept showing a stale count until the next full refresh(), even in the
+   * same session. Remote only: local mode's REELS/POSTS are static, and its
+   * own useComments already tracks newly-added comments separately. */
+  const bumpCommentCount = useCallback((contentId: string) => {
+    setServerContent((prev) => {
+      if (!prev) return prev;
+      const patch = (list: Content[]) =>
+        list.some((c) => c.id === contentId)
+          ? list.map((c) => (c.id === contentId ? { ...c, commentCount: c.commentCount + 1 } : c))
+          : list;
+      return { reels: patch(prev.reels), posts: patch(prev.posts) };
+    });
+  }, []);
+
   const clearPendingTimer = useCallback((contentId: string) => {
     const timer = pendingTimers.current[contentId];
     if (timer) {
@@ -688,6 +707,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               focus: build("focus"),
             },
             comments: [],
+            commentCount: 0,
             globalSplit: { love: 0, like: 0, dislike: 0, hate: 0 },
           },
         });
@@ -745,6 +765,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       peopleById,
       contentById,
       vote,
+      bumpCommentCount,
       toggleFollow,
       saveProfile,
       saveNotifPrefs,
@@ -766,7 +787,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       mode, myId, hydrated, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, contentById, vote, toggleFollow, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, completeOnboarding,
+      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, completeOnboarding,
       alignments, pending,
     ],
   );

@@ -28,8 +28,11 @@ export function toContent(row: ApiContent): Content {
     moderationStatus: row.moderationStatus,
     createdAt: Date.parse(row.createdAt),
     scores: row.scores,
-    // Comments are not served by the API yet.
+    // Full comment bodies are fetched lazily (only when the sheet opens, via
+    // useComments) — the count is real, from the server's own denormalised
+    // counter, not derived from this (deliberately empty here) array.
     comments: [],
+    commentCount: row.commentCount,
     globalSplit: toSplit(row.tallies),
   };
 }

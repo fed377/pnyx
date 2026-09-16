@@ -59,6 +59,7 @@ export type ApiContent = {
   scores: Scores;
   moderationStatus: "pending" | "approved" | "rejected";
   tallies: { love: number; like: number; dislike: number; hate: number };
+  commentCount: number;
   createdAt: string;
 };
 

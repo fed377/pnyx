@@ -152,10 +152,10 @@ export function PostCard({
             scaleTo={0.9}
             style={styles.ghost}
             accessibilityRole="button"
-            accessibilityLabel={`${content.comments.length} comments`}
+            accessibilityLabel={`${content.commentCount} comments`}
           >
             <Icon name="comment" size={18} color={c.text} />
-            <Text style={styles.ghostText}>{content.comments.length}</Text>
+            <Text style={styles.ghostText}>{content.commentCount}</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={share}
