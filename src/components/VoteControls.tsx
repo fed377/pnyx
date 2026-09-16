@@ -1,4 +1,3 @@
-import { compactCount } from "@/lib/format";
 import type { VotePower } from "@/lib/types";
 import { c, f, s } from "@/theme/tokens";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -79,7 +78,11 @@ export function VoteControls({
   onLockedPress?: () => void;
   /** Sits on top of a reel, so the buttons need their own contrast. */
   overlay?: boolean;
-  /** Shown next to the glyph in "pill" layout, e.g. the global up/down split. */
+  /** Shown next to the glyph in "pill" layout — the global up/down split, as a
+   * percentage of this post's own votes (0-100), *not* a raw vote count. A
+   * lightly-voted post can legitimately read "100" here (100% of its
+   * handful of votes went one way), which is why this renders with a "%"
+   * rather than through `compactCount` (built for genuinely large numbers). */
   counts?: { up: number; down: number };
 }) {
   const [holding, setHolding] = useState<Dir | null>(null);
@@ -139,7 +142,13 @@ export function VoteControls({
   const begin = useCallback(
     (dir: Dir) => {
       if (disabled) return;
-      if (committed.current) return;
+      // Reset for this press cycle — `committed` only exists to stop
+      // `release()` from double-firing `commit()` after the hold timer
+      // already did (see its own check below), *within* one press. Checking
+      // it here before resetting would instead carry the previous press's
+      // "already committed" flag forward forever, silently swallowing every
+      // press after the very first one on this button ever committed —
+      // including the second tap meant to cancel a still-pending vote.
       committed.current = false;
       setHolding(dir);
       setPreview(false);
@@ -293,7 +302,7 @@ export function VoteControls({
               filled={active || isHolding}
             />
           </Reanimated.View>
-          {count !== undefined && <Text style={styles.pillCount}>{compactCount(count)}</Text>}
+          {count !== undefined && <Text style={styles.pillCount}>{count}%</Text>}
         </Pressable>
         {layout === "rail" && <Text style={styles.caption}>{label}</Text>}
       </View>

@@ -94,6 +94,39 @@ describe("voting", () => {
     jest.useRealTimers();
   });
 
+  it("cancels a still-pending vote when the same direction is tapped again", async () => {
+    // Regression: VoteControls' `committed` ref was only ever reset to false
+    // at the top of begin() *after* an early-return check against its own
+    // stale value from the previous press — so once any vote ever committed
+    // on a button, every later press on it (including the second tap meant
+    // to cancel a pending one) was silently swallowed, and onVote never
+    // fired a second time at all.
+    jest.useFakeTimers();
+    await renderRouter(APP, { initialUrl: "/" });
+    const banner = await screen.findByLabelText(/^\d+ more reactions$/);
+    const before = Number(String(banner.props.accessibilityLabel).match(/\d+/)![0]);
+
+    const like = screen.getAllByLabelText(/^Like\./)[0];
+    await act(async () => {
+      fireEvent(like, "pressIn");
+      fireEvent(like, "pressOut");
+    });
+    expect(screen.getByText(/You · Liked/)).toBeTruthy();
+
+    // Same direction, second tap, still within the grace window — cancels
+    // rather than voting again.
+    await act(async () => {
+      fireEvent(like, "pressIn");
+      fireEvent(like, "pressOut");
+    });
+
+    expect(screen.queryByText(/You · Liked/)).toBeNull();
+    expect(screen.queryByText(/How everyone voted/i)).toBeNull();
+    // The banner never moved — the cancelled vote never reached commitVote.
+    expect(screen.getByLabelText(`${before} more reactions`)).toBeTruthy();
+    jest.useRealTimers();
+  });
+
   it("locks the buttons once the vote is counted", async () => {
     // See the note on the test above: fake timers are required for
     // VOTE_GRACE_MS to resolve at all, but the clock must only ever be
