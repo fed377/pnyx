@@ -376,6 +376,10 @@ export const api = {
   comments: (token: string, contentId: string) =>
     request<{ items: ApiComment[] }>(`/content/${contentId}/comments`, { token }),
 
+  /** Spec §6.2: real cast votes from people the caller follows. */
+  friendVotes: (token: string, contentId: string) =>
+    request<{ items: { userId: string; power: VotePower }[] }>(`/content/${contentId}/friend-votes`, { token }),
+
   addComment: (token: string, contentId: string, body: string) =>
     request<ApiComment>(`/content/${contentId}/comments`, { method: "POST", token, body: { body } }),
 

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { friendVotes, POWER_LABEL } from "@/lib/feed";
 import type { Content, Person, VotePower } from "@/lib/types";
+import { useFriendVotes } from "@/state/useFriendVotes";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 
@@ -23,7 +24,10 @@ export function VoteResult({
   myVote: VotePower;
   onDark?: boolean;
 }) {
-  const votes = friendVotes(content, friends.slice(0, 5));
+  // Real cast votes in remote mode; the affinity-based guess only stands in
+  // offline, where there's no real vote to look up at all.
+  const real = useFriendVotes(content.id);
+  const votes = (real ?? friendVotes(content, friends.slice(0, 5))).slice(0, 5);
 
   return (
     <View style={[styles.wrap, onDark && { backgroundColor: "#14141c" }]}>
