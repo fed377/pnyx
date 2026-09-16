@@ -43,3 +43,7 @@ example
 /android
 
 .env
+
+# local design-tool scratch output — not part of the app
+.impeccable/
+figma-screenshots/
