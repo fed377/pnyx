@@ -68,7 +68,13 @@ export function CommentsSheet({
   };
 
   return (
-    <Sheet open={open} title={`${all.length} repl${all.length === 1 ? "y" : "ies"}`} onClose={onClose} closeLabel="Done">
+    <Sheet
+      open={open}
+      title={`${all.length} repl${all.length === 1 ? "y" : "ies"}`}
+      onClose={onClose}
+      closeLabel="Done"
+      floating
+    >
       {loading && all.length === 0 ? (
         <ActivityIndicator style={{ marginVertical: s[4] }} color={c.textFaint} />
       ) : (
