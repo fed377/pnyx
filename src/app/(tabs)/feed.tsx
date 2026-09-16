@@ -248,7 +248,7 @@ export default function FeedScreen() {
   positionsRef.current = positions;
   voteCountRef.current = voteCount;
   const reels = useMemo(
-    () => rankReels(source, positionsRef.current, voteCountRef.current),
+    () => rankReels(source, positionsRef.current, voteCountRef.current, (c) => c.globalSplit),
     [source],
   );
 
