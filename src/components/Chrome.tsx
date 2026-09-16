@@ -38,8 +38,12 @@ export function TopBar({
       {showWordmark ? <Text style={[styles.wordmark, onDark && { color: "#fff" }]}>{wordmark}</Text> : <View />}
       <View style={styles.tools}>
         {/* isInteractive glass has an intermittent bug where it briefly renders
-            solid black instead of its lens effect; static glass avoids it. */}
-        <LiquidGlassSurface radius={r.full} tint={tint} />
+            solid black instead of its lens effect; static glass avoids it.
+            forceBlur here too: over Feed's varied reel content (the only
+            place tint="dark" is ever used), real glass's adaptive re-tint can
+            swing toward white despite the dark request, washing out against
+            these always-white icons — see LiquidGlassSurface's own comment. */}
+        <LiquidGlassSurface radius={r.full} tint={tint} forceBlur={onDark} />
         {showNotifications && (
           <IconBtn
             name="heart"

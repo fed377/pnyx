@@ -44,6 +44,7 @@ export function LiquidGlassSurface({
   fill = true,
   glassStyle = "regular",
   tintColor,
+  forceBlur = false,
 }: {
   style?: StyleProp<ViewStyle>;
   radius?: number;
@@ -57,11 +58,22 @@ export function LiquidGlassSurface({
   /** Darkens/colors the glass itself, e.g. to read as a distinct layer above
    * a lighter glass surface underneath it. */
   tintColor?: string;
+  /**
+   * Skips real UIGlassEffect even where it's supported, in favor of the
+   * deterministic BlurView path. Real glass's adaptive re-tint (see this
+   * file's own top comment) doesn't just darken — over Feed's varied reel
+   * content it can also swing toward white despite `tint="dark"`, washing
+   * out against the always-white icons drawn on top of it and leaving
+   * nothing readable. Reach for this on chrome that sits over unpredictable
+   * media and needs its tint to hold no matter what's behind it, not as a
+   * blanket default.
+   */
+  forceBlur?: boolean;
 }) {
   const blurTarget = useBlurTarget();
   const base = fill ? StyleSheet.absoluteFill : undefined;
 
-  if (liquidGlassSupported()) {
+  if (liquidGlassSupported() && !forceBlur) {
     return (
       <GlassView
         style={[base, { borderRadius: radius }, style]}

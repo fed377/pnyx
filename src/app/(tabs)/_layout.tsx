@@ -105,7 +105,9 @@ function SearchMorph({
       style={[styles.search, { bottom: barBottom + (NAV_H - SEARCH_SIZE) / 2, right: NAV_SIDE_INSET }, boxStyle]}
     >
       <View style={styles.searchClip}>
-        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} />
+        {/* tint is only ever "dark" here on Feed — see the tab bar's own
+            forceBlur comment above for why real glass can't be trusted there. */}
+        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} forceBlur={tint === "dark"} />
       </View>
 
       <Animated.View style={[styles.fill, circleStyle]} pointerEvents={onPeople ? "none" : "auto"}>
@@ -274,8 +276,12 @@ function TabsLayoutInner() {
             <View style={styles.blur} onLayout={onBarLayout}>
               {/* isInteractive real glass has an intermittent bug where it briefly
                   renders solid black instead of its lens effect — static (non-
-                  interactive) glass doesn't hit that path and still looks right. */}
-              <LiquidGlassSurface radius={r.full} tint={tint} />
+                  interactive) glass doesn't hit that path and still looks right.
+                  forceBlur too: over Feed's reels (the only place tint="dark"
+                  happens here), real glass's adaptive re-tint can swing toward
+                  white despite the dark request, washing out against these
+                  always-white icons — see LiquidGlassSurface's own comment. */}
+              <LiquidGlassSurface radius={r.full} tint={tint} forceBlur={onFeed} />
               <TabIndicator activeIndex={activeIndex} barWidth={barWidth} dark={onFeed} />
             </View>
           ),
