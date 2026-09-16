@@ -102,3 +102,59 @@ export function mixHex(hex: string, base: string, ratio: number): string {
   const toHex = (n: number) => n.toString(16).padStart(2, "0");
   return `#${toHex(mix(hr, br))}${toHex(mix(hg, bg))}${toHex(mix(hb, bb))}`;
 }
+
+function rgbToHls(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, l, 0];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h / 6, l, s];
+}
+
+function hlsToRgb(h: number, l: number, s: number): [number, number, number] {
+  if (s === 0) return [l, l, l];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const hue2rgb = (t: number) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  return [hue2rgb(h + 1 / 3), hue2rgb(h), hue2rgb(h - 1 / 3)];
+}
+
+/**
+ * A light-to-dark two-stop gradient in `hex`'s own hue, for a glossy
+ * app-icon-style fill instead of one flat tint — derived from the color
+ * itself rather than picked by hand, so every named color on a grid gets one
+ * automatically. Deliberately keeps saturation up rather than washing the
+ * light stop out toward white: at high lightness hue barely reads any more,
+ * which is exactly what made close-hue neighbors (Culture's Lilac/Indigo/
+ * Electric, say) collapse into each other before this.
+ */
+export function glossGradient(hex: string): [string, string] {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map((x) => x + x).join("") : clean;
+  const n = parseInt(full, 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const [h, l, s] = rgbToHls(r, g, b);
+  const toHex = ([rr, gg, bb]: [number, number, number]) =>
+    `#${[rr, gg, bb]
+      .map((c) => Math.max(0, Math.min(255, Math.round(c * 255))).toString(16).padStart(2, "0").toUpperCase())
+      .join("")}`;
+  const light = hlsToRgb(h, Math.min(0.85, l + 0.1), Math.min(1, s + 0.03));
+  const dark = hlsToRgb(h, Math.max(0.1, l - 0.24), Math.min(1, s + 0.12));
+  return [toHex(light), toHex(dark)];
+}

@@ -1,9 +1,12 @@
 import { Image } from "expo-image";
 import type { ImageSource } from "expo-image";
+import { useId } from "react";
 import { StyleSheet, View } from "react-native";
+import type { ImageSourcePropType } from "react-native";
+import Svg, { Defs, Image as SvgImage, LinearGradient, Mask, Rect, Stop } from "react-native-svg";
 import { nearestPoint } from "@/lib/grids";
 import type { AnimalId, Positions } from "@/lib/types";
-import { c, hexToRgba } from "@/theme/tokens";
+import { c, glossGradient, hexToRgba } from "@/theme/tokens";
 
 /**
  * The identity icon (spec §3.1). Every grid contributes one visual feature:
@@ -15,15 +18,21 @@ import { c, hexToRgba } from "@/theme/tokens";
  *
  * The animal art itself is two alpha-masked template layers per animal (a
  * "base" silhouette and an enclosed "highlight" region — the face patch, on
- * every one of these), each recoloured per-user via `tintColor` rather than
- * drawn as flat-colour SVG paths. Generated once, offline, from the flat
- * black-on-white source art in .icons/animals: everything below the ink
- * threshold becomes the base layer's alpha mask, and any white region fully
- * enclosed by ink (not touching the image border) becomes the highlight
- * layer's — the same two-tone split the original hand-drawn paths used.
+ * every one of these) rather than flat-colour SVG paths. Generated once,
+ * offline, from the flat black-on-white source art in .icons/animals:
+ * everything below the ink threshold becomes the base layer's alpha mask,
+ * and any white region fully enclosed by ink (not touching the image
+ * border) becomes the highlight layer's — the same two-tone split the
+ * original hand-drawn paths used.
+ *
+ * The base layer renders as a `glossGradient` of the Culture colour (an SVG
+ * gradient masked by the template's alpha) rather than one flat `tintColor`,
+ * for a glossier fill; the highlight layer stays a flat `tintColor` — it's
+ * the smaller, secondary region, and two competing gradients on one small
+ * icon reads busy rather than rich.
  */
 
-const ANIMAL_LAYERS: Record<AnimalId, { base: ImageSource; highlight: ImageSource }> = {
+const ANIMAL_LAYERS: Record<AnimalId, { base: ImageSourcePropType; highlight: ImageSource }> = {
   wolf: { base: require("../../assets/images/animals/wolf-base.png"), highlight: require("../../assets/images/animals/wolf-highlight.png") },
   fox: { base: require("../../assets/images/animals/fox-base.png"), highlight: require("../../assets/images/animals/fox-highlight.png") },
   bear: { base: require("../../assets/images/animals/bear-base.png"), highlight: require("../../assets/images/animals/bear-highlight.png") },
@@ -65,12 +74,26 @@ export function Crest({
   const layers = ANIMAL_LAYERS[animal];
   const dotSize = Math.max(8, Math.round(size * 0.26));
   const radius = size * 0.28;
+  const [baseLight, baseDark] = glossGradient(base);
+  const gradientId = useId();
+  const maskId = useId();
 
   return (
     <View style={{ width: size, height: size }}>
       <View style={[styles.plate, { width: size, height: size, borderRadius: radius, backgroundColor: shadow }]}>
         <View style={{ opacity: locked ? 0.18 : 1, width: size, height: size }}>
-          <Image source={layers.base} style={[StyleSheet.absoluteFill, { tintColor: base }]} contentFit="contain" />
+          <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+            <Defs>
+              <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0" stopColor={baseLight} />
+                <Stop offset="1" stopColor={baseDark} />
+              </LinearGradient>
+              <Mask id={maskId}>
+                <SvgImage href={layers.base} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" />
+              </Mask>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${gradientId})`} mask={`url(#${maskId})`} />
+          </Svg>
           <Image source={layers.highlight} style={[StyleSheet.absoluteFill, { tintColor: highlight }]} contentFit="contain" />
         </View>
         <View style={[styles.border, { borderRadius: radius }]} />
