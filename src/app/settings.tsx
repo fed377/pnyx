@@ -107,7 +107,7 @@ function InfoRow({
 }
 
 export default function SettingsScreen() {
-  const { state, dispatch, positions, saveProfile, saveAvatar, forgetMe, mode } = useStore();
+  const { state, dispatch, positions, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, mode } = useStore();
   const { signOut, changePassword, hasPassword: fetchHasPassword } = useSession();
   const toast = useToast();
   const [confirmWipe, setConfirmWipe] = useState(false);
@@ -253,7 +253,7 @@ export default function SettingsScreen() {
                 <Text style={styles.rowLabel}>{row.label}</Text>
                 <Toggle
                   value={state.notifPrefs[row.key]}
-                  onValueChange={(v) => dispatch({ type: "notifPref", key: row.key, value: v })}
+                  onValueChange={(v) => void saveNotifPrefs({ [row.key]: v })}
                   label={row.label}
                 />
               </View>

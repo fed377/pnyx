@@ -75,7 +75,10 @@ type Action =
   | { type: "setFollow"; personId: string; following: boolean }
   | { type: "profile"; patch: Partial<Profile> }
   | { type: "gridPublic"; grid: GridId; value: boolean }
-  | { type: "notifPref"; key: keyof State["notifPrefs"]; value: boolean }
+  /** Whole-object replace, not a per-key patch — `saveNotifPrefs()` merges
+   * before dispatching, since the server (like `gridPublic`) wants the full
+   * object either way and `refresh()` needs to replace it wholesale too. */
+  | { type: "notifPrefs"; value: State["notifPrefs"] }
   | { type: "filter"; value: number }
   /** No self-serve purchase flow exists yet — dispatched only from `refresh()`,
    * syncing the account's real (admin/DB-set) `profiles.premium` column. There
@@ -112,8 +115,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, profile: { ...state.profile, ...action.patch } };
     case "gridPublic":
       return { ...state, gridPublic: { ...state.gridPublic, [action.grid]: action.value } };
-    case "notifPref":
-      return { ...state, notifPrefs: { ...state.notifPrefs, [action.key]: action.value } };
+    case "notifPrefs":
+      return { ...state, notifPrefs: action.value };
     case "filter":
       return { ...state, alignmentFilter: action.value };
     case "premium":
@@ -203,6 +206,7 @@ type Store = {
   vote: (contentId: string, power: VotePower) => void;
   toggleFollow: (personId: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
+  saveNotifPrefs: (patch: Partial<State["notifPrefs"]>) => Promise<void>;
   /** Uploads a picked photo (through the same signed-URL flow post media
    * uses) and saves it as the profile's avatar. */
   saveAvatar: (fileUri: string, mediaType: string) => Promise<void>;
@@ -336,6 +340,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Real account fact, not a self-serve toggle — see the "premium" action's
       // own comment. Nothing sets this except a direct DB edit right now.
       dispatch({ type: "premium", value: me.premium });
+      // Always present on your own /me (the server only strips it from
+      // someone else's profile) — but guard anyway rather than trust that.
+      if (me.notifPrefs) dispatch({ type: "notifPrefs", value: me.notifPrefs });
       dispatch({
         type: "profile",
         patch: {
@@ -578,6 +585,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [remote, token, callWithRetry],
   );
 
+  const saveNotifPrefs = useCallback(
+    async (patch: Partial<State["notifPrefs"]>) => {
+      const next = { ...state.notifPrefs, ...patch };
+      dispatch({ type: "notifPrefs", value: next });
+      if (!remote) return;
+      const t = await token();
+      if (!t) return;
+      try {
+        await callWithRetry(t, (tok) => api.updateMe(tok, { notifPrefs: next }));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "could not save your notification preferences");
+      }
+    },
+    [remote, state.notifPrefs, token, callWithRetry],
+  );
+
   const saveAvatar = useCallback(
     async (fileUri: string, mediaType: string) => {
       if (!remote) {
@@ -724,6 +747,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       vote,
       toggleFollow,
       saveProfile,
+      saveNotifPrefs,
       saveAvatar,
       forgetMe,
       publish,
@@ -742,7 +766,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       mode, myId, hydrated, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, contentById, vote, toggleFollow, saveProfile, saveAvatar, forgetMe, publish, completeOnboarding,
+      reels, posts, people, peopleById, contentById, vote, toggleFollow, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, completeOnboarding,
       alignments, pending,
     ],
   );

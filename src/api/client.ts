@@ -33,6 +33,10 @@ export type ApiProfile = {
   /** Account-level, not device-level — survives sign-out and a second device,
    * unlike the client's own local "has completed onboarding" flag used to. */
   onboarded: boolean;
+  /** Present only on your own `/me` — the server strips it from anyone else's
+   * viewed or ranked profile (how you want to be notified is nobody else's
+   * business). */
+  notifPrefs?: { votes: boolean; replies: boolean; alignments: boolean };
   createdAt: string;
 };
 
@@ -261,9 +265,17 @@ export const api = {
   updateMe: (
     token: string,
     patch: Partial<
-      Pick<ApiProfile, "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic" | "onboarded">
+      Pick<
+        ApiProfile,
+        "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic" | "onboarded" | "notifPrefs"
+      >
     >,
   ) => request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
+
+  /** A device registering (or re-registering, on relaunch/token refresh) for
+   * OS push notifications. */
+  registerPushToken: (token: string, pushToken: string) =>
+    request<{ ok: boolean }>("/me/push-token", { method: "POST", token, body: { token: pushToken } }),
 
   /** False for a Google-only account — nothing to type a "current password" against. */
   passwordStatus: (token: string) => request<{ hasPassword: boolean }>("/auth/password-status", { token }),

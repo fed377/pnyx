@@ -15,6 +15,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ToastProvider } from "@/components/Toast";
 import { BlurTargetProvider } from "@/state/blurTarget";
+import { PushRegistration } from "@/state/usePushRegistration";
 import { SessionProvider } from "@/state/session";
 import { StoreProvider } from "@/state/store";
 import { c } from "@/theme/tokens";
@@ -59,6 +60,7 @@ export default function RootLayout() {
                 />
                 <SyncBanner />
                 <AuthGate />
+                <PushRegistration />
               </BlurTargetProvider>
             </ToastProvider>
           </StoreProvider>
