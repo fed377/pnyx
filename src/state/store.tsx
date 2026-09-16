@@ -77,6 +77,9 @@ type Action =
   | { type: "gridPublic"; grid: GridId; value: boolean }
   | { type: "notifPref"; key: keyof State["notifPrefs"]; value: boolean }
   | { type: "filter"; value: number }
+  /** No self-serve purchase flow exists yet — dispatched only from `refresh()`,
+   * syncing the account's real (admin/DB-set) `profiles.premium` column. There
+   * is no UI path that dispatches this with a locally-chosen value. */
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
   | { type: "onboard"; birthday: string }
@@ -315,7 +318,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const result = await callWithRetry(t, (tok) =>
-        Promise.all([api.me(tok), api.myVotes(tok), api.reels(tok, 40), api.home(tok, 40), api.people(tok, 25)]),
+        // 50 (the route's own cap) rather than just the free-tier's display limit —
+        // premium unlocks more of "Most aligned in the world" (spec §6.3) by
+        // showing more of what's already fetched, not by fetching more on demand.
+        Promise.all([api.me(tok), api.myVotes(tok), api.reels(tok, 40), api.home(tok, 40), api.people(tok, 50)]),
       );
       if (!result) return;
       const [me, votes, reels, home, people] = result;
@@ -327,6 +333,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // already-onboarded account correctly instead of showing Onboarding
       // again just because local state doesn't remember it.
       dispatch({ type: "onboardedFromServer", value: me.onboarded });
+      // Real account fact, not a self-serve toggle — see the "premium" action's
+      // own comment. Nothing sets this except a direct DB edit right now.
+      dispatch({ type: "premium", value: me.premium });
       dispatch({
         type: "profile",
         patch: {

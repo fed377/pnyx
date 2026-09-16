@@ -15,6 +15,8 @@ import { useStore } from "@/state/store";
 import { c, display, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
+/** Spec §6.3: "more unlockable via premium" — the route itself caps at 50. */
+const WORLD_LIMIT_PREMIUM = 50;
 const MOST_ALIGNED_LIMIT = 6;
 const FRIENDS_FIRST_THRESHOLD = 50;
 
@@ -96,10 +98,10 @@ export default function PeopleScreen() {
   const [gridFocus, setGridFocus] = useState<GridId | "all">("all");
   const friendsFirst = state.alignmentFilter >= FRIENDS_FIRST_THRESHOLD;
 
-  // `everyone` is capped to the top-25 alignment window (spec §6.3) — a client-
-  // side filter over it could never find someone outside that set, so a real
-  // search re-queries the whole user base and merges whatever it finds back
-  // into the store. Debounced so every keystroke doesn't fire its own request.
+  // `everyone` is capped to the top-50 alignment window (the route's own max) —
+  // a client-side filter over it could never find someone outside that set, so
+  // a real search re-queries the whole user base and merges whatever it finds
+  // back into the store. Debounced so every keystroke doesn't fire its own request.
   useEffect(() => {
     if (mode !== "remote" || !query.trim()) return;
     const timer = setTimeout(() => void searchPeople(query), 300);
@@ -117,15 +119,17 @@ export default function PeopleScreen() {
   const searching = query.trim().length > 0;
   const q = query.trim().toLowerCase();
 
+  const worldLimit = state.premium ? WORLD_LIMIT_PREMIUM : WORLD_LIMIT;
+
   const list = searching
     ? ranked.filter(({ p }) => p.name.toLowerCase().includes(q) || p.handle.toLowerCase().includes(q))
     : tab === "world"
-      ? ranked.slice(0, WORLD_LIMIT)
+      ? ranked.slice(0, worldLimit)
       : tab === "following"
         ? ranked.filter(({ p }) => isFollowing(p.id))
         : ranked.filter(({ p }) => p.follower);
 
-  const hiddenByPremium = !searching && tab === "world" ? Math.max(0, ranked.length - WORLD_LIMIT) : 0;
+  const hiddenByPremium = !searching && tab === "world" ? Math.max(0, ranked.length - worldLimit) : 0;
 
   return (
     <BlurBackdrop style={styles.screen}>

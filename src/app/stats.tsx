@@ -4,7 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { Crest } from "@/components/Crest";
 import { GridPlot } from "@/components/GridPlot";
-import { Btn, Card, LockedRow, Note, SectionTitle } from "@/components/Primitives";
+import { Card, LockedRow, Note, SectionTitle } from "@/components/Primitives";
 import { conviction, UNLOCK_AT, positionHistory } from "@/lib/algorithm";
 import { pct } from "@/lib/format";
 import { GRID_LIST, nearestPoint, orientationOf } from "@/lib/grids";
@@ -47,7 +47,7 @@ function closestMatch(people: Person[], alignmentWith: (p: Person) => number): {
 }
 
 export default function StatisticsScreen() {
-  const { state, positions, unlocked, voteCount, dispatch, accent, people, alignmentWith } = useStore();
+  const { state, positions, unlocked, voteCount, accent, people, alignmentWith } = useStore();
   const rarity = useRarity();
 
   const history = useMemo(() => positionHistory(state.votes, 4), [state.votes]);
@@ -215,14 +215,13 @@ export default function StatisticsScreen() {
         {state.premium ? (
           <Note icon="check">Premium active — full history retained.</Note>
         ) : (
-          <LockedRow
-            action={
-              <Btn label="Try premium" variant="accent" onPress={() => dispatch({ type: "premium", value: true })} />
-            }
-          >
+          // No self-serve purchase flow exists yet (state.premium is a real
+          // account fact synced from the server, not something this screen can
+          // set) — so this is informational only, not an upsell CTA.
+          <LockedRow>
             <Text style={styles.lockedText}>
               <Text style={styles.strong}>Deeper history</Text> — month-by-month drift on every grid, kept beyond the
-              250-vote window.
+              250-vote window. Premium isn&apos;t available to buy yet.
             </Text>
           </LockedRow>
         )}
