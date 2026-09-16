@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Linking from "expo-linking";
+import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -66,8 +66,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     current.current = next;
     setSession(next);
     try {
-      if (next) await AsyncStorage.setItem(KEY, JSON.stringify(next));
-      else await AsyncStorage.removeItem(KEY);
+      if (next) await SecureStore.setItemAsync(KEY, JSON.stringify(next));
+      else await SecureStore.deleteItemAsync(KEY);
     } catch {
       // Storage unavailable — the session still works for this run.
     }
@@ -75,7 +75,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    AsyncStorage.getItem(KEY)
+    SecureStore.getItemAsync(KEY)
       .then((raw) => {
         if (!alive || !raw) return;
         const parsed = JSON.parse(raw) as Session;

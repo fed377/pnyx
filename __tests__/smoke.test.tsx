@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fireEvent } from "@testing-library/react-native";
 import { act, renderRouter, screen } from "expo-router/testing-library";
+import * as SecureStore from "expo-secure-store";
 
 const APP = "./src/app";
 
@@ -24,14 +25,21 @@ describe("startup", () => {
   it("renders even if storage never responds", async () => {
     // Regression: gating the tree on hydration left the app stuck on the splash
     // screen, because expo-router only hides it once the navigator mounts.
-    const original = AsyncStorage.getItem;
+    // Covers both hydration sources gating AuthGate: the store's AsyncStorage
+    // read and the session's SecureStore read (session tokens moved off
+    // AsyncStorage — see session.tsx).
+    const originalAsyncStorageGet = AsyncStorage.getItem;
     AsyncStorage.getItem = () => new Promise<string | null>(() => {});
+    const secureStoreSpy = jest
+      .spyOn(SecureStore, "getItemAsync")
+      .mockReturnValue(new Promise<string | null>(() => {}));
 
     try {
       await renderRouter(APP, { initialUrl: "/" });
       expect((await screen.findAllByText(/more reactions/i)).length).toBeGreaterThan(0);
     } finally {
-      AsyncStorage.getItem = original;
+      AsyncStorage.getItem = originalAsyncStorageGet;
+      secureStoreSpy.mockRestore();
     }
   });
 });
