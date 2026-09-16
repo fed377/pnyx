@@ -1,8 +1,10 @@
 import { usePathname } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
 import { c, s } from "@/theme/tokens";
+import { Landing } from "./Landing";
 import { Onboarding } from "./Onboarding";
 import { SignIn } from "./SignIn";
 
@@ -15,6 +17,10 @@ export function AuthGate() {
   const { ready, session, configured } = useSession();
   const { hydrated, state, dispatch } = useStore();
   const pathname = usePathname();
+  // Resets on a fresh app launch (this component's own remount), not
+  // persisted — the point is a first landing screen for this session, not a
+  // once-ever onboarding flag.
+  const [pastLanding, setPastLanding] = useState(false);
 
   // A password-recovery link opens this while signed out (the whole point of
   // forgetting your password) — it must never be covered by the sign-in
@@ -39,7 +45,11 @@ export function AuthGate() {
   if (!signedInOrExploring) {
     return (
       <View style={[StyleSheet.absoluteFill, styles.cover]}>
-        <SignIn onSkip={() => dispatch({ type: "skip" })} />
+        {pastLanding ? (
+          <SignIn onSkip={() => dispatch({ type: "skip" })} />
+        ) : (
+          <Landing onContinue={() => setPastLanding(true)} onSkip={() => dispatch({ type: "skip" })} />
+        )}
       </View>
     );
   }
