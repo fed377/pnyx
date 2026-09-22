@@ -157,6 +157,10 @@ type Store = {
   myId: string;
   /** False until the persisted store has been read back. */
   hydrated: boolean;
+  /** Remote mode only: false until a real GET /me has landed for *this*
+   * session — see its own declaration in StoreProvider for why AuthGate
+   * needs this specifically. */
+  profileLoaded: boolean;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -254,6 +258,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [serverPeople, setServerPeople] = useState<Person[] | null>(null);
   const [alignments, setAlignments] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
+  // True once a real GET /me response has landed for the current session.
+  // `state.profile` always holds *something* — the local sample persona by
+  // default — regardless of mode, so screens that read it directly (Settings,
+  // Profile) would otherwise flash that stale/default data for however long
+  // refresh() takes after a fresh sign-in (a cold Render instance can take
+  // tens of seconds), including the *previous* account's data if it hasn't
+  // been cleared yet. AuthGate covers the app while this is false.
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Votes cast but not yet committed (see VOTE_GRACE_MS) — shown immediately,
@@ -357,6 +369,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           tier: me.privacyTier,
         },
       });
+      setProfileLoaded(true);
       dispatch({ type: "serverVotes", votes: votes.items });
 
       setServerContent({
@@ -372,6 +385,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "could not reach the server");
+      // Let AuthGate's cover clear even on failure — SyncBanner already
+      // exists to surface `error` with a retry button; getting stuck behind
+      // a blank cover forever would hide that instead of falling back to it.
+      setProfileLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -413,6 +430,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setServerContent(null);
       setServerPeople(null);
       setAlignments({});
+      setProfileLoaded(false);
     }
   }, [remote, refresh]);
 
@@ -775,6 +793,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mode,
       myId,
       hydrated,
+      profileLoaded,
       loading,
       error,
       refresh,
@@ -818,7 +837,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     }),
     [
-      mode, myId, hydrated, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
+      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
       reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish,
       alignments, pending,
     ],

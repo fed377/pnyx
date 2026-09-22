@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -112,6 +113,7 @@ export default function SettingsScreen() {
   const { state, dispatch, positions, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, mode } = useStore();
   const { signOut, changePassword, hasPassword: fetchHasPassword } = useSession();
   const toast = useToast();
+  const router = useRouter();
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [about, setAbout] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -138,6 +140,10 @@ export default function SettingsScreen() {
     // Drop this account's cached votes and profile so the next sign-in does not
     // briefly render the last one's data.
     dispatch({ type: "forget" });
+    // Settings is a stack screen pushed on top of the tabs — it doesn't
+    // unmount just because AuthGate covers it, so without this the next
+    // sign-in would land right back here instead of on the default tab.
+    router.replace("/");
     toast("Signed out.");
   };
 
@@ -150,6 +156,7 @@ export default function SettingsScreen() {
   const wipe = async () => {
     await forgetMe();
     setConfirmWipe(false);
+    router.replace("/");
     toast("Everything erased. You're back at zero.");
   };
 

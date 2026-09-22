@@ -14,7 +14,7 @@ import { SignIn } from "./SignIn";
  */
 export function AuthGate() {
   const { ready, session, configured } = useSession();
-  const { hydrated, state, dispatch } = useStore();
+  const { hydrated, state, dispatch, mode, profileLoaded } = useStore();
   const pathname = usePathname();
   // Resets on a fresh app launch (this component's own remount), not
   // persisted — the point is a first landing screen for this session, not a
@@ -49,6 +49,20 @@ export function AuthGate() {
         ) : (
           <Landing onContinue={() => setPastLanding(true)} onSkip={() => dispatch({ type: "skip" })} />
         )}
+      </View>
+    );
+  }
+
+  // Signed in, but this session's real account data hasn't landed yet —
+  // state.profile always holds *something* (the local sample persona by
+  // default, or briefly a previous account's data right after switching
+  // accounts, since the Stack/Tabs underneath never unmount). Covering here
+  // stops any screen from flashing that stale data while GET /me is still in
+  // flight, which on a cold Render instance can take tens of seconds.
+  if (mode === "remote" && !profileLoaded) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.cover]}>
+        <Text style={styles.wordmark}>PNYX</Text>
       </View>
     );
   }

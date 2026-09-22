@@ -152,43 +152,27 @@ export type ApiVoteResult = {
  *
  * Deliberately not routed through the API — a phone video should not be proxied
  * through a Node process. Note that a plain `fetch(fileUri).blob()` does NOT
- * work in React Native: RN's fetch cannot read file:// URIs. Both paths below
- * stream from disk instead.
+ * work in React Native: RN's fetch cannot read file:// URIs.
+ *
+ * There used to be a "preferred" path here using `expo/fetch` with an
+ * `expo-file-system` `File` object as the body — streams natively same as
+ * this one, but that combination segfaults Hermes (EXC_BAD_ACCESS in the JS
+ * thread, confirmed from a real device crash log) under Expo Go's bundled
+ * runtime. A native crash like that kills the process before any JS
+ * try/catch — including the one that used to wrap it here — ever runs, so
+ * there's no safe way to fall back from it. `FileSystem.uploadAsync` below
+ * streams from disk natively too (BINARY_CONTENT), without that crash
+ * history, so it's the only uploader now rather than a fallback.
  */
 export async function uploadToSignedUrl(uploadUrl: string, fileUri: string, contentType: string) {
-  const headers = { "Content-Type": contentType };
-
-  // Preferred: the SDK 57 File API, which implements Blob and streams.
-  try {
-    const { fetch: expoFetch } = await import("expo/fetch");
-    const { File } = await import("expo-file-system");
-    const file = new File(fileUri);
-    const res = await expoFetch(uploadUrl, {
-      method: "PUT",
-      headers,
-      body: file as unknown as BodyInit,
-    });
-    if (!res.ok) throw new ApiError(res.status, `upload failed (${res.status})`);
-    return;
-  } catch (modern) {
-    // Fall through to the long-standing uploader below.
-    const legacyError = await uploadWithLegacy(uploadUrl, fileUri, headers).catch((e) => e);
-    if (legacyError instanceof Error) {
-      const first = modern instanceof Error ? modern.message : String(modern);
-      throw new ApiError(0, `could not upload the file (${first}; ${legacyError.message})`);
-    }
-  }
-}
-
-async function uploadWithLegacy(uploadUrl: string, fileUri: string, headers: Record<string, string>) {
   const FileSystem = await import("expo-file-system/legacy");
   const res = await FileSystem.uploadAsync(uploadUrl, fileUri, {
     httpMethod: "PUT",
     uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-    headers,
+    headers: { "Content-Type": contentType },
   });
   if (res.status < 200 || res.status >= 300) {
-    throw new Error(`storage rejected the upload (${res.status})`);
+    throw new ApiError(res.status, `upload failed (${res.status})`);
   }
 }
 
