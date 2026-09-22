@@ -5,7 +5,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useStore } from "@/state/store";
-import { c, f, r, s, squircle, STEEL_GRADIENT } from "@/theme/tokens";
+import { c, f, hexToRgba, r, s, squircle, STEEL_GRADIENT } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 import type { IconName } from "./Icon";
@@ -223,6 +223,50 @@ export function Chip({
       <Animated.Text style={[styles.chipText, !disabled && textStyle, disabled && !selected && styles.chipText]}>
         {label}
       </Animated.Text>
+    </AnimatedPressable>
+  );
+}
+
+/* ── Overlay pill ─────────────────────────────────────────────────────────── */
+
+/**
+ * Bordered white-on-dark pill for chrome sitting on top of full-bleed media
+ * (reel and photo overlays) — a static badge (grid-label chip, height 26) or,
+ * with `onPress`, an action pill (comment/share, icon + optional trailing
+ * text, height 38). Was hand-duplicated per call site across feed.tsx and
+ * PhotoViewer.tsx before this; not the same thing as `Chip` above, which is
+ * the light-surface, selectable variant used for category pickers.
+ */
+export function OverlayPill({
+  children,
+  height = 38,
+  gap,
+  onPress,
+  accessibilityLabel,
+  style,
+}: {
+  children: ReactNode;
+  height?: number;
+  gap?: number;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const content = (
+    <View style={[styles.overlayPill, { height, borderRadius: height / 2, gap }, style]}>{children}</View>
+  );
+  if (!onPress) return content;
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      scaleTo={0.9}
+      // Below the 44pt iOS minimum at either height this ships (26 or 38) —
+      // made up invisibly via hitSlop rather than growing the visible pill.
+      hitSlop={Math.max(0, Math.round((44 - height) / 2))}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      {content}
     </AnimatedPressable>
   );
 }
@@ -496,6 +540,15 @@ export const styles = StyleSheet.create({
   chipDisabled: { backgroundColor: c.surface3, borderColor: c.surface3 },
   chipText: { color: c.text, fontSize: f.xs, fontWeight: "600" },
   chipTextSelected: { color: c.app },
+  overlayPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: s[3],
+    borderWidth: 1.5,
+    borderColor: hexToRgba(c.onAccent, 0.4),
+    ...squircle,
+  },
   iconTile: { alignItems: "center", justifyContent: "center", backgroundColor: c.surface2, ...squircle },
   iconTileInk: { backgroundColor: c.text },
   progressTrack: { height: 4, borderRadius: r.full, backgroundColor: c.surface3, overflow: "hidden" },

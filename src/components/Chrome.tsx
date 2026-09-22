@@ -28,14 +28,14 @@ export function TopBar({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const onDark = tint === "dark";
-  const iconColor = onDark ? "#fff" : c.text;
+  const iconColor = onDark ? c.onAccent : c.text;
   // Only fetched when the badge is actually shown — no point paying for a
   // notifications round-trip on every screen that renders a bare TopBar.
   const { items: notifications } = useNotifications(showNotifications);
 
   return (
     <View style={[styles.topbar, { paddingTop: insets.top + s[2] }]}>
-      {showWordmark ? <Text style={[styles.wordmark, onDark && { color: "#fff" }]}>{wordmark}</Text> : <View />}
+      {showWordmark ? <Text style={[styles.wordmark, onDark && { color: c.onAccent }]}>{wordmark}</Text> : <View />}
       <View style={styles.tools}>
         {/* isInteractive glass has an intermittent bug where it briefly renders
             solid black instead of its lens effect; static glass avoids it.

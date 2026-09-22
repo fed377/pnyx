@@ -6,7 +6,7 @@ import { TopBar } from "@/components/Chrome";
 import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
 import { Media, isVideoUrl } from "@/components/Media";
-import { Card } from "@/components/Primitives";
+import { Card, OverlayPill } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
 import { VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
@@ -30,7 +30,7 @@ import { GRID_LIST, nearestPoint } from "@/lib/grids";
 import type { Content } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { c, display, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
+import { c, display, f, hexToRgba, r, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** The grid this post's scores are most confident on — shown as the card's category chip. */
 function primaryGrid(content: Content) {
@@ -123,13 +123,13 @@ function Reel({
             }
           >
             <View style={styles.chipRow}>
-              <View style={styles.chip}>
+              <OverlayPill height={26}>
                 <Text style={styles.chipText}>{grid.label}</Text>
-              </View>
+              </OverlayPill>
               {isVideoUrl(content.mediaUrl) && (
-                <View style={styles.chip}>
-                  <Icon name="play" size={11} color="#fff" filled />
-                </View>
+                <OverlayPill height={26}>
+                  <Icon name="play" size={11} color={c.onAccent} filled />
+                </OverlayPill>
               )}
             </View>
 
@@ -185,7 +185,7 @@ function Reel({
                 {content.context && <Text style={styles.context}>{content.context}</Text>}
                 {content.music && (
                   <View style={styles.music}>
-                    <Icon name="feed" size={13} color="rgba(255,255,255,0.7)" />
+                    <Icon name="feed" size={13} color={hexToRgba(c.onAccent, 0.7)} />
                     <Text style={styles.context}>{content.music}</Text>
                   </View>
                 )}
@@ -203,31 +203,22 @@ function Reel({
               locked={isVoteLocked(content.id)}
               onLockedPress={() => toast("Your vote is counted — it can't be changed")}
               disabled={own}
-              onDisabledPress={() => toast("You can't vote on your own post")}
               onVote={(power) => {
                 votedThisView.current = true;
                 vote(content.id, power, { reelIndex, viewedAt: viewedAt.current ?? undefined });
               }}
             />
-            <AnimatedPressable
+            <OverlayPill
               onPress={() => setComments(true)}
-              scaleTo={0.9}
-              style={styles.ghostPill}
-              accessibilityRole="button"
+              gap={6}
               accessibilityLabel={`${content.commentCount} comments`}
             >
-              <Icon name="comment" size={18} color="#fff" />
+              <Icon name="comment" size={18} color={c.onAccent} />
               <Text style={styles.pillCount}>{compactCount(content.commentCount)}</Text>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={share}
-              scaleTo={0.9}
-              style={styles.ghostPill}
-              accessibilityRole="button"
-              accessibilityLabel="Share this reel"
-            >
-              <Icon name="share" size={18} color="#fff" />
-            </AnimatedPressable>
+            </OverlayPill>
+            <OverlayPill onPress={share} gap={6} accessibilityLabel="Share this reel">
+              <Icon name="share" size={18} color={c.onAccent} />
+            </OverlayPill>
           </View>
 
           <Text style={styles.timestamp}>{timeAgoLong(content.createdAt)}</Text>
@@ -349,38 +340,17 @@ const styles = StyleSheet.create({
   },
   card: { borderRadius: r.lg, gap: s[3] },
   chipRow: { flexDirection: "row", gap: s[2] },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: s[3],
-    height: 26,
-    borderRadius: r.full,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.4)",
-    ...squircle,
-  },
-  chipText: { color: "#fff", fontSize: f.xs, fontWeight: "600" },
+  chipText: { color: c.onAccent, fontSize: f.xs, fontWeight: "600" },
   byline: { flexDirection: "row", alignItems: "center", gap: s[2] },
   name: { color: c.app, fontSize: f.sm, fontFamily: display.semibold },
-  handle: { color: "rgba(255,255,255,0.75)", fontSize: f.xs, marginTop: 1 },
-  sub: { color: "rgba(255,255,255,0.6)", fontSize: f.xs, marginTop: 1 },
+  handle: { color: hexToRgba(c.onAccent, 0.75), fontSize: f.xs, marginTop: 1 },
+  sub: { color: hexToRgba(c.onAccent, 0.6), fontSize: f.xs, marginTop: 1 },
   take: { color: c.app, fontSize: f.md, fontFamily: display.semibold, lineHeight: 22 },
   detail: { gap: s[2] },
-  context: { color: "rgba(255,255,255,0.7)", fontSize: f.xs },
+  context: { color: hexToRgba(c.onAccent, 0.7), fontSize: f.xs },
   music: { flexDirection: "row", alignItems: "center", gap: 6 },
-  hint: { color: "rgba(255,255,255,0.6)", fontSize: f.xs },
+  hint: { color: hexToRgba(c.onAccent, 0.6), fontSize: f.xs },
   actions: { flexDirection: "row", alignItems: "center", gap: s[2] },
-  ghostPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 38,
-    paddingHorizontal: s[3],
-    borderRadius: r.full,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.4)",
-    ...squircle,
-  },
-  pillCount: { color: "#fff", fontSize: f.sm, fontWeight: "600" },
-  timestamp: { color: "rgba(255,255,255,0.5)", fontSize: f.xs },
+  pillCount: { color: c.onAccent, fontSize: f.sm, fontWeight: "600" },
+  timestamp: { color: hexToRgba(c.onAccent, 0.5), fontSize: f.xs },
 });

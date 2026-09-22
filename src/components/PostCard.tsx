@@ -144,13 +144,15 @@ export function PostCard({
           onLockedPress={() => toast("Your vote is counted — it can't be changed")}
           onVote={(power) => vote(content.id, power)}
           disabled={own}
-          onDisabledPress={() => toast("You can't vote on your own posts")}
         />
         <View style={styles.secondary}>
           <AnimatedPressable
             onPress={() => setOpenComments(true)}
             scaleTo={0.9}
             style={styles.ghost}
+            // 34pt tall — 10pt under the 44pt iOS minimum, made up invisibly
+            // here rather than by growing the visible pill.
+            hitSlop={5}
             accessibilityRole="button"
             accessibilityLabel={`${content.commentCount} comments`}
           >
@@ -161,6 +163,7 @@ export function PostCard({
             onPress={share}
             scaleTo={0.9}
             style={styles.ghost}
+            hitSlop={5}
             accessibilityRole="button"
             accessibilityLabel="Share this post"
           >

@@ -1,14 +1,31 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { timeAgo } from "@/lib/format";
 import type { Content } from "@/lib/types";
 import { useAuthor } from "@/state/useAuthor";
 import { useComments } from "@/state/useComments";
 import type { LiveComment } from "@/state/useComments";
+import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
+
+const REPORT_REASONS = ["Spam", "Harassment or abuse", "Copyright", "Something else"] as const;
+
+function reportPost(contentId: string, reportContent: (contentId: string, reason: string) => Promise<void>) {
+  Alert.alert("Report this post", "What's wrong with it?", [
+    ...REPORT_REASONS.map((reason) => ({
+      text: reason,
+      onPress: () => {
+        reportContent(contentId, reason)
+          .then(() => Alert.alert("Reported", "Thanks — we'll take a look."))
+          .catch(() => Alert.alert("Couldn't send that", "Please try again."));
+      },
+    })),
+    { text: "Cancel", style: "cancel" as const },
+  ]);
+}
 
 function CommentRow({ cm, onVote }: { cm: LiveComment; onVote: (commentId: string, power: 1 | -1) => void }) {
   const author = useAuthor(cm.authorId);
@@ -58,6 +75,7 @@ export function CommentsSheet({
   onClose: () => void;
 }) {
   const { items: all, loading, addComment, castVote } = useComments(content.id, content.comments, content.createdAt);
+  const { reportContent } = useStore();
   const [draft, setDraft] = useState("");
 
   const submit = () => {
@@ -85,6 +103,15 @@ export function CommentsSheet({
         </View>
       )}
 
+      <Pressable
+        onPress={() => reportPost(content.id, reportContent)}
+        accessibilityRole="button"
+        accessibilityLabel="Report this post"
+        style={styles.report}
+      >
+        <Text style={styles.reportText}>Report this post</Text>
+      </Pressable>
+
       <View style={styles.form}>
         <TextInput
           value={draft}
@@ -101,6 +128,9 @@ export function CommentsSheet({
           disabled={!draft.trim()}
           accessibilityRole="button"
           accessibilityLabel="Post reply"
+          // 36x36 — 8pt under the 44pt iOS minimum, made up invisibly here
+          // rather than by growing the visible button.
+          hitSlop={4}
           style={[styles.send, !draft.trim() && { opacity: 0.4 }]}
         >
           <View style={{ transform: [{ rotate: "-90deg" }] }}>
@@ -121,6 +151,8 @@ const styles = StyleSheet.create({
   votes: { flexDirection: "row", gap: s[4], marginTop: 4 },
   voteBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   voteNum: { color: c.textFaint, fontSize: f.xs, fontWeight: "600" },
+  report: { alignItems: "center", marginTop: s[4] },
+  reportText: { color: c.textFaint, fontSize: f.xs, textDecorationLine: "underline" },
   form: {
     flexDirection: "row",
     alignItems: "center",

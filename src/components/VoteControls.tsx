@@ -1,5 +1,5 @@
 import type { VotePower } from "@/lib/types";
-import { c, f, s } from "@/theme/tokens";
+import { c, f, hexToRgba, s } from "@/theme/tokens";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -30,6 +30,9 @@ export const RAIL_GAP = s[3];
 export const RAIL_LABEL_GAP = 4;
 /** Point in the hold where the icon flips to the strong reaction. */
 const PREVIEW_AT = 0.55;
+/** iOS HIG minimum tappable target — the visible glyph can (and here does)
+ * stay smaller; hitSlop makes up the difference invisibly. */
+const MIN_TOUCH = 44;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -58,7 +61,6 @@ export function VoteControls({
   layout = "row",
   size = 42,
   disabled = false,
-  onDisabledPress,
   locked = false,
   onLockedPress,
   overlay = false,
@@ -71,8 +73,11 @@ export function VoteControls({
   /** "pill" is a labeled capsule (icon + count) for a card sitting on a dark surface. */
   layout?: "row" | "rail" | "pill";
   size?: number;
+  /** Your own post — every call site uses this for exactly that, never any
+   * other reason, so it renders as a static "Your post" label instead of a
+   * dimmed-but-still-pressable vote control (a guaranteed-failure tap
+   * otherwise invites itself every time you scroll past your own content). */
   disabled?: boolean;
-  onDisabledPress?: () => void;
   /** The vote has committed and can no longer be changed. */
   locked?: boolean;
   onLockedPress?: () => void;
@@ -93,6 +98,13 @@ export function VoteControls({
   const pendingAnim = useRef<Animated.CompositeAnimation | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const committed = useRef(false);
+  // True once the current press has been dragged outside the button during a
+  // hold. Previously nothing let you back out of a hold once started — an
+  // early release still committed a light vote, and letting the 1.5s timer
+  // run out always committed a permanent Love/Hate, with no way to abort
+  // either. Dragging off is the recognized native pattern for "changed my
+  // mind" mid-press; see onTouchMove below.
+  const draggedOff = useRef(false);
   const popUp = usePop(current === 2 || current === 1);
   const popDown = usePop(current === -2 || current === -1);
 
@@ -139,9 +151,20 @@ export function VoteControls({
     [clearTimers, onVote, progress],
   );
 
+  // Stops the hold and commits nothing — `clearTimers()` stops the
+  // in-flight Animated.timing, so its own completion callback fires with
+  // `finished: false` and the `if (finished) commit(...)` guard in begin()
+  // below never runs. This is the only path that ends a press with no vote
+  // at all, light or strong.
+  const cancel = useCallback(() => {
+    clearTimers();
+    setHolding(null);
+    setPreview(false);
+    progress.setValue(0);
+  }, [clearTimers, progress]);
+
   const begin = useCallback(
     (dir: Dir) => {
-      if (disabled) return;
       // Reset for this press cycle — `committed` only exists to stop
       // `release()` from double-firing `commit()` after the hold timer
       // already did (see its own check below), *within* one press. Checking
@@ -150,6 +173,7 @@ export function VoteControls({
       // press after the very first one on this button ever committed —
       // including the second tap meant to cancel a still-pending vote.
       committed.current = false;
+      draggedOff.current = false;
       setHolding(dir);
       setPreview(false);
       progress.setValue(0);
@@ -167,27 +191,45 @@ export function VoteControls({
         if (finished) commit(dir === 1 ? 2 : -2);
       });
     },
-    [commit, disabled, progress],
+    [commit, progress],
   );
 
   const release = useCallback(
     (dir: Dir) => {
-      if (disabled) return;
+      // Already cancelled by onTouchMove — state is already reset, and the
+      // finger lifting outside the button shouldn't retroactively vote.
+      if (draggedOff.current) return;
       clearTimers();
       setHolding(null);
       setPreview(false);
       progress.setValue(0);
       if (!committed.current) commit(dir === 1 ? 1 : -1);
     },
-    [clearTimers, commit, disabled, progress],
+    [clearTimers, commit, progress],
   );
+
+  // Your own post: nothing here is ever votable, so nothing here is
+  // pressable — a static label, not a dimmed button that still invites a
+  // guaranteed-failure tap every time you scroll past your own content.
+  if (disabled) {
+    return (
+      <View style={styles.ownPost}>
+        <Text style={[styles.ownPostText, (overlay || layout === "pill") && styles.ownPostTextOverlay]}>
+          Your post
+        </Text>
+      </View>
+    );
+  }
 
   // On the rail the button box hugs the glyph, so the gaps in the stylesheet
   // are the gaps you see; the padding that would have made the target big
-  // enough moves into hitSlop instead.
+  // enough moves into hitSlop instead. Row and pill both render at `size`
+  // itself, and pill in particular ships at 38 (feed.tsx/PhotoViewer) —
+  // below the 44pt minimum — so the same hitSlop top-up applies there too,
+  // not just on the rail.
   const glyph = Math.round(size * 0.6);
   const box = layout === "rail" ? glyph : size;
-  const slop = Math.round((size - box) / 2);
+  const slop = Math.max(0, Math.round((MIN_TOUCH - box) / 2));
 
   const ringR = box / 2 + 2;
   const circ = 2 * Math.PI * ringR;
@@ -225,10 +267,17 @@ export function VoteControls({
     // No chrome around the button, and no colour on the glyph either — a vote
     // reads as a *filled* icon rather than a tinted one. The progress ring is
     // the only thing that carries the direction's colour.
-    const fg = overlay || layout === "pill" ? "#fff" : active || isHolding ? c.text : c.textDim;
+    const fg = overlay || layout === "pill" ? c.onAccent : active || isHolding ? c.text : c.textDim;
     // A settled vote keeps its full presence; the road not taken fades out.
-    const opacity = disabled ? 0.35 : locked && !active ? 0.28 : 1;
+    const opacity = locked && !active ? 0.28 : 1;
     const count = layout === "pill" ? (dir === 1 ? counts?.up : counts?.down) : undefined;
+    // The accessibilityLabel below already says "tap again to cancel" — a
+    // sighted user gets no equivalent unless the cancel window shows up
+    // somewhere visible too, so the pill's existing text slot (normally the
+    // %) and the rail's existing caption both say "Undo" for the direction
+    // that's actually pending.
+    const sideText = layout === "pill" ? (isPending ? "Undo" : count !== undefined ? `${count}%` : undefined) : undefined;
+    const belowCaption = layout === "rail" ? label : layout === "row" && isPending ? "Undo" : undefined;
 
     return (
       <View key={dir} style={styles.slot}>
@@ -236,16 +285,29 @@ export function VoteControls({
           // Pressable's own `disabled` swallows the press outright, which would
           // also swallow the chance to explain why nothing happened.
           onPressIn={() => {
-            if (disabled) return onDisabledPress?.();
             if (locked) return onLockedPress?.();
             begin(dir);
           }}
           onPressOut={() => {
-            if (disabled || locked) return;
+            if (locked) return;
             release(dir);
           }}
+          // Dragging off mid-hold cancels rather than committing — the
+          // recognized native "changed my mind" gesture. Only matters while
+          // this specific button is the one being held; a generous margin
+          // (matching the button's own hitSlop) avoids canceling on the
+          // ordinary small finger drift a real hold always has.
+          onTouchMove={(e) => {
+            if (locked || holding !== dir || draggedOff.current) return;
+            const { locationX, locationY } = e.nativeEvent;
+            const margin = slop + 8;
+            if (locationX < -margin || locationX > box + margin || locationY < -margin || locationY > box + margin) {
+              draggedOff.current = true;
+              cancel();
+            }
+          }}
           accessibilityRole="button"
-          accessibilityState={{ disabled: disabled || locked, selected: active }}
+          accessibilityState={{ disabled: locked, selected: active }}
           accessibilityLabel={
             locked
               ? active
@@ -302,9 +364,13 @@ export function VoteControls({
               filled={active || isHolding}
             />
           </Reanimated.View>
-          {count !== undefined && <Text style={styles.pillCount}>{count}%</Text>}
+          {sideText !== undefined && <Text style={styles.pillCount}>{sideText}</Text>}
         </Pressable>
-        {layout === "rail" && <Text style={styles.caption}>{label}</Text>}
+        {belowCaption !== undefined && (
+          <Text style={[styles.caption, (overlay || layout === "pill") && styles.captionOverlay]}>
+            {belowCaption}
+          </Text>
+        )}
       </View>
     );
   };
@@ -328,13 +394,20 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: s[3],
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderColor: hexToRgba(c.onAccent, 0.4),
   },
-  pillCount: { color: "#fff", fontSize: f.sm, fontWeight: "600" },
+  pillCount: { color: c.onAccent, fontSize: f.sm, fontWeight: "600" },
   ring: { alignItems: "center", justifyContent: "center", overflow: "visible" },
+  // Readable on a light card by default (the only place "row" is actually
+  // used); the overlay variant below is for a dark/reel surface instead.
   caption: {
-    color: "rgba(236,237,243,0.85)",
+    color: c.textDim,
     fontSize: f.xs,
     fontWeight: "500",
   },
+  captionOverlay: { color: "rgba(236,237,243,0.85)" },
+  ownPost: { justifyContent: "center", paddingVertical: s[2] },
+  ownPostText: { color: c.textFaint, fontSize: f.sm, fontWeight: "600" },
+  // On a dark/overlay surface c.textFaint reads too close to the background.
+  ownPostTextOverlay: { color: hexToRgba(c.onAccent, 0.6) },
 });

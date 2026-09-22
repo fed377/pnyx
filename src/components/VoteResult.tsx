@@ -2,13 +2,16 @@ import { StyleSheet, Text, View } from "react-native";
 import { friendVotes, POWER_LABEL } from "@/lib/feed";
 import type { Content, Person, VotePower } from "@/lib/types";
 import { useFriendVotes } from "@/state/useFriendVotes";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, f, hexToRgba, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 
+// "like"/"dislike" are a lighter tint of the same "love"/"hate" hue (c.up /
+// c.down), derived rather than hand-picked so the two rows in the bar always
+// share one source color.
 const SEGMENTS = [
   { key: "love", label: "Loved", color: c.up },
-  { key: "like", label: "Liked", color: "rgba(63,191,143,0.45)" },
-  { key: "dislike", label: "Disliked", color: "rgba(229,98,111,0.45)" },
+  { key: "like", label: "Liked", color: hexToRgba(c.up, 0.45) },
+  { key: "dislike", label: "Disliked", color: hexToRgba(c.down, 0.45) },
   { key: "hate", label: "Hated", color: c.down },
 ] as const;
 
