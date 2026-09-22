@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useAnalyticsLifecycle } from "@/analytics/analytics";
 import { AuthGate } from "@/components/AuthGate";
+import { PostStatusSnackbar } from "@/components/PostStatusSnackbar";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ToastProvider } from "@/components/Toast";
 import { BlurTargetProvider } from "@/state/blurTarget";
@@ -62,6 +63,7 @@ export default function RootLayout() {
                   }}
                 />
                 <SyncBanner />
+                <PostStatusSnackbar />
                 <AuthGate />
                 <PushRegistration />
               </BlurTargetProvider>

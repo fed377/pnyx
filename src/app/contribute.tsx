@@ -14,11 +14,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Icon } from "@/components/Icon";
 import { Btn, Chip, IconTile } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
+import { TERMS_URL } from "@/api/client";
 import { GRID_LIST } from "@/lib/grids";
 import type { GridId } from "@/lib/types";
 import { useStore } from "@/state/store";
@@ -58,7 +60,7 @@ function Preview({ picked }: { picked: Picked }) {
 const MAX = 220;
 
 export default function ContributeScreen() {
-  const { state, publish } = useStore();
+  const { state, submitPost } = useStore();
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -66,7 +68,6 @@ export default function ContributeScreen() {
   const [picked, setPicked] = useState<GridId[]>([]);
   const [media, setMedia] = useState<Picked | null>(null);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
 
   // The keyboard overlays the screen rather than resizing it, so the scroller
   // needs to know how much room it is losing at the bottom.
@@ -131,28 +132,23 @@ export default function ContributeScreen() {
     });
   };
 
-  const canPost = text.trim().length >= 8 && picked.length > 0 && media !== null && !busy;
+  const canPost = text.trim().length >= 8 && picked.length > 0 && media !== null;
 
-  const submit = async () => {
+  // Posting runs in the background from here — the server scores the post,
+  // the client no longer guesses at it — so this returns to wherever you
+  // came from immediately instead of blocking on the upload; the persistent
+  // PostStatusSnackbar (mounted at the root) tracks progress from there.
+  const submit = () => {
     const body = text.trim();
     if (!canPost || !media) return;
-    setBusy(true);
-    try {
-      // The server scores the post; the client no longer guesses at it.
-      await publish({
-        type: media.kind,
-        body,
-        categories: picked,
-        fileUri: media.uri,
-        mediaType: media.mediaType,
-      });
-      toast("Posted. It's in the queue for moderation.");
-      router.replace("/profile");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Could not post that");
-    } finally {
-      setBusy(false);
-    }
+    submitPost({
+      type: media.kind,
+      body,
+      categories: picked,
+      fileUri: media.uri,
+      mediaType: media.mediaType,
+    });
+    router.back();
   };
 
   return (
@@ -163,14 +159,12 @@ export default function ContributeScreen() {
         </Pressable>
         <Text style={styles.headerTitle}>Contribute</Text>
         <Pressable
-          onPress={() => void submit()}
+          onPress={submit}
           disabled={!canPost}
           accessibilityRole="button"
           accessibilityLabel="Post"
         >
-          <Text style={[styles.headerSide, styles.headerPost, !canPost && styles.headerPostDisabled]}>
-            {busy ? "Posting…" : "Post"}
-          </Text>
+          <Text style={[styles.headerSide, styles.headerPost, !canPost && styles.headerPostDisabled]}>Post</Text>
         </Pressable>
       </View>
 
@@ -240,7 +234,15 @@ export default function ContributeScreen() {
         </View>
 
         <Text style={styles.footnote}>
-          Respect moderation. By posting you accept the terms. You cannot vote on your own take.
+          Respect moderation. By posting you accept{" "}
+          <Text
+            style={styles.footnoteLink}
+            accessibilityRole="link"
+            onPress={() => TERMS_URL && void WebBrowser.openBrowserAsync(TERMS_URL)}
+          >
+            the terms
+          </Text>
+          . You cannot vote on your own take.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -297,6 +299,7 @@ const styles = StyleSheet.create({
   },
   thumb: { width: 72, height: 72, borderRadius: r.md, backgroundColor: c.surface2, ...squircle },
   footnote: { color: c.textFaint, fontSize: f.xs, lineHeight: 17 },
+  footnoteLink: { textDecorationLine: "underline" },
   gate: {
     alignItems: "flex-start",
     gap: s[3],

@@ -216,6 +216,12 @@ type Store = {
   saveAvatar: (fileUri: string, mediaType: string) => Promise<void>;
   forgetMe: () => Promise<void>;
   publish: (input: PublishInput) => Promise<void>;
+  /** Backgrounded: starts the upload/create and returns immediately, tracked
+   * via postStatus/postError instead of a promise the caller awaits. */
+  submitPost: (input: PublishInput) => void;
+  postStatus: "idle" | "uploading" | "posted" | "failed";
+  postError: string | null;
+  dismissPostStatus: () => void;
 
   alignmentWith: (person: Person) => number;
   /** The pending reaction if there is one, else the committed one. */
@@ -267,6 +273,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // been cleared yet. AuthGate covers the app while this is false.
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Posting runs in the background now — Contribute navigates back the
+  // instant you tap Post instead of blocking on the upload, so this is what
+  // the persistent bottom snackbar (PostStatusSnackbar) reads to show
+  // progress on whatever screen you land back on.
+  const [postStatus, setPostStatus] = useState<"idle" | "uploading" | "posted" | "failed">("idle");
+  const [postError, setPostError] = useState<string | null>(null);
 
   // Votes cast but not yet committed (see VOTE_GRACE_MS) — shown immediately,
   // cancellable, and not reflected in state.votes/reactions until the timer
@@ -783,6 +796,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [positions, remote, token, callWithRetry],
   );
 
+  // Fire-and-forget wrapper: the caller (Contribute) navigates away
+  // immediately rather than awaiting this — status is tracked here instead
+  // of on that now-unmounted screen, so PostStatusSnackbar can show it from
+  // wherever you land back on.
+  const submitPost = useCallback(
+    (input: PublishInput) => {
+      setPostStatus("uploading");
+      setPostError(null);
+      publish(input)
+        .then(() => setPostStatus("posted"))
+        .catch((e) => {
+          setPostStatus("failed");
+          setPostError(e instanceof Error ? e.message : "Could not post that");
+        });
+    },
+    [publish],
+  );
+
+  const dismissPostStatus = useCallback(() => {
+    setPostStatus("idle");
+    setPostError(null);
+  }, []);
+
   const unlocked = voteCount >= UNLOCK_AT;
   // Black and white until a real color is actually earned — no placeholder
   // hue standing in for the Mind-grid color before then.
@@ -823,6 +859,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveAvatar,
       forgetMe,
       publish,
+      submitPost,
+      postStatus,
+      postError,
+      dismissPostStatus,
       // Remotely the server's number wins: a private person's coordinates are
       // withheld, so recomputing here would be wrong.
       alignmentWith: (person) => alignments[person.id] ?? totalAlignment(positions, person.positions),
@@ -838,7 +878,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish,
+      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
       alignments, pending,
     ],
   );
