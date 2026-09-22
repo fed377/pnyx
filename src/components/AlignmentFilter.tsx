@@ -2,6 +2,7 @@ import Slider from "@react-native-community/slider";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import Animated, { FadeIn, FadeOut, Layout } from "react-native-reanimated";
+import { track } from "@/analytics/analytics";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
@@ -32,6 +33,7 @@ export function AlignmentFilter() {
           <Slider
             value={value}
             onValueChange={(v) => dispatch({ type: "filter", value: Math.round(v / 5) * 5 })}
+            onSlidingComplete={(v) => track("alignment_filter_used", { value: Math.round(v / 5) * 5 })}
             minimumValue={0}
             maximumValue={90}
             step={5}

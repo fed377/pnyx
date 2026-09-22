@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { track } from "@/analytics/analytics";
 import { api, apiConfigured, type Session } from "@/api/client";
 import { signInWithGoogleNative } from "@/api/googleNative";
 import { sessionFromRedirect } from "@/api/oauth";
@@ -20,8 +21,18 @@ type SessionStore = {
   /** False until the stored session has been read back. */
   ready: boolean;
   configured: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<SignUpResult>;
+  /** `identifier` is an email or a handle. */
+  signIn: (identifier: string, password: string) => Promise<void>;
+  /** `birthday` is YYYY-MM-DD, collected on the create-account screen. */
+  signUp: (
+    email: string,
+    password: string,
+    birthday: string,
+    name?: string,
+    handle?: string,
+  ) => Promise<SignUpResult>;
+  /** Live "is this handle free" check for the create-account screen. */
+  handleAvailable: (handle: string) => Promise<boolean>;
   /** The system Google account picker when a native build has one configured;
    * otherwise opens Google in a browser and comes back through the app's deep link. */
   signInWithGoogle: () => Promise<OAuthResult>;
@@ -34,9 +45,10 @@ type SessionStore = {
    * nothing to verify and `currentPassword` should be omitted.
    */
   changePassword: (currentPassword: string | undefined, newPassword: string) => Promise<void>;
-  /** Emails a recovery link — always resolves, whether or not the address
-   * is actually registered. The link opens `auth-callback.tsx`. */
-  forgotPassword: (email: string) => Promise<void>;
+  /** Emails a recovery link — `identifier` is an email or a handle, and this
+   * always resolves the same way whether or not the account is actually
+   * registered. The link opens `auth-callback.tsx`. */
+  forgotPassword: (identifier: string) => Promise<void>;
   /**
    * The other half of that link: `redirectUrl` is the raw deep link
    * `auth-callback.tsx` was opened with. Sets the new password using the
@@ -121,14 +133,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       session,
       ready,
       configured: apiConfigured,
-      signIn: async (email, password) => {
-        await store(await api.signIn(email.trim(), password));
+      signIn: async (identifier, password) => {
+        await store(await api.signIn(identifier.trim(), password));
       },
-      signUp: async (email, password, name) => {
-        const res = await api.signUp(email.trim(), password, name?.trim() || undefined);
+      signUp: async (email, password, birthday, name, handle) => {
+        const res = await api.signUp(
+          email.trim(),
+          password,
+          birthday,
+          name?.trim() || undefined,
+          handle?.trim() || undefined,
+        );
+        track("signup_completed");
         if ("pending" in res) return { pending: true, message: res.message };
         await store(res);
         return { pending: false };
+      },
+      handleAvailable: async (handle) => {
+        const res = await api.handleAvailable(handle.trim());
+        return res.available;
       },
       signInWithGoogle: async () => {
         // Prefer the system account picker (a custom dev build only — native
@@ -174,9 +197,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (!t) throw new Error("not signed in");
         await api.changePassword(t, currentPassword, newPassword);
       },
-      forgotPassword: async (email) => {
+      forgotPassword: async (identifier) => {
         const redirectTo = Linking.createURL("auth-callback");
-        await api.forgotPassword(email.trim(), redirectTo);
+        await api.forgotPassword(identifier.trim(), redirectTo);
       },
       completePasswordReset: async (redirectUrl, newPassword) => {
         // This session comes from the recovery link, not a normal sign-in —

@@ -10,6 +10,14 @@ import type { GridId, Positions, PrivacyTier, Scores, Vote, VotePower } from "@/
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
 export const apiConfigured = API_URL.length > 0;
 
+/** Served by the backend (src/legalRoutes.ts) — real pages, not decorative
+ * text. Empty (falls back to nothing tappable) when no API is configured,
+ * same as everything else that needs a backend. */
+export const TERMS_URL = apiConfigured ? `${API_URL}/legal/terms` : "";
+export const PRIVACY_URL = apiConfigured ? `${API_URL}/legal/privacy` : "";
+export const EULA_URL = apiConfigured ? `${API_URL}/legal/eula` : "";
+export const DMCA_URL = apiConfigured ? `${API_URL}/legal/dmca` : "";
+
 /* ── Wire types (what the backend actually returns) ─────────────────────────── */
 
 export type Session = {
@@ -37,6 +45,10 @@ export type ApiProfile = {
    * viewed or ranked profile (how you want to be notified is nobody else's
    * business). */
   notifPrefs?: { votes: boolean; replies: boolean; alignments: boolean };
+  /** ISO date (YYYY-MM-DD), self-reported at onboarding. Present only on your
+   * own `/me`, same as notifPrefs — the server enforces the minimum age
+   * server-side before `onboarded` can be set to true. */
+  birthday?: string | null;
   createdAt: string;
 };
 
@@ -239,14 +251,22 @@ async function request<T>(path: string, opts: Options = {}): Promise<T> {
 export const api = {
   health: () => request<{ ok: boolean; unlockAt: number }>("/health"),
 
-  signUp: (email: string, password: string, name?: string) =>
+  /** `birthday` is YYYY-MM-DD — collected on the create-account screen and
+   * age-checked server-side before the account is even created. */
+  signUp: (email: string, password: string, birthday: string, name?: string, handle?: string) =>
     request<Session | { pending: true; message: string }>("/auth/signup", {
       method: "POST",
-      body: { email, password, ...(name ? { name } : {}) },
+      body: { email, password, birthday, ...(name ? { name } : {}), ...(handle ? { handle } : {}) },
     }),
 
-  signIn: (email: string, password: string) =>
-    request<Session>("/auth/signin", { method: "POST", body: { email, password } }),
+  /** `identifier` is an email or a handle — the server resolves a handle to
+   * an email before authenticating. */
+  signIn: (identifier: string, password: string) =>
+    request<Session>("/auth/signin", { method: "POST", body: { identifier, password } }),
+
+  /** Live availability check for the create-account screen. */
+  handleAvailable: (handle: string) =>
+    request<{ available: boolean }>(`/auth/handle-check?handle=${encodeURIComponent(handle)}`),
 
   /** Supabase's Google authorize URL, for the app to open in a browser — the
    * fallback path for Expo Go / web, where the native account picker isn't available. */
@@ -268,7 +288,17 @@ export const api = {
     patch: Partial<
       Pick<
         ApiProfile,
-        "name" | "handle" | "pronouns" | "bio" | "city" | "avatarUrl" | "privacyTier" | "gridPublic" | "onboarded" | "notifPrefs"
+        | "name"
+        | "handle"
+        | "pronouns"
+        | "bio"
+        | "city"
+        | "avatarUrl"
+        | "privacyTier"
+        | "gridPublic"
+        | "onboarded"
+        | "notifPrefs"
+        | "birthday"
       >
     >,
   ) => request<ApiMe>("/me", { method: "PATCH", token, body: patch }),
@@ -288,10 +318,11 @@ export const api = {
       body: { ...(currentPassword ? { currentPassword } : {}), newPassword },
     }),
 
-  /** Always resolves the same way regardless of whether the email is
-   * registered — the server never reveals that either way. */
-  forgotPassword: (email: string, redirect: string) =>
-    request<{ ok: boolean }>("/auth/forgot-password", { method: "POST", body: { email, redirect } }),
+  /** `identifier` is an email or a handle. Always resolves the same way
+   * regardless of whether the account is registered — the server never
+   * reveals that either way. */
+  forgotPassword: (identifier: string, redirect: string) =>
+    request<{ ok: boolean }>("/auth/forgot-password", { method: "POST", body: { identifier, redirect } }),
 
   /** `token` here is the short-lived recovery session's own access token
    * (from the emailed link), not a normal signed-in session's. */
@@ -328,6 +359,18 @@ export const api = {
       method: following ? "PUT" : "DELETE",
       token,
     }),
+
+  /** Also unfollows both directions server-side (see PnyxService.setBlock). */
+  block: (token: string, id: string, blocked: boolean) =>
+    request<{ blocked: boolean }>(`/blocks/${id}`, {
+      method: blocked ? "PUT" : "DELETE",
+      token,
+    }),
+
+  /** No admin surface reads these back yet (see MISSING_FEATURES.md) — logged
+   * for an operator to review directly against the store. */
+  reportContent: (token: string, contentId: string, reason: string) =>
+    request<{ ok: boolean }>(`/content/${contentId}/report`, { method: "POST", token, body: { reason } }),
 
   /** Step one: a signed URL to PUT the file straight to storage. */
   uploadTicket: (token: string, contentType: string) =>

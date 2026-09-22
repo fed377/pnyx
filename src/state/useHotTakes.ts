@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { track } from "@/analytics/analytics";
 import { api } from "@/api/client";
 import { HOT_TAKES } from "@/lib/data";
 import type { GridId, HotTake } from "@/lib/types";
@@ -61,12 +62,14 @@ export function useHotTakes() {
           createdAt: Date.now(),
         };
         setItems((prev) => [stub, ...(prev ?? [])]);
+        track("hot_take_posted");
         return;
       }
       const t = await token();
       if (!t) throw new Error("not signed in");
       const row = await api.postHotTake(t, category, text);
       setItems((prev) => [fromApi(row), ...(prev ?? [])]);
+      track("hot_take_posted");
     },
     [remote, token, myId],
   );

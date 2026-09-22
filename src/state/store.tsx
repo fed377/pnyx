@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AppState } from "react-native";
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { identifyUser, resetAnalyticsUser, track, VOTE_TYPE_LABEL } from "@/analytics/analytics";
 import { api, ApiError, uploadToSignedUrl } from "@/api/client";
 import { toContent, toPerson, toSplit } from "@/api/adapters";
 import { computePositions, totalAlignment, UNLOCK_AT, VOTE_GRACE_MS } from "@/lib/algorithm";
@@ -12,6 +13,9 @@ import { c, mixHex } from "@/theme/tokens";
 import { useSession } from "./session";
 
 const STORAGE_KEY = "pnyx.state.v1";
+
+/** Analytics checkpoints below the full unlock (see fireUnlockMilestones). */
+const UNLOCK_MILESTONES = [10, 25, 40];
 
 export type Profile = {
   handle: string;
@@ -29,6 +33,9 @@ type State = {
   /** contentId → the vote cast on it, for showing the current reaction. */
   reactions: Record<string, VotePower>;
   follows: Record<string, boolean>;
+  /** Local-only in offline/demo mode — real enforcement (feed filtering,
+   * messaging) is server-side and only meaningful once signed in. */
+  blocked: Record<string, boolean>;
   gridPublic: Record<GridId, boolean>;
   /** Local notification preferences — nothing actually delivers push notifications
    * yet, but the toggles themselves are real, persisted state. */
@@ -37,17 +44,9 @@ type State = {
   premium: boolean;
   /** Minimum alignment % for the filter used across Home and People. */
   alignmentFilter: number;
-  /** Has completed the onboarding screen (username, birthday, bio). */
-  onboarded: boolean;
   /** Chose "Explore without an account" on the sign-in screen — skips back to
    * it on the next "forget"/log-out instead of leaving the gate permanently open. */
   skipped: boolean;
-  /**
-   * ISO date (YYYY-MM-DD), self-reported at onboarding. Kept only for the
-   * under-16 gate — there's no backend column for it yet (see PNYX
-   * Monetization/Spec), so it never leaves the device.
-   */
-  birthday: string | null;
 };
 
 const initialFollows = Object.fromEntries(PEOPLE.map((p) => [p.id, p.following]));
@@ -57,14 +56,13 @@ const initialState: State = {
   votes: [],
   reactions: {},
   follows: initialFollows,
+  blocked: {},
   gridPublic: { values: true, mind: true, soul: true, culture: false, focus: true },
   notifPrefs: { votes: true, replies: true, alignments: false },
   myPosts: [],
   premium: false,
   alignmentFilter: 0,
-  onboarded: false,
   skipped: false,
-  birthday: null,
 };
 
 type Action =
@@ -73,6 +71,7 @@ type Action =
   | { type: "serverVotes"; votes: Vote[] }
   | { type: "toggleFollow"; personId: string }
   | { type: "setFollow"; personId: string; following: boolean }
+  | { type: "setBlock"; personId: string; blocked: boolean }
   | { type: "profile"; patch: Partial<Profile> }
   | { type: "gridPublic"; grid: GridId; value: boolean }
   /** Whole-object replace, not a per-key patch — `saveNotifPrefs()` merges
@@ -85,11 +84,6 @@ type Action =
    * is no UI path that dispatches this with a locally-chosen value. */
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
-  | { type: "onboard"; birthday: string }
-  /** The server's own record of onboarding completion, applied on refresh —
-   * unlike "onboard", this never touches birthday (never sent to the server
-   * at all) and can be true without this device ever having run Onboarding. */
-  | { type: "onboardedFromServer"; value: boolean }
   | { type: "skip" }
   | { type: "forget" };
 
@@ -111,6 +105,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, follows: { ...state.follows, [action.personId]: !state.follows[action.personId] } };
     case "setFollow":
       return { ...state, follows: { ...state.follows, [action.personId]: action.following } };
+    case "setBlock":
+      return { ...state, blocked: { ...state.blocked, [action.personId]: action.blocked } };
     case "profile":
       return { ...state, profile: { ...state.profile, ...action.patch } };
     case "gridPublic":
@@ -123,13 +119,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, premium: action.value };
     case "post":
       return { ...state, myPosts: [action.content, ...state.myPosts] };
-    case "onboard":
-      return { ...state, onboarded: true, birthday: action.birthday };
-    case "onboardedFromServer":
-      // One-directional: the server can confirm "yes, already onboarded"
-      // (true) but a false here must never un-onboard someone who just
-      // finished the form this session, ahead of that PATCH landing.
-      return action.value ? { ...state, onboarded: true } : state;
     case "skip":
       return { ...state, skipped: true };
     case "forget":
@@ -166,7 +155,7 @@ type Store = {
   mode: "local" | "remote";
   /** The signed-in user's id — a Supabase uuid remotely, the sample id locally. */
   myId: string;
-  /** False until the persisted store has been read back — gates showing onboarding. */
+  /** False until the persisted store has been read back. */
   hydrated: boolean;
   loading: boolean;
   error: string | null;
@@ -203,11 +192,19 @@ type Store = {
    * same direction; only once the window elapses does it commit into the
    * movement equation and reach the server. See `pendingUntilOf`.
    */
-  vote: (contentId: string, power: VotePower) => void;
+  vote: (contentId: string, power: VotePower, meta?: { reelIndex?: number; viewedAt?: number }) => void;
   /** Local +1 to a content's own commentCount, for immediate feedback right
    * after a comment actually posts — see the function's own comment. */
   bumpCommentCount: (contentId: string) => void;
   toggleFollow: (personId: string) => Promise<void>;
+  /** Also unfollows both directions server-side (see PnyxService.setBlock).
+   * No-op in local/offline mode beyond the button's own state — there's no
+   * real backend to enforce it against there anyway. */
+  toggleBlock: (personId: string) => Promise<void>;
+  /** Fire-and-forget — no admin surface reads these back yet (see
+   * MISSING_FEATURES.md), so there's nothing for the UI to reflect beyond a
+   * one-time confirmation. No-op in local/offline mode. */
+  reportContent: (contentId: string, reason: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
   saveNotifPrefs: (patch: Partial<State["notifPrefs"]>) => Promise<void>;
   /** Uploads a picked photo (through the same signed-URL flow post media
@@ -215,8 +212,6 @@ type Store = {
   saveAvatar: (fileUri: string, mediaType: string) => Promise<void>;
   forgetMe: () => Promise<void>;
   publish: (input: PublishInput) => Promise<void>;
-  /** Saves the handle and bio (remotely too, when signed in) and records the birthday locally. */
-  completeOnboarding: (input: { handle: string; bio: string; birthday: string }) => Promise<void>;
 
   alignmentWith: (person: Person) => number;
   /** The pending reaction if there is one, else the committed one. */
@@ -229,6 +224,7 @@ type Store = {
    */
   isVoteLocked: (contentId: string) => boolean;
   isFollowing: (personId: string) => boolean;
+  isBlocked: (personId: string) => boolean;
   clearStorage: () => void;
 };
 
@@ -242,6 +238,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const remote = configured && session !== null;
   const mode: Store["mode"] = remote ? "remote" : "local";
   const myId = remote ? session.userId : ME_ID;
+
+  // Only a real signed-in account gets identified (as a hash — see
+  // identifyUser's own comment); local/offline mode's ME_ID is a sample
+  // profile, not a real account, so it stays on PostHog's anonymous id.
+  useEffect(() => {
+    if (remote) void identifyUser(myId);
+    else resetAnalyticsUser();
+  }, [remote, myId]);
 
   // Server-owned slices, only populated in remote mode.
   const [serverPositions, setServerPositions] = useState<Positions | null>(null);
@@ -335,11 +339,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setServerPositions(me.positions);
       setServerVoteCount(me.voteCount);
-      // Onboarding-completion is an account fact, not a device one — this is
-      // what lets a sign-out/sign-in, a reinstall, or a second device see an
-      // already-onboarded account correctly instead of showing Onboarding
-      // again just because local state doesn't remember it.
-      dispatch({ type: "onboardedFromServer", value: me.onboarded });
       // Real account fact, not a self-serve toggle — see the "premium" action's
       // own comment. Nothing sets this except a direct DB edit right now.
       dispatch({ type: "premium", value: me.premium });
@@ -457,13 +456,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // The real work — dispatched into the movement equation and, remotely,
   // sent to the server. Only ever called once a vote's grace window elapses.
+  // Only fired from here (once a vote actually commits, not on a pending
+  // tap), and only from the count that was true right before this specific
+  // vote — never from a passive refresh() — so an already-unlocked account
+  // doesn't refire "identity_unlocked" every time it reloads.
+  const fireUnlockMilestones = useCallback((before: number, after: number) => {
+    for (const m of UNLOCK_MILESTONES) {
+      if (before < m && after >= m) track("unlock_progress", { votes: m });
+    }
+    if (before < UNLOCK_AT && after >= UNLOCK_AT) track("identity_unlocked");
+  }, []);
+
   const commitVote = useCallback(
     async (contentId: string, power: VotePower) => {
       const content = contentById[contentId];
       if (!content) return;
 
       if (!remote) {
+        const before = state.votes.length;
         dispatch({ type: "vote", contentId, power, scores: content.scores });
+        fireUnlockMilestones(before, before + 1);
         return;
       }
 
@@ -473,6 +485,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         const res = await callWithRetry(t, (tok) => api.vote(tok, contentId, power));
         if (res) {
+          fireUnlockMilestones(serverVoteCount, res.voteCount);
           setServerPositions(res.positions);
           setServerVoteCount(res.voteCount);
           // The vote response carries this content's fresh tallies straight
@@ -492,7 +505,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setError(e instanceof Error ? e.message : "vote failed");
       }
     },
-    [contentById, remote, token, callWithRetry],
+    [contentById, remote, token, callWithRetry, state.votes.length, serverVoteCount, fireUnlockMilestones],
   );
 
   /** Optimistic +1, called once a comment has actually posted (the network
@@ -520,7 +533,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const vote = useCallback(
-    (contentId: string, power: VotePower) => {
+    (contentId: string, power: VotePower, meta?: { reelIndex?: number; viewedAt?: number }) => {
       const existingPending = pending[contentId];
 
       // Once a vote has committed it is final — the grace window is the only
@@ -547,6 +560,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       // A new reaction, an escalation (Like → Love), or replacing a
       // different pending direction — (re)start the grace window.
+      // Tracked here at the moment of the tap (intent), not on commit —
+      // reel_index/time_to_vote only exist as UI-side context at tap time.
+      track("vote_cast", {
+        type: VOTE_TYPE_LABEL[power],
+        reel_index: meta?.reelIndex ?? null,
+        time_to_vote: meta?.viewedAt !== undefined ? Date.now() - meta.viewedAt : null,
+      });
+      if (voteCount === 0) track("first_vote_cast");
       clearPendingTimer(contentId);
       const commitAt = Date.now() + VOTE_GRACE_MS;
       setPending((p) => ({ ...p, [contentId]: { power, commitAt } }));
@@ -560,7 +581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         void commitVote(contentId, power);
       }, VOTE_GRACE_MS);
     },
-    [pending, state.reactions, clearPendingTimer, commitVote],
+    [pending, state.reactions, clearPendingTimer, commitVote, voteCount],
   );
 
   const toggleFollow = useCallback(
@@ -577,6 +598,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     },
     [remote, state.follows, token, callWithRetry],
+  );
+
+  const toggleBlock = useCallback(
+    async (personId: string) => {
+      const next = !state.blocked[personId];
+      dispatch({ type: "setBlock", personId, blocked: next });
+      // Blocking implies unfollowing both directions server-side (see
+      // PnyxService.setBlock) — mirror it locally too, so the button state
+      // this device already shows doesn't contradict what the server just did.
+      if (next) {
+        dispatch({ type: "setFollow", personId, following: false });
+      }
+      if (!remote) return;
+      const t = await token();
+      if (!t) return;
+      try {
+        await callWithRetry(t, (tok) => api.block(tok, personId, next));
+      } catch {
+        dispatch({ type: "setBlock", personId, blocked: !next });
+      }
+    },
+    [remote, state.blocked, token, callWithRetry],
+  );
+
+  const reportContent = useCallback(
+    async (contentId: string, reason: string) => {
+      if (!remote) return;
+      const t = await token();
+      if (!t) return;
+      await callWithRetry(t, (tok) => api.reportContent(tok, contentId, reason));
+    },
+    [remote, token, callWithRetry],
   );
 
   const saveProfile = useCallback(
@@ -638,31 +691,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [remote, token, callWithRetry, saveProfile],
   );
 
-  const completeOnboarding = useCallback(
-    async (input: { handle: string; bio: string; birthday: string }) => {
-      await saveProfile({ handle: input.handle, bio: input.bio });
-      dispatch({ type: "onboard", birthday: input.birthday });
-      // Not routed through saveProfile: `onboarded` isn't a Profile field
-      // (it's not something Settings ever lets you edit back and forth) —
-      // this is the one place it's ever set, and it needs to reach the
-      // server so it outlives this device (see the "onboardedFromServer"
-      // reducer case and its comment for why that matters).
-      if (remote) {
-        const t = await token();
-        if (t) {
-          try {
-            await callWithRetry(t, (tok) => api.updateMe(tok, { onboarded: true }));
-          } catch {
-            // The local flag above already unblocked this session; a failed
-            // sync here just means refresh() will need to try again later
-            // rather than someone being stuck re-onboarding right now.
-          }
-        }
-      }
-    },
-    [saveProfile, remote, token, callWithRetry],
-  );
-
   const forgetMe = useCallback(async () => {
     if (remote) {
       const t = await token();
@@ -711,6 +739,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             globalSplit: { love: 0, like: 0, dislike: 0, hate: 0 },
           },
         });
+        track("post_created");
         return;
       }
 
@@ -731,6 +760,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       );
       if (!row) throw new Error("not signed in");
       dispatch({ type: "post", content: toContent(row) });
+      track("post_created");
     },
     [positions, remote, token, callWithRetry],
   );
@@ -767,12 +797,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       vote,
       bumpCommentCount,
       toggleFollow,
+      toggleBlock,
+      reportContent,
       saveProfile,
       saveNotifPrefs,
       saveAvatar,
       forgetMe,
       publish,
-      completeOnboarding,
       // Remotely the server's number wins: a private person's coordinates are
       // withheld, so recomputing here would be wrong.
       alignmentWith: (person) => alignments[person.id] ?? totalAlignment(positions, person.positions),
@@ -781,13 +812,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isVoteLocked: (contentId) =>
         state.reactions[contentId] !== undefined && pending[contentId] === undefined,
       isFollowing: (personId) => Boolean(state.follows[personId]),
+      isBlocked: (personId) => Boolean(state.blocked[personId]),
       clearStorage: () => {
         AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
       },
     }),
     [
       mode, myId, hydrated, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
-      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, completeOnboarding,
+      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish,
       alignments, pending,
     ],
   );

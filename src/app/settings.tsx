@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
@@ -11,6 +12,7 @@ import { Icon } from "@/components/Icon";
 import { Btn, Card, Field, SectionTitle, Toggle } from "@/components/Primitives";
 import { Sheet } from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
+import { DMCA_URL, EULA_URL, PRIVACY_URL, TERMS_URL } from "@/api/client";
 import { GRID_LIST } from "@/lib/grids";
 import type { PrivacyTier } from "@/lib/types";
 import { useSession } from "@/state/session";
@@ -328,6 +330,32 @@ export default function SettingsScreen() {
           Everything you publish is scored on the same five grids your own position sits on. Posts go through
           moderation and the terms of service before they reach anyone&apos;s feed.
         </Text>
+        <View style={styles.legalLinks}>
+          <AnimatedPressable
+            onPress={() => TERMS_URL && void WebBrowser.openBrowserAsync(TERMS_URL)}
+            accessibilityRole="link"
+          >
+            <Text style={styles.legalLink}>Terms of Service</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => PRIVACY_URL && void WebBrowser.openBrowserAsync(PRIVACY_URL)}
+            accessibilityRole="link"
+          >
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => EULA_URL && void WebBrowser.openBrowserAsync(EULA_URL)}
+            accessibilityRole="link"
+          >
+            <Text style={styles.legalLink}>EULA</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => DMCA_URL && void WebBrowser.openBrowserAsync(DMCA_URL)}
+            accessibilityRole="link"
+          >
+            <Text style={styles.legalLink}>DMCA Policy</Text>
+          </AnimatedPressable>
+        </View>
       </Sheet>
 
       <ChangePasswordSheet
@@ -485,5 +513,7 @@ const styles = StyleSheet.create({
   pillLabelActive: { color: c.text },
   forgetLabel: { color: c.down, fontSize: f.sm, fontWeight: "600", paddingVertical: s[3] },
   sheetLead: { color: c.textDim, fontSize: f.sm, marginBottom: s[4], lineHeight: 20 },
+  legalLinks: { gap: s[3] },
+  legalLink: { color: c.text, fontSize: f.sm, fontWeight: "600", textDecorationLine: "underline" },
   sheetActions: { flexDirection: "row", gap: s[2] },
 });

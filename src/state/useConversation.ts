@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { track } from "@/analytics/analytics";
 import { api } from "@/api/client";
 import { CONVERSATIONS } from "@/lib/data";
 import type { ChatMessage, VotePower } from "@/lib/types";
@@ -51,6 +52,7 @@ export function useConversation(personId: string) {
           ...x,
           { id: `local-${Date.now()}`, from: myId, text: input.text, contentId: input.contentId, vote: input.votePower, at: Date.now() },
         ]);
+        track("message_sent");
         return;
       }
       const t = await token();
@@ -61,6 +63,7 @@ export function useConversation(personId: string) {
         votePower: input.votePower,
       });
       setRemoteMessages((prev) => [...(prev ?? []), fromApiMessage(row)]);
+      track("message_sent");
     },
     [remote, token, conversationId, myId],
   );

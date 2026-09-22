@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { track } from "@/analytics/analytics";
 import { AlignmentPill } from "@/components/Alignment";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
@@ -53,6 +54,16 @@ export default function ProfileScreen() {
   const { state, positions, unlocked, alignmentWith, isFollowing, people, reels, posts } = useStore();
   const router = useRouter();
   const toast = useToast();
+
+  // "Did they actually open their animal/colours after unlocking" — fired
+  // once per mount of this tab while unlocked, not on every render.
+  const trackedIdentityView = useRef(false);
+  useEffect(() => {
+    if (unlocked && !trackedIdentityView.current) {
+      trackedIdentityView.current = true;
+      track("identity_viewed");
+    }
+  }, [unlocked]);
 
   const share = async () => {
     try {

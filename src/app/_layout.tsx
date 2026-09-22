@@ -11,6 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
+import { useAnalyticsLifecycle } from "@/analytics/analytics";
 import { AuthGate } from "@/components/AuthGate";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ToastProvider } from "@/components/Toast";
@@ -35,6 +36,8 @@ export default function RootLayout() {
     // holding the splash screen on a font error would strand the app there.
     if (fontsLoaded || fontError) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded, fontError]);
+
+  useAnalyticsLifecycle();
 
   if (!fontsLoaded && !fontError) return null;
 

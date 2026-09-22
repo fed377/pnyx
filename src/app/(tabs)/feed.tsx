@@ -1,3 +1,4 @@
+import { track } from "@/analytics/analytics";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
@@ -10,7 +11,7 @@ import { useToast } from "@/components/Toast";
 import { VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
 import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -42,10 +43,14 @@ function Reel({
   content,
   height,
   playing,
+  reelIndex,
+  isAgainstGrain,
 }: {
   content: Content;
   height: number;
   playing: boolean;
+  reelIndex: number;
+  isAgainstGrain: boolean;
 }) {
   const { vote, reactionOf, pendingUntilOf, isVoteLocked, isFollowing, people, peopleById, alignmentWith } =
     useStore();
@@ -53,6 +58,27 @@ function Reel({
   const toast = useToast();
   const [comments, setComments] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  // Tracks how long this reel was the one on screen, and whether it was
+  // voted on or scrolled past — see the "playing" transition effect below.
+  const viewedAt = useRef<number | null>(null);
+  const votedThisView = useRef(false);
+
+  useEffect(() => {
+    if (playing) {
+      viewedAt.current = Date.now();
+      votedThisView.current = reactionOf(content.id) !== undefined;
+      return;
+    }
+    if (viewedAt.current === null) return;
+    const watch_duration = Date.now() - viewedAt.current;
+    track("reel_viewed", { reel_index: reelIndex, watch_duration, is_against_grain: isAgainstGrain });
+    if (!votedThisView.current && reactionOf(content.id) === undefined) {
+      track("reel_skipped", { reel_index: reelIndex, watch_duration });
+    }
+    viewedAt.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
 
   // useAuthor resolves you, a known person, or an unloaded profile.
   const author = useAuthor(content.authorId);
@@ -178,7 +204,10 @@ function Reel({
               onLockedPress={() => toast("Your vote is counted — it can't be changed")}
               disabled={own}
               onDisabledPress={() => toast("You can't vote on your own post")}
-              onVote={(power) => vote(content.id, power)}
+              onVote={(power) => {
+                votedThisView.current = true;
+                vote(content.id, power, { reelIndex, viewedAt: viewedAt.current ?? undefined });
+              }}
             />
             <AnimatedPressable
               onPress={() => setComments(true)}
@@ -262,7 +291,16 @@ export default function FeedScreen() {
           data={reels}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <Reel content={item} height={height} playing={index === visible} />
+            <Reel
+              content={item}
+              height={height}
+              playing={index === visible}
+              reelIndex={index}
+              // Mirrors rankReels' own insertion rule (lib/feed.ts) — only an
+              // approximation of which slot is the deliberate outlier, since
+              // rankReels doesn't tag its own output, but the same condition.
+              isAgainstGrain={voteCount >= 50 && index > 0 && index % 20 === 19}
+            />
           )}
           pagingEnabled
           snapToInterval={height}
