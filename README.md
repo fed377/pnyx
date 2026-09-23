@@ -120,12 +120,12 @@ which `signInWithGoogle()` tries first and falls back from automatically if it i
 **Native account picker setup** (needs a custom dev build; does nothing in Expo Go):
 
 1. **Google Cloud** — same Credentials page as above, two more OAuth client IDs:
-   - Type **iOS**, bundle ID `com.anonymous.pnyx` (matches `app.json`'s `ios.bundleIdentifier`).
+   - Type **iOS**, bundle ID `com.villari.pnyx` (matches `app.json`'s `ios.bundleIdentifier`).
      Note the **iOS URL scheme** it gives you (the reversed client ID,
      `com.googleusercontent.apps.XXXX`) and paste it into `app.json`'s
      `@react-native-google-signin/google-signin` plugin config, replacing
      `REPLACE_WITH_REVERSED_IOS_CLIENT_ID`.
-   - Type **Android**, package `com.anonymous.pnyx`, with the SHA-1 of your dev build's signing
+   - Type **Android**, package `com.villari.pnyx`, with the SHA-1 of your dev build's signing
      key (`cd android && ./gradlew signingReport` after `npx expo prebuild`, or from EAS's
      credentials for an EAS build).
 2. **`.env`** — set `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` to the **Web application** client ID from
@@ -183,6 +183,53 @@ re-fetches whenever it returns to the foreground.
 
 Messages, notifications, Hot Takes and comments all have real endpoints and read live data
 once signed in — none of them fall back to `lib/data` in remote mode any more.
+
+## Analytics
+
+Beta event tracking via [PostHog](https://posthog.com) — `src/analytics/analytics.ts` is the
+only file that touches the PostHog SDK; everywhere else just calls its `track(event, props)`.
+Autocapture and session replay are both off — only the explicit events below are ever sent, per
+the "what not to log" rule in the source analytics spec (no post/message content, no raw vote
+history).
+
+To turn it on:
+
+1. Create a free [PostHog](https://posthog.com) project (the free tier covers funnels and
+   retention, which is all this needs).
+2. Copy its Project API key and host into `.env`: `EXPO_PUBLIC_POSTHOG_KEY` and
+   `EXPO_PUBLIC_POSTHOG_HOST` (the host is usually `https://us.i.posthog.com` or
+   `https://eu.i.posthog.com` depending on which region you created the project in — check
+   Project Settings in PostHog).
+3. `npx expo start --clear` (these are `EXPO_PUBLIC_*` values, inlined at bundle time like the
+   others above).
+4. Leave the key blank to run with analytics fully disabled — same no-op fallback
+   `EXPO_PUBLIC_API_URL` uses for offline mode.
+
+Events sent, matching the beta analytics spec:
+
+- **Onboarding**: `app_open` (source: link/direct), `signup_completed`, `first_vote_cast` —
+  no separate `onboarding_finished`: signup itself now collects handle and birthday in one
+  step (there's no longer a distinct onboarding screen to complete afterward)
+- **Core loop**: `reel_viewed` (reel_index, watch_duration, is_against_grain),
+  `vote_cast` (type, reel_index, time_to_vote), `reel_skipped` (reel_index, watch_duration)
+- **50-vote unlock**: `unlock_progress` (at 10/25/40 votes), `identity_unlocked` (at 50),
+  `identity_viewed`
+- **Retention**: `session_start` / `session_end` (foreground/background transitions) — D1/D3/D7
+  is a PostHog dashboard insight built from these, not a separate event
+- **Social**: `profile_viewed`, `alignment_filter_used`, `post_created`, `hot_take_posted`,
+  `message_sent`
+
+Every event carries PostHog's own anonymous device id plus, once signed in, a stable
+**one-way SHA-256 hash** of the account's Supabase user id (`identifyUser()` in
+`analytics.ts`) — never the raw id, so the same account is recognizable across sessions and
+reinstalls for retention/funnel purposes without PostHog (or anyone reading its dashboard) ever
+holding the real id. Local/offline mode and signed-out sessions stay on PostHog's plain
+anonymous id (`resetAnalyticsUser()`).
+
+Once events are flowing, build the beta dashboard directly in PostHog (Insights): an onboarding
+funnel (`app_open` → `signup_completed` → `first_vote_cast`), D1/D3/D7 retention off
+`session_start`, average `vote_cast` events per session, and a drop-off curve over
+`reel_viewed`'s `reel_index`.
 
 ## Layout
 

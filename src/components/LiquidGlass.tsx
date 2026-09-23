@@ -45,6 +45,7 @@ export function LiquidGlassSurface({
   glassStyle = "regular",
   tintColor,
   forceBlur = false,
+  sampleBehind = false,
 }: {
   style?: StyleProp<ViewStyle>;
   radius?: number;
@@ -69,8 +70,22 @@ export function LiquidGlassSurface({
    * blanket default.
    */
   forceBlur?: boolean;
+  /**
+   * Opts into the registered blurTarget (see state/blurTarget.tsx) for a
+   * real blur-behind on Android. Only ever safe for chrome that sits
+   * *outside* the currently-focused screen's own subtree — the floating tab
+   * bar and its detached search circle, both true siblings of every screen
+   * at the navigator level. A glass surface rendered *inside* a screen (like
+   * TopBar) must never set this: the registered target is that same
+   * screen's own root, so blurring it here would ask Android's renderer to
+   * draw a view tree that contains itself — an ancestor cycle that recurses
+   * until the native stack overflows (a real crash this caused once, not a
+   * hypothetical).
+   */
+  sampleBehind?: boolean;
 }) {
-  const blurTarget = useBlurTarget();
+  const registeredTarget = useBlurTarget();
+  const blurTarget = sampleBehind ? registeredTarget : undefined;
   const base = fill ? StyleSheet.absoluteFill : undefined;
 
   if (liquidGlassSupported() && !forceBlur) {

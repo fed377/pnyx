@@ -107,7 +107,7 @@ function SearchMorph({
       <View style={styles.searchClip}>
         {/* tint is only ever "dark" here on Feed — see the tab bar's own
             forceBlur comment above for why real glass can't be trusted there. */}
-        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} forceBlur={tint === "dark"} />
+        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} forceBlur={tint === "dark"} sampleBehind />
       </View>
 
       <Animated.View style={[styles.fill, circleStyle]} pointerEvents={onPeople ? "none" : "auto"}>
@@ -175,7 +175,7 @@ function PeopleHomeButton({
   return (
     <View style={[styles.search, { bottom: barBottom + (NAV_H - SEARCH_SIZE) / 2, left: NAV_SIDE_INSET }]}>
       <View style={styles.searchClip}>
-        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} />
+        <LiquidGlassSurface radius={SEARCH_SIZE / 2} tint={tint} sampleBehind />
       </View>
       <Pressable
         onPress={() => router.push("/")}
@@ -281,7 +281,7 @@ function TabsLayoutInner() {
                   happens here), real glass's adaptive re-tint can swing toward
                   white despite the dark request, washing out against these
                   always-white icons — see LiquidGlassSurface's own comment. */}
-              <LiquidGlassSurface radius={r.full} tint={tint} forceBlur={onFeed} />
+              <LiquidGlassSurface radius={r.full} tint={tint} forceBlur={onFeed} sampleBehind />
               <TabIndicator activeIndex={activeIndex} barWidth={barWidth} dark={onFeed} />
             </View>
           ),
