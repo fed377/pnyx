@@ -72,5 +72,8 @@
       "/node_modules/",
       "/dist-check/"
     ]
+  },
+  "allowScripts": {
+    "@shopify/react-native-skia@2.6.2": true
   }
 }
