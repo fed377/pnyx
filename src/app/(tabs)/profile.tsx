@@ -12,6 +12,7 @@ import { ProfileView } from "@/components/ProfileView";
 
 import type { Person } from "@/lib/types";
 import { useStore } from "@/state/store";
+import { useInk } from "@/theme/ink";
 import { c, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 function AlignedRow({
@@ -24,6 +25,7 @@ function AlignedRow({
   alignmentWith: (p: Person) => number;
 }) {
   const router = useRouter();
+  const ink = useInk();
   if (people.length === 0) return null;
 
   return (
@@ -39,7 +41,7 @@ function AlignedRow({
             onPress={() => router.push({ pathname: "/u/[id]", params: { id: p.id } })}
           >
             <Avatar name={p.name} positions={p.positions} size={48} photoUrl={p.avatarUrl} />
-            <Text style={styles.handle} numberOfLines={1}>
+            <Text style={[styles.handle, { color: ink.dim }]} numberOfLines={1}>
               {p.handle}
             </Text>
             <AlignmentPill value={alignmentWith(p)} muted />

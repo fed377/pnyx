@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect, useRouter, useScrollToTop } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
@@ -14,6 +14,7 @@ import { Btn, Chip, Empty, Progress, SectionTitle } from "@/components/Primitive
 import { UNLOCK_AT } from "@/lib/algorithm";
 import { useHotTakes } from "@/state/useHotTakes";
 import { useStore } from "@/state/store";
+import { useInk } from "@/theme/ink";
 import { c, display, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** Even on all four sides, and the one value the button's concentric radius is derived from. */
@@ -81,6 +82,10 @@ function UnlockBanner() {
 }
 
 export default function HomeScreen() {
+  const ink = useInk();
+  // Tapping the Home tab while already on Home scrolls back to the top.
+  const scrollRef = useRef<ScrollView>(null);
+  useScrollToTop(scrollRef);
   const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, mode, myId } = useStore();
   const router = useRouter();
   const [takeIndex, setTakeIndex] = useState<number | null>(null);
@@ -112,8 +117,10 @@ export default function HomeScreen() {
       });
   }, [state.alignmentFilter, state.follows, alignmentWith, source, peopleById, myId]);
 
-  const photos = useMemo(() => posts.filter((p) => p.type === "image"), [posts]);
-  const [photoIndex, setPhotoIndex] = useState<number | null>(null);
+  // The photo tapped open, if any — looked up from `posts` so it follows a
+  // refresh instead of holding a stale copy.
+  const [photoId, setPhotoId] = useState<string | null>(null);
+  const openPhoto = photoId ? posts.find((p) => p.id === photoId) : undefined;
 
   const firstName = state.profile.name.split(" ")[0] || state.profile.handle;
 
@@ -121,6 +128,7 @@ export default function HomeScreen() {
     <BlurBackdrop style={styles.screen}>
       <TopBar showNotifications />
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={
@@ -131,7 +139,7 @@ export default function HomeScreen() {
       >
         <View>
           <Text style={styles.greeting}>Hello, {firstName}!</Text>
-          <Text style={styles.greetingSub}>Here&apos;s what people really think.</Text>
+          <Text style={[styles.greetingSub, { color: ink.dim }]}>Here&apos;s what people really think.</Text>
         </View>
 
         <AlignmentToggle />
@@ -151,7 +159,7 @@ export default function HomeScreen() {
               <View style={[styles.takeRing, styles.takeAdd]}>
                 <Icon name="plus" size={22} color={c.textDim} />
               </View>
-              <Text style={styles.takeName} numberOfLines={1}>
+              <Text style={[styles.takeName, { color: ink.dim }]} numberOfLines={1}>
                 New
               </Text>
             </AnimatedPressable>
@@ -169,7 +177,7 @@ export default function HomeScreen() {
                   <View style={styles.takeRing}>
                     <Avatar name={p.name} positions={p.positions} size={54} badge={false} photoUrl={p.avatarUrl} />
                   </View>
-                  <Text style={styles.takeName} numberOfLines={1}>
+                  <Text style={[styles.takeName, { color: ink.dim }]} numberOfLines={1}>
                     {p.handle}
                   </Text>
                 </AnimatedPressable>
@@ -189,11 +197,7 @@ export default function HomeScreen() {
               <Animated.View key={post.id} entering={FadeInDown.duration(260).delay(enterDelay(i))}>
                 <PostCard
                   content={post}
-                  onOpenPhoto={
-                    post.type === "image"
-                      ? (id) => setPhotoIndex(photos.findIndex((p) => p.id === id))
-                      : undefined
-                  }
+                  onOpenPhoto={post.type === "image" ? setPhotoId : undefined}
                 />
               </Animated.View>
             ))}
@@ -211,9 +215,7 @@ export default function HomeScreen() {
         />
       )}
 
-      {photoIndex !== null && (
-        <PhotoViewer items={photos} index={photoIndex} onIndexChange={setPhotoIndex} onClose={() => setPhotoIndex(null)} />
-      )}
+      {openPhoto && <PhotoViewer key={openPhoto.id} content={openPhoto} onClose={() => setPhotoId(null)} />}
     </BlurBackdrop>
   );
 }

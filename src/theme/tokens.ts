@@ -16,6 +16,11 @@ export const c = {
   text: "#161513",
   textDim: "#6b6862",
   textFaint: "#9a9690",
+  // textDim/textFaint for text sitting straight on the animated FLOW backdrop,
+  // whose darkest point is about #9f9f9f: 5.6:1 and 4.6:1 there, and still
+  // lighter than `text` (6.9:1). Read them through `useInk()`, not directly.
+  backdropDim: "#282725",
+  backdropFaint: "#373532",
   up: "#3fbf8f",
   upSoft: "rgba(63,191,143,0.14)",
   down: "#e5626f",

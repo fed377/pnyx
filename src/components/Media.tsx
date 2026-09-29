@@ -41,7 +41,7 @@ export function Media({
   ratio?: number;
   fill?: boolean;
   rounded?: boolean;
-  /** Reels autoplay silently; a tap-to-unmute control belongs to the screen. */
+  /** Silent unless the screen opts in — the feed plays sound, with its own mute toggle. */
   muted?: boolean;
   /** Only the reel actually on screen should be playing. */
   playing?: boolean;
@@ -65,6 +65,12 @@ export function Media({
     if (playing) player.play();
     else player.pause();
   }, [isVideo, playing, player]);
+
+  // The setup callback above only runs when the player is created — a
+  // screen-level mute toggle has to reach an existing player too.
+  useEffect(() => {
+    if (isVideo) player.muted = muted;
+  }, [isVideo, muted, player]);
 
   const a = hashSeed(id);
   const b = hashSeed(id + "b");

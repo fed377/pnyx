@@ -17,6 +17,23 @@ jest.mock("expo-video", () => {
   };
 });
 
+// Skia's own jest mock needs a CanvasKit (WASM) test environment; the backdrop
+// only has to mount, not draw.
+jest.mock("@shopify/react-native-skia", () => {
+  const React = require("react");
+  const passthrough = (name: string) => {
+    const Mock = (props: { children?: unknown }) => React.createElement(name, null, props.children);
+    Mock.displayName = name;
+    return Mock;
+  };
+  return {
+    Canvas: passthrough("Canvas"),
+    Fill: passthrough("Fill"),
+    Shader: passthrough("Shader"),
+    Skia: { RuntimeEffect: { Make: () => ({}) } },
+  };
+});
+
 jest.mock("expo-image-picker", () => ({
   requestMediaLibraryPermissionsAsync: async () => ({ granted: true }),
   launchImageLibraryAsync: async () => ({ canceled: true }),

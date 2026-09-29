@@ -1,6 +1,8 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
+import { GestureDetector } from "react-native-gesture-handler";
+import Animated from "react-native-reanimated";
 import { GRID_LIST } from "@/lib/grids";
 import { timeAgoLong } from "@/lib/format";
 import type { Content } from "@/lib/types";
@@ -16,6 +18,7 @@ import { OverlayPill } from "./Primitives";
 import { StoryShell } from "./StoryShell";
 import { useToast } from "./Toast";
 import { VoteControls } from "./VoteControls";
+import { useZoom } from "./zoom";
 
 function primaryGrid(content: Content) {
   return GRID_LIST.reduce((best, g) =>
@@ -23,18 +26,19 @@ function primaryGrid(content: Content) {
   );
 }
 
-function Frame({ content, index, onIndexChange, count, onClose }: {
-  content: Content;
-  index: number;
-  onIndexChange: (i: number) => void;
-  count: number;
-  onClose: () => void;
-}) {
+/**
+ * One photo from the Home feed, full screen with its info card: no carousel
+ * of the other photos, no tap-to-page — just this post. Pinch-zooms like a
+ * reel (same `useZoom`), fading the card and close button while zoomed.
+ */
+export function PhotoViewer({ content, onClose }: { content: Content; onClose: () => void }) {
   const { vote, reactionOf, pendingUntilOf, isVoteLocked } = useStore();
   const author = useAuthor(content.authorId);
   const router = useRouter();
   const toast = useToast();
   const [comments, setComments] = useState(false);
+  const [stage, setStage] = useState({ width: 0, height: 0 });
+  const zoom = useZoom(stage.width, stage.height);
 
   const own = author.isMe;
   const myVote = reactionOf(content.id);
@@ -51,14 +55,21 @@ function Frame({ content, index, onIndexChange, count, onClose }: {
   return (
     <StoryShell
       open
-      count={count}
-      index={index}
-      onIndexChange={onIndexChange}
+      paging={false}
+      count={1}
+      index={0}
+      onIndexChange={() => {}}
       onClose={onClose}
+      chromeStyle={zoom.chromeStyle}
       media={
-        <View style={styles.stage}>
-          <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} fill playing={false} />
-        </View>
+        <GestureDetector gesture={zoom.pinch}>
+          <Animated.View
+            style={[styles.stage, zoom.style]}
+            onLayout={(e) => setStage({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+          >
+            <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} fill playing={false} />
+          </Animated.View>
+        </GestureDetector>
       }
     >
       <View style={[styles.card, { marginBottom: TAB_BAR_CLEARANCE }]}>
@@ -115,31 +126,6 @@ function Frame({ content, index, onIndexChange, count, onClose }: {
 
       <CommentsSheet content={content} open={comments} onClose={() => setComments(false)} />
     </StoryShell>
-  );
-}
-
-export function PhotoViewer({
-  items,
-  index,
-  onIndexChange,
-  onClose,
-}: {
-  items: Content[];
-  index: number;
-  onIndexChange: (i: number) => void;
-  onClose: () => void;
-}) {
-  const content = items[index];
-  if (!content) return null;
-  return (
-    <Frame
-      key={content.id}
-      content={content}
-      index={index}
-      onIndexChange={onIndexChange}
-      count={items.length}
-      onClose={onClose}
-    />
   );
 }
 

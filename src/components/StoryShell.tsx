@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import type { ComponentProps } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
@@ -25,12 +26,19 @@ export function StoryShell({
   media,
   center,
   children,
+  paging = true,
+  chromeStyle,
 }: {
   open: boolean;
   index: number;
   count: number;
   onIndexChange: (i: number) => void;
   onClose: () => void;
+  /** Off for a single item: no progress bar, no counter, no prev/next tap zones. */
+  paging?: boolean;
+  /** Applied to the close row and the bottom card — lets a zoomable `media`
+   * fade them out while it's being pinched. */
+  chromeStyle?: ComponentProps<typeof Animated.View>["style"];
   /** Full-bleed background — a photo, or nothing for a plain black take. */
   media?: React.ReactNode;
   /** Content centered in the full screen, behind the bottom card — the Hot
@@ -58,12 +66,16 @@ export function StoryShell({
 
   // `activeOffsetY` means a quick tap never "claims" the gesture — only a
   // real vertical drag does — so the prev/next tap zones underneath still work.
+  // One finger only, so a two-finger pinch on zoomable media never starts
+  // dragging the whole viewer closed.
   const pan = Gesture.Pan()
+    .maxPointers(1)
     .activeOffsetY([-10, 10])
     .onUpdate((e) => {
-      // eslint-disable-next-line react-hooks/immutability -- Reanimated shared-value
-      // mutation on the UI thread, not React state; the compiler's static rule can't
-      // tell the two apart (same suppression already used in AnimatedPressable).
+      // Reanimated shared-value mutation on the UI thread, not React state; the
+      // compiler's static rule can't tell the two apart (same suppression already
+      // used in AnimatedPressable).
+      // eslint-disable-next-line react-hooks/immutability
       if (e.translationY > 0) translateY.value = e.translationY;
     })
     .onEnd((e) => {
@@ -86,10 +98,12 @@ export function StoryShell({
           <Animated.View style={[styles.fill, dragStyle]}>
             {media}
 
-            <View style={styles.tapZones} pointerEvents="box-none">
-              <Pressable style={styles.tapZone} onPress={() => go(-1)} accessibilityLabel="Previous" />
-              <Pressable style={styles.tapZone} onPress={() => go(1)} accessibilityLabel="Next" />
-            </View>
+            {paging && (
+              <View style={styles.tapZones} pointerEvents="box-none">
+                <Pressable style={styles.tapZone} onPress={() => go(-1)} accessibilityLabel="Previous" />
+                <Pressable style={styles.tapZone} onPress={() => go(1)} accessibilityLabel="Next" />
+              </View>
+            )}
 
             {center && (
               <View style={styles.centerSlot} pointerEvents="none">
@@ -97,29 +111,33 @@ export function StoryShell({
               </View>
             )}
 
-            <View style={styles.bottomSlot} pointerEvents="box-none">
+            <Animated.View style={[styles.bottomSlot, chromeStyle]} pointerEvents="box-none">
               {children}
-            </View>
+            </Animated.View>
           </Animated.View>
         </GestureDetector>
 
-        <View style={[styles.top, { paddingTop: insets.top + s[2] }]} pointerEvents="box-none">
-          <View style={styles.progressRow}>
-            {Array.from({ length: count }).map((_, i) => (
-              <View key={i} style={styles.segmentTrack}>
-                <View style={[styles.segmentFill, i <= index && styles.segmentFillDone]} />
-              </View>
-            ))}
-          </View>
+        <Animated.View style={[styles.top, { paddingTop: insets.top + s[2] }, chromeStyle]} pointerEvents="box-none">
+          {paging && (
+            <View style={styles.progressRow}>
+              {Array.from({ length: count }).map((_, i) => (
+                <View key={i} style={styles.segmentTrack}>
+                  <View style={[styles.segmentFill, i <= index && styles.segmentFillDone]} />
+                </View>
+              ))}
+            </View>
+          )}
           <View style={styles.topRow}>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={8} style={styles.closeBtn}>
               <Icon name="close" size={18} color="#fff" />
             </Pressable>
-            <Text style={styles.counter}>
-              {index + 1} / {count}
-            </Text>
+            {paging && (
+              <Text style={styles.counter}>
+                {index + 1} / {count}
+              </Text>
+            )}
           </View>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

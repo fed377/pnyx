@@ -29,7 +29,9 @@ export type IconName =
   | "heart"
   | "heartBreak"
   | "eye"
-  | "eyeOff";
+  | "eyeOff"
+  | "volume"
+  | "volumeOff";
 
 const PATHS: Record<IconName, string> = {
   home: "M4 10.6 12 4l8 6.6V19a1.4 1.4 0 0 1-1.4 1.4h-3.7v-5.8h-5.8v5.8H5.4A1.4 1.4 0 0 1 4 19z",
@@ -66,6 +68,8 @@ const PATHS: Record<IconName, string> = {
   eye: "M2.5 12c1.8-4 5.6-6.6 9.5-6.6s7.7 2.6 9.5 6.6c-1.8 4-5.6 6.6-9.5 6.6S4.3 16 2.5 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   eyeOff:
     "M3.5 3.5l17 17M7.4 7.6C4.9 9 3 12 3 12s3.4 6.6 9.5 6.6c1.5 0 2.9-.3 4.1-.9M16.7 16.5c1.9-1.3 3.3-3.1 4.3-4.5 0 0-3.4-6.6-9.5-6.6-.9 0-1.9.15-2.8.45M9.9 9.9a3 3 0 0 0 4.2 4.2",
+  volume: "M3.6 9.4h3.6l4.8-4.2v13.6l-4.8-4.2H3.6zM15.4 9.2a4 4 0 0 1 0 5.6M18.1 6.5a7.8 7.8 0 0 1 0 11",
+  volumeOff: "M3.6 9.4h3.6l4.8-4.2v13.6l-4.8-4.2H3.6zM15.8 9.6l4.8 4.8M20.6 9.6l-4.8 4.8",
 };
 
 const FILLABLE: IconName[] = ["home", "feed", "people", "profile", "heart", "thumbUp", "thumbDown", "play"];

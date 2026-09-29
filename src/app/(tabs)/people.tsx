@@ -12,6 +12,7 @@ import { GRID_LIST, nearestPoint } from "@/lib/grids";
 import type { GridId, Person } from "@/lib/types";
 import { usePeopleSearch } from "@/state/peopleSearch";
 import { useStore } from "@/state/store";
+import { useInk } from "@/theme/ink";
 import { c, display, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
@@ -24,6 +25,7 @@ const capitalize = (w: string) => w[0]!.toUpperCase() + w.slice(1);
 
 function MostAligned({ people }: { people: { p: Person; a: number }[] }) {
   const router = useRouter();
+  const ink = useInk();
   if (people.length === 0) return null;
 
   return (
@@ -41,7 +43,7 @@ function MostAligned({ people }: { people: { p: Person; a: number }[] }) {
           >
             <Avatar name={p.name} positions={p.positions} size={64} badge={false} photoUrl={p.avatarUrl} />
             <Text style={styles.mostPct}>{Math.round(a)}%</Text>
-            <Text style={styles.mostName} numberOfLines={1}>
+            <Text style={[styles.mostName, { color: ink.dim }]} numberOfLines={1}>
               {p.name.split(" ")[0]}
             </Text>
           </AnimatedPressable>
@@ -63,6 +65,7 @@ function PersonRow({
   index: number;
 }) {
   const router = useRouter();
+  const ink = useInk();
   const type = nearestPoint(gridFocus, person.positions[gridFocus]);
 
   return (
@@ -77,9 +80,9 @@ function PersonRow({
         <Avatar name={person.name} positions={person.positions} size={44} photoUrl={person.avatarUrl} />
         <View style={styles.rowBody}>
           <Text style={styles.rowName} numberOfLines={1}>
-            {person.name} <Text style={styles.rowPronouns}>{person.pronouns}</Text>
+            {person.name} <Text style={[styles.rowPronouns, { color: ink.faint }]}>{person.pronouns}</Text>
           </Text>
-          <Text style={styles.rowMeta} numberOfLines={1}>
+          <Text style={[styles.rowMeta, { color: ink.faint }]} numberOfLines={1}>
             {type.animal ? `${capitalize(type.animal)} · ` : ""}
             {type.name}.
           </Text>

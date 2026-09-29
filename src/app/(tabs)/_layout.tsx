@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
 import type { IconName } from "@/components/Icon";
 import { LiquidGlassSurface } from "@/components/LiquidGlass";
+import { ImmersiveProvider, useImmersive } from "@/state/immersive";
 import { PeopleSearchProvider, usePeopleSearch } from "@/state/peopleSearch";
 import { c, f, NAV_H, NAV_INSET, NAV_SIDE_INSET, r, s, squircle } from "@/theme/tokens";
 
@@ -211,6 +212,8 @@ function TabsLayoutInner() {
   const activeIndex = rawIndex === -1 ? lastIndex.current : rawIndex;
 
   const onPeople = pathname === "/people";
+  // While a reel is pinch-zoomed, only the reel shows.
+  const { immersive } = useImmersive();
 
   // Feed's reels are full-bleed media — light-tinted glass barely frosts
   // against dark video, so the whole bar (and the search circle) flips to
@@ -269,8 +272,9 @@ function TabsLayoutInner() {
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 6 },
             // The three tabs hide entirely on People — the search bar takes
-            // over their whole slot instead of coexisting with them.
-            display: onPeople ? "none" : "flex",
+            // over their whole slot instead of coexisting with them — and
+            // while a reel is zoomed.
+            display: onPeople || immersive ? "none" : "flex",
           },
           tabBarBackground: () => (
             <View style={styles.blur} onLayout={onBarLayout}>
@@ -303,13 +307,17 @@ function TabsLayoutInner() {
       </Tabs>
 
       <PeopleHomeButton onPeople={onPeople} barBottom={barBottom} tint={tint} chromeColor={chromeColor} />
-      <SearchMorph
-        onPeople={onPeople}
-        barBottom={barBottom}
-        barWidth={barWidth}
-        tint={tint}
-        chromeColor={chromeColor}
-      />
+      {/* SearchMorph positions itself absolutely against the screen, so its
+          wrapper spans the screen too (passing touches through elsewhere). */}
+      <View style={immersive ? styles.hidden : styles.fill} pointerEvents="box-none">
+        <SearchMorph
+          onPeople={onPeople}
+          barBottom={barBottom}
+          barWidth={barWidth}
+          tint={tint}
+          chromeColor={chromeColor}
+        />
+      </View>
     </View>
   );
 }
@@ -317,7 +325,9 @@ function TabsLayoutInner() {
 export default function TabsLayout() {
   return (
     <PeopleSearchProvider>
-      <TabsLayoutInner />
+      <ImmersiveProvider>
+        <TabsLayoutInner />
+      </ImmersiveProvider>
     </PeopleSearchProvider>
   );
 }
@@ -362,6 +372,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   fill: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0 },
+  hidden: { display: "none" },
   searchCircleIcon: { flex: 1, alignItems: "center", justifyContent: "center" },
   searchBarRow: {
     position: "absolute",

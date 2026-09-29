@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { identityCode } from "@/lib/algorithm";
 import { GRID_LIST, nearestPoint } from "@/lib/grids";
 import type { Content, GridId, Positions } from "@/lib/types";
+import { useInk } from "@/theme/ink";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -37,15 +38,17 @@ function GridTile({
   hidden: boolean;
 }) {
   const grid = GRID_LIST.find((g) => g.id === gridId)!;
+  const ink = useInk();
 
   if (locked || hidden) {
+    // Transparent with a dashed outline, so on a tab screen it sits on the backdrop.
     return (
       <View style={[styles.gtile, styles.gtileLocked]}>
-        <Icon name="lock" size={14} color={c.textFaint} />
+        <Icon name="lock" size={14} color={ink.faint} />
         <Text style={styles.gtileName} numberOfLines={2}>
           {locked ? "Not yet revealed" : "Kept private"}
         </Text>
-        <Text style={styles.gtileLabel}>{grid.label}</Text>
+        <Text style={[styles.gtileLabel, { color: ink.faint }]}>{grid.label}</Text>
       </View>
     );
   }
@@ -63,13 +66,14 @@ function GridTile({
 }
 
 function Archive({ items, empty }: { items: Content[]; empty: string }) {
+  const ink = useInk();
   if (items.length === 0) return <Empty>{empty}</Empty>;
   return (
     <View style={styles.archive}>
       {items.map((item) => (
         <View key={item.id} style={styles.archiveItem}>
           <Media id={item.id} scores={item.scores} mediaUrl={item.mediaUrl} ratio={1} />
-          <Text style={styles.archiveText} numberOfLines={3}>
+          <Text style={[styles.archiveText, { color: ink.dim }]} numberOfLines={3}>
             {item.text}
           </Text>
         </View>
@@ -123,6 +127,7 @@ export function ProfileView({
   footer?: ReactNode;
 }) {
   const [tab, setTab] = useState<"posts" | "loved" | "hated">("posts");
+  const ink = useInk();
   const primary = locked ? null : nearestPoint("values", positions.values);
 
   return (
@@ -133,14 +138,14 @@ export function ProfileView({
           <Text style={styles.pheadName} numberOfLines={2}>
             {name}
           </Text>
-          <Text style={styles.pheadHandle}>
+          <Text style={[styles.pheadHandle, { color: ink.dim }]}>
             {pronouns} · @{handle}
           </Text>
-          <Text style={styles.pheadCode}>{locked ? "—·—·—·—·—" : identityCode(positions)}</Text>
+          <Text style={[styles.pheadCode, { color: ink.faint }]}>{locked ? "—·—·—·—·—" : identityCode(positions)}</Text>
         </View>
         <View style={styles.pheadAlign}>
           <Text style={styles.pheadPct}>{Math.round(alignment)}%</Text>
-          <Text style={styles.pheadAlignCaption}>{alignmentCaption}</Text>
+          <Text style={[styles.pheadAlignCaption, { color: ink.faint }]}>{alignmentCaption}</Text>
         </View>
       </View>
 
@@ -182,7 +187,7 @@ export function ProfileView({
       )}
 
       {mostAligned && (
-        <Text style={styles.mostAligned}>
+        <Text style={[styles.mostAligned, { color: ink.dim }]}>
           Most aligned with {mostAligned.label}: <Text style={styles.mostAlignedName}>{mostAligned.name}</Text>,{" "}
           {Math.round(mostAligned.pct)}%
         </Text>
@@ -213,7 +218,7 @@ export function ProfileView({
               <View style={styles.hotchiveRing}>
                 <Icon name="feed" size={18} color={c.text} />
               </View>
-              <Text style={styles.hotchiveLabel}>{label}</Text>
+              <Text style={[styles.hotchiveLabel, { color: ink.dim }]}>{label}</Text>
             </View>
           ))}
         </View>

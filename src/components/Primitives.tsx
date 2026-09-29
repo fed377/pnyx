@@ -5,6 +5,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useStore } from "@/state/store";
+import { OnBackdropProvider, useInk } from "@/theme/ink";
 import { c, f, hexToRgba, r, s, squircle, STEEL_GRADIENT } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
@@ -13,22 +14,25 @@ import type { IconName } from "./Icon";
 /* ── Text ─────────────────────────────────────────────────────────────────── */
 
 export function SectionTitle({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
-  return <Text style={[styles.sectionTitle, style]}>{children}</Text>;
+  const ink = useInk();
+  return <Text style={[styles.sectionTitle, { color: ink.faint }, style]}>{children}</Text>;
 }
 
 export function Note({ icon, children }: { icon?: IconName; children: ReactNode }) {
+  const ink = useInk();
   return (
     <View style={styles.note}>
       {icon && <Icon name={icon} size={14} color={c.text} />}
-      <Text style={styles.noteText}>{children}</Text>
+      <Text style={[styles.noteText, { color: ink.dim }]}>{children}</Text>
     </View>
   );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
+  const ink = useInk();
   return (
     <View style={styles.empty}>
-      <Text style={styles.emptyText}>{children}</Text>
+      <Text style={[styles.emptyText, { color: ink.dim }]}>{children}</Text>
     </View>
   );
 }
@@ -49,15 +53,21 @@ export function Card({
   style?: StyleProp<ViewStyle>;
   tone?: "soft" | "ink";
 }) {
-  return <View style={[styles.card, tone === "ink" && styles.cardInk, style]}>{children}</View>;
+  return (
+    <View style={[styles.card, tone === "ink" && styles.cardInk, style]}>
+      <OnBackdropProvider value={false}>{children}</OnBackdropProvider>
+    </View>
+  );
 }
 
 export function LockedRow({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <View style={styles.lockedRow}>
       <Icon name="lock" size={16} color={c.text} />
-      <View style={{ flex: 1 }}>{children}</View>
-      {action}
+      <OnBackdropProvider value={false}>
+        <View style={{ flex: 1 }}>{children}</View>
+        {action}
+      </OnBackdropProvider>
     </View>
   );
 }
@@ -379,6 +389,7 @@ export function SegTabs<T extends string>({
   onChange: (v: T) => void;
 }) {
   const { accent } = useStore();
+  const ink = useInk();
   return (
     <View style={styles.tabs}>
       {tabs.map(([key, label]) => {
@@ -392,7 +403,7 @@ export function SegTabs<T extends string>({
             scaleTo={0.96}
             style={[styles.tab, active && { borderBottomColor: accent }]}
           >
-            <Text style={[styles.tabLabel, active && { color: c.text }]}>{label}</Text>
+            <Text style={[styles.tabLabel, { color: active ? c.text : ink.faint }]}>{label}</Text>
           </AnimatedPressable>
         );
       })}
