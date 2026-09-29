@@ -2,6 +2,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
@@ -10,7 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Icon } from "@/components/Icon";
-import { Btn, Card, Field, SectionTitle, Toggle } from "@/components/Primitives";
+import { Btn, Field, SectionTitle, Toggle } from "@/components/Primitives";
 import { Sheet } from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
 import { DMCA_URL, EULA_URL, PRIVACY_URL, TERMS_URL } from "@/api/client";
@@ -72,6 +73,49 @@ const NOTIF_ROWS: { key: "votes" | "replies" | "alignments"; label: string }[] =
   { key: "replies", label: "Replies" },
   { key: "alignments", label: "New alignments" },
 ];
+
+/**
+ * Every section on this page is the same grouped list: a heading above, one
+ * card of evenly padded rows, and any explanation as a note below the card —
+ * never a second card style or a heading inside the card.
+ */
+function Group({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+  return (
+    <View>
+      <SectionTitle style={styles.groupTitle}>{title}</SectionTitle>
+      <View style={styles.card}>{children}</View>
+      {note ? <Text style={styles.note}>{note}</Text> : null}
+    </View>
+  );
+}
+
+/** A tappable row. `chevron` for rows that open something (a sheet); plain
+ * actions (log out, forget me) have none. */
+function ActionRow({
+  label,
+  onPress,
+  chevron = false,
+  destructive = false,
+  last = false,
+}: {
+  label: string;
+  onPress: () => void;
+  chevron?: boolean;
+  destructive?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      scaleTo={0.99}
+      accessibilityRole="button"
+      style={[styles.row, !last && styles.rowDivider]}
+    >
+      <Text style={[styles.rowLabel, destructive && styles.rowLabelDestructive]}>{label}</Text>
+      {chevron && <Icon name="chevron" size={16} color={c.textDim} strokeWidth={2} />}
+    </AnimatedPressable>
+  );
+}
 
 /** A label-left, value-right row that still edits inline — no visible input
  * chrome, so it reads as plain text until you tap it, matching the handoff. */
@@ -208,27 +252,32 @@ export default function SettingsScreen() {
           <Text style={styles.avatarLabel}>{uploadingAvatar ? "Uploading…" : "Change photo"}</Text>
         </AnimatedPressable>
 
-        <View>
-          <SectionTitle style={styles.plainTitle}>Account</SectionTitle>
-          <View style={styles.card}>
-            {FIELDS.map((field) => (
-              <InfoRow
-                key={field.key}
-                label={field.label}
-                value={field.prefix ? `${field.prefix}${state.profile[field.key]}` : state.profile[field.key]}
-                onChangeText={(v) => setField(field.key, field.prefix ? v.replace(field.prefix, "") : v)}
-              />
-            ))}
-            <InfoRow label="Code" value={identityCode(positions)} readOnly last />
-          </View>
-        </View>
+        <Group title="Account">
+          {FIELDS.map((field) => (
+            <InfoRow
+              key={field.key}
+              label={field.label}
+              value={field.prefix ? `${field.prefix}${state.profile[field.key]}` : state.profile[field.key]}
+              onChangeText={(v) => setField(field.key, field.prefix ? v.replace(field.prefix, "") : v)}
+            />
+          ))}
+          <InfoRow label="Code" value={identityCode(positions)} readOnly last />
+        </Group>
 
-        <Card>
-          <Field label="Bio" value={state.profile.bio} onChangeText={(v) => void saveProfile({ bio: v })} multiline />
-        </Card>
+        <Group title="Bio">
+          <TextInput
+            value={state.profile.bio}
+            onChangeText={(v) => void saveProfile({ bio: v })}
+            multiline
+            placeholder="A line or two about you"
+            placeholderTextColor={c.textDim}
+            accessibilityLabel="Bio"
+            style={styles.bioInput}
+          />
+        </Group>
 
         <View>
-          <SectionTitle style={styles.plainTitle}>Visibility</SectionTitle>
+          <SectionTitle style={styles.groupTitle}>Visibility</SectionTitle>
           <View style={styles.pillTrack} onLayout={onPillTrackLayout}>
             <PillHighlight
               index={TIERS.findIndex((t) => t.id === state.profile.tier)}
@@ -254,72 +303,57 @@ export default function SettingsScreen() {
           <Text style={styles.note}>{tier.note}</Text>
         </View>
 
-        <View>
-          <SectionTitle style={styles.plainTitle}>Notifications</SectionTitle>
-          <View style={styles.card}>
-            {NOTIF_ROWS.map((row, i) => (
-              <View key={row.key} style={[styles.toggleRow, i !== NOTIF_ROWS.length - 1 && styles.rowDivider]}>
-                <Text style={styles.rowLabel}>{row.label}</Text>
-                <Toggle
-                  value={state.notifPrefs[row.key]}
-                  onValueChange={(v) => void saveNotifPrefs({ [row.key]: v })}
-                  label={row.label}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <View>
-          <SectionTitle style={styles.plainTitle}>Public alignment</SectionTitle>
-          <View style={styles.card}>
-            {GRID_LIST.map((grid, i) => (
-              <View key={grid.id} style={[styles.toggleRow, i !== GRID_LIST.length - 1 && styles.rowDivider]}>
-                <Text style={styles.rowLabel}>{grid.label}</Text>
-                <Toggle
-                  value={state.gridPublic[grid.id]}
-                  onValueChange={(v) => dispatch({ type: "gridPublic", grid: grid.id, value: v })}
-                  label={`${grid.label} alignment public`}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
-
-        <Card>
-          <SectionTitle>Session</SectionTitle>
-          <Text style={styles.note}>
-            {mode === "remote"
-              ? `Signed in as @${state.profile.handle}. Signing out leaves your data on the server.`
-              : "Exploring without an account — signing out clears your profile from this device."}
-          </Text>
-          <View style={{ flexDirection: "row", gap: s[2] }}>
-            {mode === "remote" && (
-              <Btn
-                label={hasPassword === false ? "Set password" : "Change password"}
-                variant="outline"
-                onPress={() => setChangingPassword(true)}
-                style={{ flex: 1 }}
+        <Group title="Notifications">
+          {NOTIF_ROWS.map((row, i) => (
+            <View key={row.key} style={[styles.row, i !== NOTIF_ROWS.length - 1 && styles.rowDivider]}>
+              <Text style={styles.rowLabel}>{row.label}</Text>
+              <Toggle
+                value={state.notifPrefs[row.key]}
+                onValueChange={(v) => void saveNotifPrefs({ [row.key]: v })}
+                label={row.label}
               />
-            )}
-            <Btn label="Log out" onPress={() => void leave()} style={{ flex: 1 }} />
-          </View>
-        </Card>
+            </View>
+          ))}
+        </Group>
 
-        <View>
-          <SectionTitle style={styles.plainTitle}>Privacy</SectionTitle>
-          <AnimatedPressable style={styles.card} scaleTo={0.99} onPress={() => setConfirmWipe(true)}>
-            <Text style={styles.forgetLabel}>Forget me</Text>
-          </AnimatedPressable>
-          <Text style={styles.note}>Wipes your votes, positions, takes and messages from Pnyx.</Text>
-        </View>
+        <Group title="Public alignment">
+          {GRID_LIST.map((grid, i) => (
+            <View key={grid.id} style={[styles.row, i !== GRID_LIST.length - 1 && styles.rowDivider]}>
+              <Text style={styles.rowLabel}>{grid.label}</Text>
+              <Toggle
+                value={state.gridPublic[grid.id]}
+                onValueChange={(v) => dispatch({ type: "gridPublic", grid: grid.id, value: v })}
+                label={`${grid.label} alignment public`}
+              />
+            </View>
+          ))}
+        </Group>
 
-        <View>
-          <SectionTitle style={styles.plainTitle}>About</SectionTitle>
-          <AnimatedPressable style={styles.card} scaleTo={0.99} onPress={() => setAbout(true)}>
-            <Text style={styles.rowLabel}>Terms and moderation</Text>
-          </AnimatedPressable>
-        </View>
+        <Group
+          title="Session"
+          note={
+            mode === "remote"
+              ? `Signed in as @${state.profile.handle}. Signing out leaves your data on the server.`
+              : "Exploring without an account — signing out clears your profile from this device."
+          }
+        >
+          {mode === "remote" && (
+            <ActionRow
+              label={hasPassword === false ? "Set password" : "Change password"}
+              onPress={() => setChangingPassword(true)}
+              chevron
+            />
+          )}
+          <ActionRow label="Log out" onPress={() => void leave()} last />
+        </Group>
+
+        <Group title="Privacy" note="Wipes your votes, positions, takes and messages from Pnyx.">
+          <ActionRow label="Forget me" onPress={() => setConfirmWipe(true)} destructive last />
+        </Group>
+
+        <Group title="About">
+          <ActionRow label="Terms and moderation" onPress={() => setAbout(true)} chevron last />
+        </Group>
       </ScrollView>
 
       <Sheet open={confirmWipe} title="Erase everything?" onClose={() => setConfirmWipe(false)}>
@@ -469,13 +503,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarLabel: { color: c.textDim, fontSize: f.sm, fontWeight: "600" },
-  plainTitle: {
-    color: c.textFaint,
+  // One heading, one card, one row: every group on the page uses these.
+  groupTitle: {
+    color: c.textDim,
     fontSize: f.sm,
     fontWeight: "600",
     letterSpacing: 0,
     textTransform: "none",
     marginBottom: s[2],
+    paddingHorizontal: s[1],
   },
   card: {
     borderRadius: r.lg,
@@ -483,13 +519,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: s[4],
     ...squircle,
   },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: s[3], gap: s[3] },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 48,
+    paddingVertical: s[3],
+    gap: s[3],
+  },
   rowDivider: { borderBottomWidth: 1, borderBottomColor: c.lineSoft },
   rowLabel: { color: c.text, fontSize: f.sm, fontWeight: "500" },
-  rowValue: { color: c.textFaint, fontSize: f.sm, flex: 1, textAlign: "right" },
-  rowInput: { color: c.textFaint, fontSize: f.sm, flex: 1, paddingVertical: 0 },
-  toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: s[3] },
-  note: { color: c.textFaint, fontSize: f.xs, lineHeight: 17, marginTop: s[2], paddingHorizontal: 2 },
+  rowLabelDestructive: { color: c.down, fontWeight: "600" },
+  // textDim, not textFaint: faint is only ~2.8:1 on the card surface.
+  rowValue: { color: c.textDim, fontSize: f.sm, flex: 1, textAlign: "right" },
+  rowInput: { color: c.textDim, fontSize: f.sm, flex: 1, paddingVertical: 0 },
+  bioInput: {
+    color: c.text,
+    fontSize: f.sm,
+    lineHeight: 20,
+    minHeight: 76,
+    paddingVertical: s[3],
+    textAlignVertical: "top",
+  },
+  note: { color: c.textDim, fontSize: f.xs, lineHeight: 17, marginTop: s[2], paddingHorizontal: s[1] },
   pillTrack: {
     flexDirection: "row",
     backgroundColor: c.surface2,
@@ -518,7 +570,6 @@ const styles = StyleSheet.create({
   },
   pillLabel: { color: c.textDim, fontSize: f.sm, fontWeight: "600" },
   pillLabelActive: { color: c.text },
-  forgetLabel: { color: c.down, fontSize: f.sm, fontWeight: "600", paddingVertical: s[3] },
   sheetLead: { color: c.textDim, fontSize: f.sm, marginBottom: s[4], lineHeight: 20 },
   legalLinks: { gap: s[3] },
   legalLink: { color: c.text, fontSize: f.sm, fontWeight: "600", textDecorationLine: "underline" },
