@@ -14,8 +14,13 @@ export const c = {
   line: "#dcd9d2",
   lineSoft: "#e8e5df",
   text: "#161513",
-  textDim: "#6b6862",
-  textFaint: "#9a9690",
+  // A three-step ramp that stays readable on every light surface here
+  // (surface, app, bg, surface2 and the darkest, surface3): dim 7.0–8.5:1,
+  // faint 4.6–5.6:1. Faint was #9a9690 — 2.3–2.8:1, below AA everywhere —
+  // and reaching AA forced it to roughly the old dim, so dim moved down a
+  // step with it to keep the levels distinct.
+  textDim: "#4b4945",
+  textFaint: "#67645e",
   // textDim/textFaint for text sitting straight on the animated FLOW backdrop,
   // whose darkest point is about #9f9f9f: 5.6:1 and 4.6:1 there, and still
   // lighter than `text` (6.9:1). Read them through `useInk()`, not directly.

@@ -530,7 +530,6 @@ const styles = StyleSheet.create({
   rowDivider: { borderBottomWidth: 1, borderBottomColor: c.lineSoft },
   rowLabel: { color: c.text, fontSize: f.sm, fontWeight: "500" },
   rowLabelDestructive: { color: c.down, fontWeight: "600" },
-  // textDim, not textFaint: faint is only ~2.8:1 on the card surface.
   rowValue: { color: c.textDim, fontSize: f.sm, flex: 1, textAlign: "right" },
   rowInput: { color: c.textDim, fontSize: f.sm, flex: 1, paddingVertical: 0 },
   bioInput: {

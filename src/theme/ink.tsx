@@ -4,8 +4,9 @@ import { c } from "./tokens";
 /**
  * Whether the nearest surface behind this component is the animated FLOW
  * backdrop (a tab screen's BlurBackdrop) rather than a painted surface. The
- * backdrop swings as dark as ~#9f9f9f, where textDim/textFaint fall to
- * ~2:1 and ~1:1, so secondary text sitting straight on it needs darker ink.
+ * backdrop swings as dark as ~#9f9f9f, where even the card-safe textDim and
+ * textFaint fall to ~3.4:1 and ~2.2:1, so secondary text sitting straight on
+ * it needs darker ink still.
  * BlurBackdrop sets this; Card and LockedRow reset it for their contents.
  */
 const OnBackdrop = createContext(false);
