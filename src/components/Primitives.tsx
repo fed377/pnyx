@@ -270,7 +270,7 @@ export function OverlayPill({
     <AnimatedPressable
       onPress={onPress}
       scaleTo={0.9}
-      // Below the 44pt iOS minimum at either height this ships (26 or 38) —
+      // Below the 44pt iOS minimum at the smaller heights this ships (26, 38) —
       // made up invisibly via hitSlop rather than growing the visible pill.
       hitSlop={Math.max(0, Math.round((44 - height) / 2))}
       accessibilityRole="button"

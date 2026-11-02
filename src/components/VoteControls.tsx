@@ -59,7 +59,7 @@ export function VoteControls({
   pendingUntil,
   onVote,
   layout = "row",
-  size = 42,
+  size = 48,
   disabled = false,
   locked = false,
   onLockedPress,
@@ -224,9 +224,8 @@ export function VoteControls({
   // On the rail the button box hugs the glyph, so the gaps in the stylesheet
   // are the gaps you see; the padding that would have made the target big
   // enough moves into hitSlop instead. Row and pill both render at `size`
-  // itself, and pill in particular ships at 38 (feed.tsx/PhotoViewer) —
-  // below the 44pt minimum — so the same hitSlop top-up applies there too,
-  // not just on the rail.
+  // itself; the same hitSlop top-up covers any caller that passes a size
+  // below the 44pt minimum, not just the rail.
   const glyph = Math.round(size * 0.6);
   const box = layout === "rail" ? glyph : size;
   const slop = Math.max(0, Math.round((MIN_TOUCH - box) / 2));

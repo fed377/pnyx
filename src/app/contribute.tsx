@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
@@ -71,7 +72,7 @@ export default function ContributeScreen() {
 
   // The keyboard overlays the screen rather than resizing it, so the scroller
   // needs to know how much room it is losing at the bottom.
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<ScrollViewInstance>(null);
   const [keyboard, setKeyboard] = useState(0);
 
   useEffect(() => {

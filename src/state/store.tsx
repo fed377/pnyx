@@ -44,9 +44,6 @@ type State = {
   premium: boolean;
   /** Minimum alignment % for the filter used across Home and People. */
   alignmentFilter: number;
-  /** Chose "Explore without an account" on the sign-in screen — skips back to
-   * it on the next "forget"/log-out instead of leaving the gate permanently open. */
-  skipped: boolean;
 };
 
 const initialFollows = Object.fromEntries(PEOPLE.map((p) => [p.id, p.following]));
@@ -62,7 +59,6 @@ const initialState: State = {
   myPosts: [],
   premium: false,
   alignmentFilter: 0,
-  skipped: false,
 };
 
 type Action =
@@ -84,7 +80,6 @@ type Action =
    * is no UI path that dispatches this with a locally-chosen value. */
   | { type: "premium"; value: boolean }
   | { type: "post"; content: Content }
-  | { type: "skip" }
   | { type: "forget" };
 
 function reducer(state: State, action: Action): State {
@@ -119,8 +114,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, premium: action.value };
     case "post":
       return { ...state, myPosts: [action.content, ...state.myPosts] };
-    case "skip":
-      return { ...state, skipped: true };
     case "forget":
       return { ...initialState, profile: { ...ME_DEFAULTS, tier: "active" } };
     default:

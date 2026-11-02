@@ -14,7 +14,7 @@ import { SignIn } from "./SignIn";
  */
 export function AuthGate() {
   const { ready, session, configured } = useSession();
-  const { hydrated, state, dispatch, mode, profileLoaded } = useStore();
+  const { hydrated, mode, profileLoaded } = useStore();
   const pathname = usePathname();
   // Resets on a fresh app launch (this component's own remount), not
   // persisted — the point is a first landing screen for this session, not a
@@ -36,18 +36,16 @@ export function AuthGate() {
     );
   }
 
-  // `skipped` lives in the store (not local state) specifically so "forget"/log
-  // out resets it too — otherwise logging out fell straight through past this
-  // sign-in screen instead of landing back on it.
-  const signedInOrExploring = !configured || session !== null || state.skipped;
-
-  if (!signedInOrExploring) {
+  // An account is the only way in — there is no browsing without one. (An
+  // unconfigured build, with no API URL at all, is the offline dev setup and
+  // has nothing to sign in to.)
+  if (configured && session === null) {
     return (
       <View style={[StyleSheet.absoluteFill, styles.cover]}>
         {pastLanding ? (
           <SignIn />
         ) : (
-          <Landing onContinue={() => setPastLanding(true)} onSkip={() => dispatch({ type: "skip" })} />
+          <Landing onContinue={() => setPastLanding(true)} />
         )}
       </View>
     );

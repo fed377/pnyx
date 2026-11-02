@@ -5,6 +5,7 @@ import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
+import { LikeBurst, useDoubleTapLike } from "@/components/LikeBurst";
 import { Media, isVideoUrl } from "@/components/Media";
 import { Card, OverlayPill } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
@@ -12,10 +13,11 @@ import { VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
 import { useZoom } from "@/components/zoom";
 import { useIsFocused, useRouter, useScrollToTop } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   Share,
@@ -39,7 +41,7 @@ import Animated, {
 import { compactCount, timeAgoLong } from "@/lib/format";
 import { rankReels } from "@/lib/feed";
 import { GRID_LIST, nearestPoint } from "@/lib/grids";
-import type { Content } from "@/lib/types";
+import type { Content, VotePower } from "@/lib/types";
 import { useImmersive } from "@/state/immersive";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
@@ -53,8 +55,10 @@ function primaryGrid(content: Content) {
 }
 
 const INFO_MS = 280;
+/** Height of the vote / comment / share pills — one row, one height. */
+const ACTION_H = 44;
 
-function Reel({
+function ReelView({
   content,
   height,
   playing,
@@ -97,6 +101,26 @@ function Reel({
   }
   const togglePause = () => setPaused((p) => !p);
 
+  // Tracks how long this reel was the one on screen, and whether it was
+  // voted on or scrolled past — see the "playing" transition effect below.
+  const viewedAt = useRef<number | null>(null);
+  const votedThisView = useRef(false);
+
+  // useAuthor resolves you, a known person, or an unloaded profile.
+  const author = useAuthor(content.authorId);
+  const own = author.isMe;
+  const myVote = reactionOf(content.id);
+  const onVote = (power: VotePower) => {
+    votedThisView.current = true;
+    vote(content.id, power, { reelIndex, viewedAt: viewedAt.current ?? undefined });
+  };
+  const { doubleTap, burst } = useDoubleTapLike({
+    current: myVote,
+    locked: isVoteLocked(content.id),
+    own,
+    onLike: onVote,
+  });
+
   const zoom = useZoom(Dimensions.get("window").width, height, onZoomingChange);
   const tap = Gesture.Tap()
     .enabled(isVideo)
@@ -104,7 +128,9 @@ function Reel({
     .onEnd((_e, success) => {
       if (success) runOnJS(togglePause)();
     });
-  const mediaGesture = Gesture.Race(zoom.pinch, tap);
+  // Exclusive: a single tap waits out a possible second one, so the first
+  // tap of a double-tap like doesn't also pause the video.
+  const mediaGesture = Gesture.Race(zoom.pinch, Gesture.Exclusive(doubleTap, tap));
 
   // Clear view: slide the card down past its own height and fade it, while
   // the small "show info" pill fades in where it was.
@@ -122,11 +148,6 @@ function Reel({
     transform: [{ scale: interpolate(hidden.value, [0, 1], [0.9, 1]) }],
   }));
 
-  // Tracks how long this reel was the one on screen, and whether it was
-  // voted on or scrolled past — see the "playing" transition effect below.
-  const viewedAt = useRef<number | null>(null);
-  const votedThisView = useRef(false);
-
   useEffect(() => {
     if (playing) {
       viewedAt.current = Date.now();
@@ -143,10 +164,6 @@ function Reel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  // useAuthor resolves you, a known person, or an unloaded profile.
-  const author = useAuthor(content.authorId);
-  const own = author.isMe;
-  const myVote = reactionOf(content.id);
   const friends = people.filter((p) => isFollowing(p.id));
   const type = nearestPoint("values", author.positions.values);
   const grid = useMemo(() => primaryGrid(content), [content]);
@@ -183,6 +200,8 @@ function Reel({
           />
         </Animated.View>
       </GestureDetector>
+
+      <LikeBurst progress={burst} />
 
       {/* Everything drawn over the reel fades out as a pinch grows it, so a
           zoom shows only the reel itself. */}
@@ -308,19 +327,17 @@ function Reel({
             <View style={styles.actions}>
               <VoteControls
                 layout="pill"
-                size={38}
+                size={ACTION_H}
                 counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
                 current={myVote}
                 pendingUntil={pendingUntilOf(content.id)}
                 locked={isVoteLocked(content.id)}
                 onLockedPress={() => toast("Your vote is counted — it can't be changed")}
                 disabled={own}
-                onVote={(power) => {
-                  votedThisView.current = true;
-                  vote(content.id, power, { reelIndex, viewedAt: viewedAt.current ?? undefined });
-                }}
+                onVote={onVote}
               />
               <OverlayPill
+                height={ACTION_H}
                 onPress={() => setComments(true)}
                 gap={6}
                 accessibilityLabel={`${content.commentCount} comments`}
@@ -328,7 +345,7 @@ function Reel({
                 <Icon name="comment" size={18} color={c.onAccent} />
                 <Text style={styles.pillCount}>{compactCount(content.commentCount)}</Text>
               </OverlayPill>
-              <OverlayPill onPress={share} gap={6} accessibilityLabel="Share this reel">
+              <OverlayPill height={ACTION_H} onPress={share} gap={6} accessibilityLabel="Share this reel">
                 <Icon name="share" size={18} color={c.onAccent} />
               </OverlayPill>
             </View>
@@ -372,6 +389,10 @@ function Reel({
     </View>
   );
 }
+
+// Scrolling to a new page changes `visible`, which re-renders the list's
+// items — memo keeps that to the two reels whose `playing` actually flips.
+const Reel = memo(ReelView);
 
 export default function FeedScreen() {
   const {
@@ -438,10 +459,12 @@ export default function FeedScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-snap only when the page height changes
   }, [height]);
 
-  // Only the reel actually on screen plays; the rest stay paused.
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  // Only the reel actually on screen plays; the rest stay paused. The swap
+  // waits until the next reel has almost settled: starting a video decodes
+  // frames, and doing that mid-swipe is what made the page turn stutter.
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 95 }).current;
   const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
+    ({ viewableItems }: { viewableItems: { index?: number | null }[] }) => {
       const first = viewableItems[0]?.index;
       if (typeof first === "number") setVisible(first);
     },
@@ -462,6 +485,7 @@ export default function FeedScreen() {
   return (
     <BlurBackdrop
       style={styles.screen}
+      flow={false}
       onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
     >
       {height > 0 && (
@@ -490,11 +514,12 @@ export default function FeedScreen() {
               isAgainstGrain={voteCount >= 50 && index > 0 && index % 20 === 19}
             />
           )}
+          // Native paging alone — every page is exactly the list's height.
+          // Layering snapToInterval on top made two snapping systems fight
+          // over the same gesture.
           pagingEnabled
           // A two-finger pinch would otherwise also drag the list.
           scrollEnabled={!zooming}
-          snapToInterval={height}
-          snapToAlignment="start"
           decelerationRate="fast"
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({
@@ -502,7 +527,13 @@ export default function FeedScreen() {
             offset: height * index,
             index,
           })}
+          // One reel up front, not FlatList's default ten (each one a video
+          // player); the window keeps one either side ready for the swipe.
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
           windowSize={3}
+          // Detaching off-screen video surfaces can flash black on iOS.
+          removeClippedSubviews={Platform.OS === "android"}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
           refreshControl={

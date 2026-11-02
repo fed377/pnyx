@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import type { TextInputInstance } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "./AnimatedPressable";
@@ -272,12 +273,12 @@ function CreateAccountScreen({
   onBack: () => void;
   onLogin: () => void;
 }) {
-  const monthRef = useRef<TextInput>(null);
-  const yearRef = useRef<TextInput>(null);
+  const monthRef = useRef<TextInputInstance>(null);
+  const yearRef = useRef<TextInputInstance>(null);
 
   // Some host environments (the RN test renderer among them) don't implement the
   // imperative handle — auto-advance is a nicety, so a missing focus() is a no-op.
-  const focusNext = (ref: RefObject<TextInput | null>) => () => {
+  const focusNext = (ref: RefObject<TextInputInstance | null>) => () => {
     try {
       ref.current?.focus();
     } catch {

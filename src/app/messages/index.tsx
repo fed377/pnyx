@@ -5,6 +5,7 @@ import { AlignmentPill } from "@/components/Alignment";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
+import { Empty } from "@/components/Primitives";
 import { POWER_LABEL } from "@/lib/feed";
 import { timeAgo } from "@/lib/format";
 import { ORIGIN } from "@/lib/algorithm";
@@ -24,6 +25,9 @@ export default function MessagesScreen() {
         <ActivityIndicator style={{ marginTop: s[6] }} color={c.textFaint} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
+          {items.length === 0 && (
+            <Empty>No messages yet. Open someone&rsquo;s profile and tap Message to start a conversation.</Empty>
+          )}
           {items.map((convo, i) => {
             const person = peopleById[convo.personId];
             const name = person?.name ?? "Someone";

@@ -302,8 +302,14 @@ function TabsLayoutInner() {
           />
         ))}
         {/* Still a real route (pushed from the search circle below) — just not
-            one of the three equal tabs in the bar. */}
-        <Tabs.Screen name="people" options={{ href: null }} />
+            one of the three equal tabs in the bar. Not `href: null`: since
+            SDK 58 that marks the route hidden and redirects away from it.
+            The item style collapses the flex: 1 wrapper View around the
+            button, which would otherwise still claim a fourth slot. */}
+        <Tabs.Screen
+          name="people"
+          options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }}
+        />
       </Tabs>
 
       <PeopleHomeButton onPeople={onPeople} barBottom={barBottom} tint={tint} chromeColor={chromeColor} />

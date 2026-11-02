@@ -1,9 +1,12 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { timeAgo } from "@/lib/format";
 import { GRID_LIST } from "@/lib/grids";
-import type { Content } from "@/lib/types";
+import type { Content, VotePower } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
@@ -11,6 +14,7 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
+import { LikeBurst, useDoubleTapLike } from "./LikeBurst";
 import { isVideoUrl, Media } from "./Media";
 import { Chip } from "./Primitives";
 import { useToast } from "./Toast";
@@ -29,19 +33,22 @@ function primaryGrid(content: Content) {
  * inline. Seeded posts without a real video file fall back to Media's
  * generated art — nothing to play there, so no tap affordance is shown.
  */
-function VideoThumb({ content }: { content: Content }) {
+function VideoThumb({ content, like }: { content: Content; like: DoubleTapLike }) {
   const [playing, setPlaying] = useState(false);
   const hasVideo = isVideoUrl(content.mediaUrl);
 
   if (!hasVideo) {
-    return <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} playing={false} />;
+    return (
+      <LikeArea like={like}>
+        <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} playing={false} />
+      </LikeArea>
+    );
   }
 
   return (
-    <AnimatedPressable
-      onPress={() => setPlaying((p) => !p)}
-      scaleTo={0.98}
-      accessibilityRole="button"
+    <LikeArea
+      like={like}
+      onTap={() => setPlaying((p) => !p)}
       accessibilityLabel={playing ? "Pause video" : "Play video"}
     >
       <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} playing={playing} />
@@ -52,7 +59,50 @@ function VideoThumb({ content }: { content: Content }) {
           </View>
         </View>
       )}
-    </AnimatedPressable>
+    </LikeArea>
+  );
+}
+
+type DoubleTapLike = Pick<ReturnType<typeof useDoubleTapLike>, "doubleTap" | "burst">;
+
+/**
+ * Double-tap anywhere in here to Like. A single tap still does the area's own
+ * thing (play, open the photo), but only once a second tap has had its chance
+ * — Exclusive makes it wait, so the first half of a double-tap never fires it.
+ */
+function LikeArea({
+  like,
+  onTap,
+  accessibilityLabel,
+  burstColor,
+  children,
+}: {
+  like: DoubleTapLike;
+  onTap?: () => void;
+  accessibilityLabel?: string;
+  burstColor?: string;
+  children: ReactNode;
+}) {
+  const tap = () => onTap?.();
+  const single = Gesture.Tap()
+    .enabled(onTap !== undefined)
+    .maxDistance(10)
+    .onEnd((_e, success) => {
+      if (success) runOnJS(tap)();
+    });
+
+  return (
+    <GestureDetector gesture={Gesture.Exclusive(like.doubleTap, single)}>
+      <View
+        accessible={onTap !== undefined}
+        accessibilityRole={onTap ? "button" : undefined}
+        accessibilityLabel={accessibilityLabel}
+        onAccessibilityTap={onTap}
+      >
+        {children}
+        <LikeBurst progress={like.burst} size={80} color={burstColor} />
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -77,6 +127,9 @@ export function PostCard({
   const person = own ? null : peopleById[content.authorId];
   const topComment = content.comments[0];
   const grid = useMemo(() => primaryGrid(content), [content]);
+  const locked = isVoteLocked(content.id);
+  const onVote = (power: VotePower) => vote(content.id, power);
+  const like = useDoubleTapLike({ current: myVote, locked, own, onLike: onVote });
 
   const share = async () => {
     try {
@@ -114,24 +167,25 @@ export function PostCard({
 
       {content.type === "video" ? (
         <>
-          <VideoThumb content={content} />
+          <VideoThumb content={content} like={like} />
           <Text style={styles.caption}>{content.text}</Text>
         </>
       ) : content.type === "image" ? (
         <>
-          <AnimatedPressable
-            onPress={() => onOpenPhoto?.(content.id)}
-            scaleTo={0.98}
-            disabled={!onOpenPhoto}
-            accessibilityRole="button"
+          <LikeArea
+            like={like}
+            onTap={onOpenPhoto ? () => onOpenPhoto(content.id) : undefined}
             accessibilityLabel="Open photo"
           >
             <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} />
-          </AnimatedPressable>
+          </LikeArea>
           <Text style={styles.caption}>{content.text}</Text>
         </>
       ) : (
-        <Text style={styles.take}>{content.text}</Text>
+        // A white thumb would vanish against the light card behind a text take.
+        <LikeArea like={like} burstColor={c.up}>
+          <Text style={styles.take}>{content.text}</Text>
+        </LikeArea>
       )}
 
       {content.context && <Text style={styles.context}>{content.context}</Text>}
@@ -140,9 +194,9 @@ export function PostCard({
         <VoteControls
           current={myVote}
           pendingUntil={pendingUntilOf(content.id)}
-          locked={isVoteLocked(content.id)}
+          locked={locked}
           onLockedPress={() => toast("Your vote is counted — it can't be changed")}
-          onVote={(power) => vote(content.id, power)}
+          onVote={onVote}
           disabled={own}
         />
         <View style={styles.secondary}>

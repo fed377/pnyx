@@ -1,11 +1,11 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Share, StyleSheet, Text, View } from "react-native";
-import { GestureDetector } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 import { GRID_LIST } from "@/lib/grids";
 import { timeAgoLong } from "@/lib/format";
-import type { Content } from "@/lib/types";
+import type { Content, VotePower } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
 import { c, display, f, hexToRgba, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
@@ -13,12 +13,16 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
+import { LikeBurst, useDoubleTapLike } from "./LikeBurst";
 import { Media } from "./Media";
 import { OverlayPill } from "./Primitives";
 import { StoryShell } from "./StoryShell";
 import { useToast } from "./Toast";
 import { VoteControls } from "./VoteControls";
 import { useZoom } from "./zoom";
+
+/** Height of the vote / comment / share pills — matches the feed's reel card. */
+const ACTION_H = 44;
 
 function primaryGrid(content: Content) {
   return GRID_LIST.reduce((best, g) =>
@@ -43,6 +47,9 @@ export function PhotoViewer({ content, onClose }: { content: Content; onClose: (
   const own = author.isMe;
   const myVote = reactionOf(content.id);
   const grid = primaryGrid(content);
+  const locked = isVoteLocked(content.id);
+  const onVote = (power: VotePower) => vote(content.id, power);
+  const { doubleTap, burst } = useDoubleTapLike({ current: myVote, locked, own, onLike: onVote });
 
   const share = async () => {
     try {
@@ -62,12 +69,13 @@ export function PhotoViewer({ content, onClose }: { content: Content; onClose: (
       onClose={onClose}
       chromeStyle={zoom.chromeStyle}
       media={
-        <GestureDetector gesture={zoom.pinch}>
+        <GestureDetector gesture={Gesture.Race(zoom.pinch, doubleTap)}>
           <Animated.View
             style={[styles.stage, zoom.style]}
             onLayout={(e) => setStage({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
           >
             <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} fill playing={false} />
+            <LikeBurst progress={burst} />
           </Animated.View>
         </GestureDetector>
       }
@@ -103,20 +111,20 @@ export function PhotoViewer({ content, onClose }: { content: Content; onClose: (
         <View style={styles.actions}>
           <VoteControls
             layout="pill"
-            size={38}
+            size={ACTION_H}
             counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
             current={myVote}
             pendingUntil={pendingUntilOf(content.id)}
-            locked={isVoteLocked(content.id)}
+            locked={locked}
             onLockedPress={() => toast("Your vote is counted — it can't be changed")}
             disabled={own}
-            onVote={(power) => vote(content.id, power)}
+            onVote={onVote}
           />
-          <OverlayPill onPress={() => setComments(true)} gap={6} accessibilityLabel={`${content.commentCount} comments`}>
+          <OverlayPill height={ACTION_H} onPress={() => setComments(true)} gap={6} accessibilityLabel={`${content.commentCount} comments`}>
             <Icon name="comment" size={16} color={c.onAccent} />
             <Text style={styles.pillCount}>{content.commentCount}</Text>
           </OverlayPill>
-          <OverlayPill onPress={share} gap={6} accessibilityLabel="Share this post">
+          <OverlayPill height={ACTION_H} onPress={share} gap={6} accessibilityLabel="Share this post">
             <Icon name="share" size={16} color={c.onAccent} />
           </OverlayPill>
         </View>

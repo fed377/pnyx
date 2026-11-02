@@ -1,7 +1,7 @@
 import { BlurTargetView } from "expo-blur";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef } from "react";
-import type { View, ViewProps } from "react-native";
+import type { ViewInstance, ViewProps } from "react-native";
 import { useBlurTargetRegistry } from "@/state/blurTarget";
 import { OnBackdropProvider } from "@/theme/ink";
 import { FlowBackground } from "./FlowBackground";
@@ -13,8 +13,17 @@ import { FlowBackground } from "./FlowBackground";
  * too, behind the content, so the tab bar's blur picks it up — every tab
  * screen gets it for free, not per-screen setup.
  */
-export function BlurBackdrop({ children, ...rest }: ViewProps) {
-  const ref = useRef<View>(null);
+export function BlurBackdrop({
+  children,
+  flow = true,
+  ...rest
+}: ViewProps & {
+  /** Off for a screen whose content covers the whole backdrop anyway (the
+   * reel feed) — the shader would otherwise redraw every frame, unseen,
+   * and compete with the scroll for the GPU. */
+  flow?: boolean;
+}) {
+  const ref = useRef<ViewInstance>(null);
   const { attach, detach } = useBlurTargetRegistry();
 
   useFocusEffect(
@@ -26,7 +35,7 @@ export function BlurBackdrop({ children, ...rest }: ViewProps) {
 
   return (
     <BlurTargetView ref={ref} {...rest}>
-      <FlowBackground />
+      {flow && <FlowBackground />}
       <OnBackdropProvider value={true}>{children}</OnBackdropProvider>
     </BlurTargetView>
   );

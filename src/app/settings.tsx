@@ -199,6 +199,9 @@ export default function SettingsScreen() {
 
   const wipe = async () => {
     await forgetMe();
+    // The account is gone — staying signed in to it would leave a session
+    // pointing at nothing.
+    await signOut();
     setConfirmWipe(false);
     router.replace("/");
     toast("Everything erased. You're back at zero.");
@@ -334,7 +337,7 @@ export default function SettingsScreen() {
           note={
             mode === "remote"
               ? `Signed in as @${state.profile.handle}. Signing out leaves your data on the server.`
-              : "Exploring without an account — signing out clears your profile from this device."
+              : "Offline build with no server configured — signing out clears your profile from this device."
           }
         >
           {mode === "remote" && (

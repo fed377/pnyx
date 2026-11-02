@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter, useScrollToTop } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
@@ -84,7 +85,7 @@ function UnlockBanner() {
 export default function HomeScreen() {
   const ink = useInk();
   // Tapping the Home tab while already on Home scrolls back to the top.
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
   const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, mode, myId } = useStore();
   const router = useRouter();

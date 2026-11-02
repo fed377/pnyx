@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import type { View } from "react-native";
+import type { ViewInstance } from "react-native";
 
 /**
  * Lets the floating tab bar do a real blur-behind of the screen under it. On
@@ -19,19 +19,19 @@ import type { View } from "react-native";
  * new ref-wrapper object once the target view exists.
  */
 const BlurTargetContext = createContext<{
-  node: View | null;
-  attach: (node: View | null) => void;
-  detach: (node: View | null) => void;
+  node: ViewInstance | null;
+  attach: (node: ViewInstance | null) => void;
+  detach: (node: ViewInstance | null) => void;
 } | null>(null);
 
 export function BlurTargetProvider({ children }: { children: ReactNode }) {
-  const [node, setNode] = useState<View | null>(null);
+  const [node, setNode] = useState<ViewInstance | null>(null);
 
-  const attach = useCallback((next: View | null) => setNode(next), []);
+  const attach = useCallback((next: ViewInstance | null) => setNode(next), []);
   // Screens hand focus over in whichever order the navigator likes; only clear
   // the target if the screen letting go is still the one being blurred.
   const detach = useCallback(
-    (leaving: View | null) => setNode((prev) => (prev === leaving ? null : prev)),
+    (leaving: ViewInstance | null) => setNode((prev) => (prev === leaving ? null : prev)),
     [],
   );
 
@@ -48,7 +48,7 @@ export function useBlurTargetRegistry() {
 }
 
 /** Read by the tab bar — undefined until a screen has attached its root. */
-export function useBlurTarget(): RefObject<View | null> | undefined {
+export function useBlurTarget(): RefObject<ViewInstance | null> | undefined {
   const ctx = useContext(BlurTargetContext);
   const node = ctx?.node ?? null;
   return useMemo(() => (node ? { current: node } : undefined), [node]);

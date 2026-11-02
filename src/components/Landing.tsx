@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { nearestPoint } from "@/lib/grids";
@@ -66,7 +66,7 @@ function AnimalPreview() {
   );
 }
 
-export function Landing({ onContinue, onSkip }: { onContinue: () => void; onSkip?: () => void }) {
+export function Landing({ onContinue }: { onContinue: () => void }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -84,11 +84,6 @@ export function Landing({ onContinue, onSkip }: { onContinue: () => void; onSkip
           see the full picture of.
         </Text>
         <Btn label="Get started" variant="accent" wide onPress={onContinue} />
-        {onSkip && (
-          <Pressable onPress={onSkip} accessibilityRole="button" style={styles.skip}>
-            <Text style={styles.skipText}>Explore the sample profile without an account</Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );
@@ -109,6 +104,4 @@ const styles = StyleSheet.create({
   },
   bottom: { gap: s[4] },
   explain: { color: c.textDim, fontSize: f.sm, lineHeight: 20 },
-  skip: { alignItems: "center" },
-  skipText: { color: c.textFaint, fontSize: f.sm, textDecorationLine: "underline" },
 });

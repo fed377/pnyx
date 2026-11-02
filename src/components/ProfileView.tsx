@@ -11,21 +11,6 @@ import { Icon } from "./Icon";
 import { Media } from "./Media";
 import { Empty, SectionTitle, SegTabs } from "./Primitives";
 
-const HOTCHIVE = ["Cities", "Kitchen", "Arguments", "2025"];
-
-/** The small quadrant-and-position mark shown on every grid tile — a plain
- * decoration of the app's own core concept (a point on a two-axis grid),
- * not tied to any specific grid's data. */
-function GridMark() {
-  return (
-    <View style={styles.mark}>
-      <View style={styles.markVBar} />
-      <View style={styles.markHBar} />
-      <View style={styles.markDot} />
-    </View>
-  );
-}
-
 function GridTile({
   gridId,
   positions,
@@ -56,7 +41,6 @@ function GridTile({
   const near = nearestPoint(gridId, positions[gridId]);
   return (
     <View style={styles.gtile}>
-      <GridMark />
       <Text style={styles.gtileName} numberOfLines={1}>
         {near.name}
       </Text>
@@ -97,6 +81,7 @@ export function ProfileView({
   loved,
   hated,
   posts,
+  hotchive = [],
   actions,
   footer,
   photoUrl,
@@ -123,6 +108,9 @@ export function ProfileView({
   loved: Content[];
   hated: Content[];
   posts: Content[];
+  /** Highlights (spec §6.3). Nothing creates these yet, so the section only
+   * shows once a profile actually has some — never placeholder labels. */
+  hotchive?: { id: string; label: string }[];
   actions?: ReactNode;
   footer?: ReactNode;
 }) {
@@ -151,7 +139,6 @@ export function ProfileView({
 
       {primary && (
         <View style={styles.summary}>
-          <GridMark />
           <View style={{ flex: 1 }}>
             <Text style={styles.summaryName}>
               {primary.animal ? `${primary.animal[0]!.toUpperCase()}${primary.animal.slice(1)}` : primary.name}
@@ -210,19 +197,21 @@ export function ProfileView({
         </View>
       </View>
 
-      <View>
-        <SectionTitle>Hotchive</SectionTitle>
-        <View style={styles.hotchive}>
-          {HOTCHIVE.map((label) => (
-            <View key={label} style={styles.hotchiveItem}>
-              <View style={styles.hotchiveRing}>
-                <Icon name="feed" size={18} color={c.text} />
+      {hotchive.length > 0 && (
+        <View>
+          <SectionTitle>Hotchive</SectionTitle>
+          <View style={styles.hotchive}>
+            {hotchive.map((item) => (
+              <View key={item.id} style={styles.hotchiveItem}>
+                <View style={styles.hotchiveRing}>
+                  <Icon name="feed" size={18} color={c.text} />
+                </View>
+                <Text style={[styles.hotchiveLabel, { color: ink.dim }]}>{item.label}</Text>
               </View>
-              <Text style={[styles.hotchiveLabel, { color: ink.dim }]}>{label}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       <View>
         <SegTabs
@@ -297,10 +286,6 @@ const styles = StyleSheet.create({
   gtileLocked: { backgroundColor: "transparent", borderWidth: 1, borderStyle: "dashed", borderColor: c.line },
   gtileName: { color: c.text, fontSize: f.xs, fontWeight: "700" },
   gtileLabel: { color: c.textFaint, fontSize: 10 },
-  mark: { width: 20, height: 20, alignItems: "center", justifyContent: "center" },
-  markVBar: { position: "absolute", width: 1, height: 20, backgroundColor: c.line },
-  markHBar: { position: "absolute", width: 20, height: 1, backgroundColor: c.line },
-  markDot: { position: "absolute", width: 5, height: 5, borderRadius: 3, backgroundColor: c.text, top: 4, left: 12 },
   hotchive: { flexDirection: "row", gap: s[4] },
   hotchiveItem: { alignItems: "center", gap: 6 },
   hotchiveRing: {
