@@ -15,7 +15,7 @@ function initials(name: string) {
 }
 
 /**
- * Profile picture with the personality icon overlaid (spec §6.2).
+ * Profile picture with the personality icon overlaid.
  * No photo uploads in this prototype, so the picture is a monogram ringed in
  * the person's Mind colour.
  */

@@ -5,8 +5,8 @@ import { useSession } from "./session";
 import { useStore } from "./store";
 
 /**
- * Spec §6.2: "on vote, show ... friends' votes" — real cast votes from people
- * the caller follows, in remote mode. Returns `null` in local/offline mode,
+ * Shown once you vote: real cast votes from people the caller follows, in
+ * remote mode. Returns `null` in local/offline mode,
  * where there is no real vote to look up at all (the caller falls back to
  * `friendVotes()` in `lib/feed.ts`, an affinity-based guess that only ever
  * made sense as an offline stand-in).

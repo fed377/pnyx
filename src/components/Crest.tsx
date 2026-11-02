@@ -9,7 +9,7 @@ import type { AnimalId, Positions } from "@/lib/types";
 import { c, glossGradient, hexToRgba } from "@/theme/tokens";
 
 /**
- * The identity icon (spec §3.1). Every grid contributes one visual feature:
+ * The identity icon. Every grid contributes one visual feature:
  *   Values  → which animal
  *   Culture → animal base colour
  *   Soul    → animal highlight colour

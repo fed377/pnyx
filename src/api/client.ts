@@ -316,7 +316,7 @@ export const api = {
   /** Own votes, oldest first, with score snapshots — enough to redraw history. */
   myVotes: (token: string) => request<{ items: Vote[] }>("/me/votes", { token }),
 
-  /** Real "shared by X% of people" rarity, per grid (spec §6.6) — not the local placeholder hash. */
+  /** Real "shared by X% of people" rarity, per grid — not the local placeholder hash. */
   rarity: (token: string) => request<Record<GridId, number>>("/me/rarity", { token }),
 
   forgetMe: (token: string) => request<void>("/me", { method: "DELETE", token }),
@@ -351,7 +351,7 @@ export const api = {
       token,
     }),
 
-  /** No admin surface reads these back yet (see MISSING_FEATURES.md) — logged
+  /** No admin surface reads these back yet — logged
    * for an operator to review directly against the store. */
   reportContent: (token: string, contentId: string, reason: string) =>
     request<{ ok: boolean }>(`/content/${contentId}/report`, { method: "POST", token, body: { reason } }),
@@ -404,7 +404,7 @@ export const api = {
   comments: (token: string, contentId: string) =>
     request<{ items: ApiComment[] }>(`/content/${contentId}/comments`, { token }),
 
-  /** Spec §6.2: real cast votes from people the caller follows. */
+  /** Real cast votes from people the caller follows. */
   friendVotes: (token: string, contentId: string) =>
     request<{ items: { userId: string; power: VotePower }[] }>(`/content/${contentId}/friend-votes`, { token }),
 

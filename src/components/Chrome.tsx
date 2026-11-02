@@ -9,7 +9,7 @@ import { Icon } from "./Icon";
 import { LiquidGlassSurface } from "./LiquidGlass";
 import { IconBtn } from "./Primitives";
 
-/** Wordmark plus the persistent tools from spec section 6. */
+/** Wordmark plus the persistent top-bar tools. */
 export function TopBar({
   showNotifications = false,
   showWordmark = true,

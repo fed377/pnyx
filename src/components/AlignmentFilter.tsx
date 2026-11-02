@@ -8,7 +8,7 @@ import { c, f, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 
-/** The alignment slider available across Home and People (spec §6.1). */
+/** The alignment slider available across Home and People. */
 export function AlignmentFilter() {
   const { state, dispatch, accent } = useStore();
   const [open, setOpen] = useState(false);

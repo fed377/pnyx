@@ -13,7 +13,7 @@ import { useConversation } from "@/state/useConversation";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 
-/** A forwarded post carries the sender's vote on it (spec section 6.7). */
+/** A forwarded post carries the sender's vote on it. */
 function ForwardedPost({ contentId, vote, senderName }: { contentId: string; vote?: VotePower; senderName: string }) {
   const { contentById } = useStore();
   const content = contentById[contentId];

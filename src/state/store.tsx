@@ -158,8 +158,8 @@ type Store = {
   error: string | null;
   refresh: () => Promise<void>;
   /**
-   * Remote mode only: `people` is capped to the top 25 by alignment (spec
-   * §6.3's world list), so searching it client-side could never surface
+   * Remote mode only: `people` is capped to the top 25 by alignment (the
+   * world list), so searching it client-side could never surface
    * someone outside that set. Queries the real user base instead and merges
    * whatever it finds into `people`/`peopleById`. A no-op locally — the
    * offline sample set already *is* the whole population.
@@ -198,8 +198,8 @@ type Store = {
    * No-op in local/offline mode beyond the button's own state — there's no
    * real backend to enforce it against there anyway. */
   toggleBlock: (personId: string) => Promise<void>;
-  /** Fire-and-forget — no admin surface reads these back yet (see
-   * MISSING_FEATURES.md), so there's nothing for the UI to reflect beyond a
+  /** Fire-and-forget — no admin surface reads these back yet, so there's
+   * nothing for the UI to reflect beyond a
    * one-time confirmation. No-op in local/offline mode. */
   reportContent: (contentId: string, reason: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
@@ -348,7 +348,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const result = await callWithRetry(t, (tok) =>
         // 50 (the route's own cap) rather than just the free-tier's display limit —
-        // premium unlocks more of "Most aligned in the world" (spec §6.3) by
+        // premium unlocks more of "Most aligned in the world" by
         // showing more of what's already fetched, not by fetching more on demand.
         Promise.all([api.me(tok), api.myVotes(tok), api.reels(tok, 40), api.home(tok, 40), api.people(tok, 50)]),
       );

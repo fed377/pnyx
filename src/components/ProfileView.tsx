@@ -108,7 +108,7 @@ export function ProfileView({
   loved: Content[];
   hated: Content[];
   posts: Content[];
-  /** Highlights (spec §6.3). Nothing creates these yet, so the section only
+  /** Highlights, Instagram-style. Nothing creates these yet, so the section only
    * shows once a profile actually has some — never placeholder labels. */
   hotchive?: { id: string; label: string }[];
   actions?: ReactNode;

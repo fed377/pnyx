@@ -19,7 +19,7 @@ import Reanimated, {
 import Svg, { Circle } from "react-native-svg";
 import { Icon } from "./Icon";
 
-/** Press-and-hold duration for Love / Hate (spec §4.1). */
+/** Press-and-hold duration for Love / Hate. */
 export const HOLD_MS = 1500;
 /**
  * Vertical rhythm of the reel rail. Exported so the buttons the rail adds

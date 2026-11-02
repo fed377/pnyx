@@ -164,8 +164,8 @@ the raw id. Signed-out sessions use PostHog's anonymous id.
 - **Reels** are a `FlatList` using native paging, with one reel rendered up front and only the
   reel on screen playing. Reels are memoized so a page change re-renders only the two whose
   playing state flips.
-- **The Culture grid** has a labelling inconsistency in the source spec: no single axis
-  orientation satisfies all four quadrant rows. The resolution (Broad at −x, Niche at +x) is
+- **The Culture grid's** original quadrant labels were inconsistent: no single axis
+  orientation satisfies all four of them. The resolution (Broad at −x, Niche at +x) is
   documented at the top of `src/lib/grids.ts`.
 
 ## Testing

@@ -11,7 +11,7 @@ import type { GridId, PrivacyTier } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { c, s } from "@/theme/tokens";
 
-/** What each privacy tier reveals (spec section 6.5). */
+/** What each privacy tier reveals. */
 function hiddenGridsFor(tier: PrivacyTier): GridId[] {
   if (tier === "private") return [...GRID_IDS];
   if (tier === "active") return ["culture", "focus"];

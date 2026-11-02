@@ -15,7 +15,7 @@ const SEGMENTS = [
   { key: "hate", label: "Hated", color: c.down },
 ] as const;
 
-/** Revealed only after the user votes (spec §6.2). */
+/** Revealed only after the user votes. */
 export function VoteResult({
   content,
   friends,

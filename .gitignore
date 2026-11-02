@@ -47,3 +47,9 @@ example
 # local design-tool scratch output — not part of the app
 .impeccable/
 figma-screenshots/
+
+# Product specification and planning docs — kept private, never committed
+PRODUCT.md
+*Specification*.md
+*Monetization*.md
+MISSING_FEATURES.md

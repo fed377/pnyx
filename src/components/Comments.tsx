@@ -63,7 +63,7 @@ function CommentRow({ cm, onVote }: { cm: LiveComment; onVote: (commentId: strin
   );
 }
 
-/** Comments are votable too (spec section 5) — real per-user votes, changeable
+/** Comments are votable too — real per-user votes, changeable
  * and toggle-off-able, backed by the server in remote mode. */
 export function CommentsSheet({
   content,

@@ -111,7 +111,7 @@ export default function HomeScreen() {
         return author ? alignmentWith(author) >= min : true;
       })
       .sort((a, b) => {
-        // Followers and following come first (spec section 6.1), then recency.
+        // Followers and following come first, then recency.
         const rank = (id: string) => (id === myId || state.follows[id] ? 0 : 1);
         const d = rank(a.authorId) - rank(b.authorId);
         return d !== 0 ? d : b.createdAt - a.createdAt;

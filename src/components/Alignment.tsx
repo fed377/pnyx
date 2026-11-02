@@ -4,7 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import { useStore } from "@/state/store";
 import { c, display, f, r, squircle } from "@/theme/tokens";
 
-/** Counts up to `value` once, on mount — the tick-up in spec §6.3. */
+/** Counts up to `value` once, on mount — the alignment tick-up on opening a profile. */
 export function useTickUp(value: number, ms = 1000, enabled = true) {
   const [shown, setShown] = useState(enabled ? 0 : value);
   const raf = useRef(0);

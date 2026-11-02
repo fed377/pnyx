@@ -16,7 +16,7 @@ import { useInk } from "@/theme/ink";
 import { c, display, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
-/** Spec §6.3: "more unlockable via premium" — the route itself caps at 50. */
+/** More are unlockable via premium — the route itself caps at 50. */
 const WORLD_LIMIT_PREMIUM = 50;
 const MOST_ALIGNED_LIMIT = 6;
 const FRIENDS_FIRST_THRESHOLD = 50;

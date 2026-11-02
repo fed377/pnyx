@@ -12,7 +12,7 @@ function placeholder(label: string): number {
 }
 
 /**
- * Spec §6.6: "shared by only 3 people worldwide" — real population rarity per
+ * "Shared by only 3 people worldwide" — real population rarity per
  * grid in remote mode, the same placeholder as before offline (there's simply
  * no population to measure against there).
  */
