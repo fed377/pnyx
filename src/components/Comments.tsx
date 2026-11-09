@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { timeAgo } from "@/lib/format";
 import type { Content } from "@/lib/types";
 import { useAuthor } from "@/state/useAuthor";
@@ -10,6 +10,7 @@ import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
+import { Loading } from "./Loading";
 
 const REPORT_REASONS = ["Spam", "Harassment or abuse", "Copyright", "Something else"] as const;
 
@@ -94,7 +95,7 @@ export function CommentsSheet({
       floating
     >
       {loading && all.length === 0 ? (
-        <ActivityIndicator style={{ marginVertical: s[4] }} color={c.textFaint} />
+        <Loading style={{ marginVertical: s[4] }} />
       ) : (
         <View style={{ gap: s[4] }}>
           {all.map((cm) => (

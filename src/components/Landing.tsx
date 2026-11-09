@@ -2,67 +2,70 @@ import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { nearestPoint } from "@/lib/grids";
+import { GRIDS, nearestPoint } from "@/lib/grids";
 import type { Positions } from "@/lib/types";
 import { c, display, f, s } from "@/theme/tokens";
 import { Crest } from "./Crest";
 import { Btn } from "./Primitives";
 
-/** A handful of (Values, Culture) coordinate pairs, chosen for a varied,
- * good-looking rotation — not meant to be exhaustive, just a taste of the
- * identity system before anyone has an account to generate their own. */
-const PREVIEW: { values: { x: number; y: number }; culture: { x: number; y: number } }[] = [
-  { values: { x: 1, y: 1 }, culture: { x: -1, y: -1 } }, // wolf, electric
-  { values: { x: -0.66, y: -0.66 }, culture: { x: 1, y: 1 } }, // owl, gold
-  { values: { x: 0, y: 0 }, culture: { x: -0.33, y: -0.33 } }, // dragon, lilac
-  { values: { x: -1, y: 1 }, culture: { x: 1, y: -1 } }, // fox, cyan
-  { values: { x: 0.66, y: 0.66 }, culture: { x: -0.33, y: 0.33 } }, // lion, sage
-];
-
-/** Soul (highlight) and Focus (plate) held constant across the rotation —
- * varying five things at once would read as noise, not a showcase. */
+/** Soul (highlight), Focus (plate) and Mind held constant across the rotation —
+ * only the animal and its colour change, so it reads as a showcase, not noise. */
 const FIXED: Pick<Positions, "soul" | "focus" | "mind"> = {
   soul: { x: 0, y: 0 },
   focus: { x: 0, y: 0 },
   mind: { x: 0, y: 0 },
 };
 
-function positionsFor(i: number): Positions {
-  const p = PREVIEW[i % PREVIEW.length]!;
-  return { values: p.values, culture: p.culture, ...FIXED };
-}
+/** Every animal once. Stepping through the 13 points by these (coprime) strides
+ * visits all of them while keeping neighbours in the rotation unalike. */
+const FRAMES: Positions[] = GRIDS.values.points.map((_, i) => {
+  const animal = GRIDS.values.points[(i * 5) % GRIDS.values.points.length]!;
+  const colour = GRIDS.culture.points[(i * 8) % GRIDS.culture.points.length]!;
+  return { values: { x: animal.x, y: animal.y }, culture: { x: colour.x, y: colour.y }, ...FIXED };
+});
 
+const CREST_SIZE = 148;
+const LABEL_H = 16;
 const HOLD_MS = 2200;
-const FADE_MS = 220;
+const FADE_MS = 450;
 
-function AnimalPreview() {
-  const [index, setIndex] = useState(0);
-  const opacity = useSharedValue(1);
+function AnimalFrame({ positions, active }: { positions: Positions; active: boolean }) {
+  const opacity = useSharedValue(active ? 1 : 0);
 
   useEffect(() => {
-    let fadeInTimer: ReturnType<typeof setTimeout> | null = null;
-    const id = setInterval(() => {
-      opacity.value = withTiming(0, { duration: FADE_MS, easing: Easing.in(Easing.cubic) });
-      fadeInTimer = setTimeout(() => {
-        setIndex((i) => (i + 1) % PREVIEW.length);
-        opacity.value = withTiming(1, { duration: FADE_MS * 1.3, easing: Easing.out(Easing.cubic) });
-      }, FADE_MS);
-    }, HOLD_MS);
-    return () => {
-      clearInterval(id);
-      if (fadeInTimer) clearTimeout(fadeInTimer);
-    };
-  }, [opacity]);
+    opacity.set(withTiming(active ? 1 : 0, { duration: FADE_MS, easing: Easing.inOut(Easing.quad) }));
+  }, [active, opacity]);
 
-  const positions = positionsFor(index);
-  const animalLabel = nearestPoint("values", positions.values).animal ?? "dragon";
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const animal = nearestPoint("values", positions.values).animal ?? "dragon";
 
   return (
-    <Animated.View style={[styles.preview, style]}>
-      <Crest positions={positions} size={148} dot={false} />
-      <Text style={styles.previewLabel}>{animalLabel[0]!.toUpperCase() + animalLabel.slice(1)}</Text>
+    <Animated.View style={[styles.frame, style]} accessibilityElementsHidden={!active}>
+      <Crest positions={positions} size={CREST_SIZE} dot={false} />
+      <Text style={styles.previewLabel}>{animal[0]!.toUpperCase() + animal.slice(1)}</Text>
     </Animated.View>
+  );
+}
+
+/**
+ * All the frames stay mounted and crossfade. Swapping one Crest's animal
+ * instead would start loading the new image while the fade was already
+ * running, so it popped in a beat late.
+ */
+function AnimalPreview() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % FRAMES.length), HOLD_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <View style={styles.preview}>
+      {FRAMES.map((positions, i) => (
+        <AnimalFrame key={i} positions={positions} active={i === index} />
+      ))}
+    </View>
   );
 }
 
@@ -94,10 +97,12 @@ const styles = StyleSheet.create({
   top: { gap: s[2] },
   wordmark: { color: c.text, fontSize: 30, fontFamily: display.bold, letterSpacing: 6 },
   tagline: { color: c.textDim, fontSize: f.md, lineHeight: 22, maxWidth: 320 },
-  preview: { alignItems: "center", gap: s[3] },
+  preview: { height: CREST_SIZE + s[3] + LABEL_H },
+  frame: { position: "absolute", left: 0, right: 0, top: 0, alignItems: "center", gap: s[3] },
   previewLabel: {
     color: c.textFaint,
     fontSize: f.xs,
+    lineHeight: LABEL_H,
     fontWeight: "600",
     letterSpacing: 1.1,
     textTransform: "uppercase",

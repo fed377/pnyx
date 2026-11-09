@@ -18,6 +18,7 @@ import Reanimated, {
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { Icon } from "./Icon";
+import { UndoOutline } from "./UndoOutline";
 
 /** Press-and-hold duration for Love / Hate. */
 export const HOLD_MS = 1500;
@@ -27,7 +28,7 @@ export const HOLD_MS = 1500;
  */
 export const RAIL_GAP = s[3];
 /** Gap between a rail glyph and the label under it. */
-export const RAIL_LABEL_GAP = 4;
+export const RAIL_LABEL_GAP = 8;
 /** Point in the hold where the icon flips to the strong reaction. */
 const PREVIEW_AT = 0.55;
 /** iOS HIG minimum tappable target — the visible glyph can (and here does)
@@ -35,6 +36,9 @@ const PREVIEW_AT = 0.55;
 const MIN_TOUCH = 44;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/** Matches the hold ring on the round buttons; on the pill it sits over the border. */
+const OUTLINE_OUTSET = { row: 3.5, rail: 5, pill: 0.75 } as const;
 
 type Dir = 1 | -1;
 
@@ -93,9 +97,7 @@ export function VoteControls({
   const [holding, setHolding] = useState<Dir | null>(null);
   const [preview, setPreview] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
-  const pendingProgress = useRef(new Animated.Value(0)).current;
   const anim = useRef<Animated.CompositeAnimation | null>(null);
-  const pendingAnim = useRef<Animated.CompositeAnimation | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const committed = useRef(false);
   // True once the current press has been dragged outside the button during a
@@ -107,28 +109,6 @@ export function VoteControls({
   const draggedOff = useRef(false);
   const popUp = usePop(current === 2 || current === 1);
   const popDown = usePop(current === -2 || current === -1);
-
-  // Fills over whatever time is left until the pending vote commits — if this
-  // mounts mid-window (scrolled back to a reel voted on earlier), it fills
-  // over just the remainder rather than the full grace period.
-  useEffect(() => {
-    pendingAnim.current?.stop();
-    if (pendingUntil === undefined) {
-      pendingProgress.setValue(0);
-      return;
-    }
-    const remaining = Math.max(0, pendingUntil - Date.now());
-    pendingProgress.setValue(0);
-    pendingAnim.current = Animated.timing(pendingProgress, {
-      toValue: 1,
-      duration: remaining,
-      easing: Easing.linear,
-      useNativeDriver: false,
-    });
-    pendingAnim.current.start();
-    // pendingProgress is a stable ref value (same Animated.Value instance for
-    // the component's lifetime) — it never needs to be a dependency here.
-  }, [pendingUntil]);
 
   const clearTimers = useCallback(() => {
     anim.current?.stop();
@@ -230,7 +210,8 @@ export function VoteControls({
   const box = layout === "rail" ? glyph : size;
   const slop = Math.max(0, Math.round((MIN_TOUCH - box) / 2));
 
-  const ringR = box / 2 + 2;
+  // The rail's box hugs the glyph, so its ring needs more room to clear it.
+  const ringR = box / 2 + (layout === "rail" ? 5 : 2);
   const circ = 2 * Math.PI * ringR;
 
   const renderButton = (dir: Dir) => {
@@ -269,14 +250,15 @@ export function VoteControls({
     const fg = overlay || layout === "pill" ? c.onAccent : active || isHolding ? c.text : c.textDim;
     // A settled vote keeps its full presence; the road not taken fades out.
     const opacity = locked && !active ? 0.28 : 1;
-    const count = layout === "pill" ? (dir === 1 ? counts?.up : counts?.down) : undefined;
+    const count = dir === 1 ? counts?.up : counts?.down;
     // The accessibilityLabel below already says "tap again to cancel" — a
     // sighted user gets no equivalent unless the cancel window shows up
     // somewhere visible too, so the pill's existing text slot (normally the
     // %) and the rail's existing caption both say "Undo" for the direction
     // that's actually pending.
     const sideText = layout === "pill" ? (isPending ? "Undo" : count !== undefined ? `${count}%` : undefined) : undefined;
-    const belowCaption = layout === "rail" ? label : layout === "row" && isPending ? "Undo" : undefined;
+    const railCaption = isPending ? "Undo" : count !== undefined ? `${count}%` : label;
+    const belowCaption = layout === "rail" ? railCaption : layout === "row" && isPending ? "Undo" : undefined;
 
     return (
       <View key={dir} style={styles.slot}>
@@ -327,7 +309,7 @@ export function VoteControls({
             layout === "row" && !overlay && { borderWidth: 1.5, borderColor: c.line, borderRadius: box / 2 },
           ]}
         >
-          {(isHolding || isPending) && layout !== "pill" && (
+          {isHolding && layout !== "pill" && (
             <View style={[StyleSheet.absoluteFill, styles.ring]}>
               <Svg
                 width={ringR * 2 + 6}
@@ -343,10 +325,7 @@ export function VoteControls({
                   strokeWidth={3}
                   strokeLinecap="round"
                   strokeDasharray={`${circ}`}
-                  strokeDashoffset={(isHolding
-                    ? progress
-                    : pendingProgress
-                  ).interpolate({
+                  strokeDashoffset={progress.interpolate({
                     inputRange: [0, 1],
                     outputRange: [circ, 0],
                   })}
@@ -354,6 +333,10 @@ export function VoteControls({
                 />
               </Svg>
             </View>
+          )}
+          {/* The pill has no hold ring to give way to, so its outline stays up during a press. */}
+          {pendingUntil !== undefined && isPending && (!isHolding || layout === "pill") && (
+            <UndoOutline commitAt={pendingUntil} color={tone} outset={OUTLINE_OUTSET[layout]} />
           )}
           <Reanimated.View style={dir === 1 ? popUp : popDown}>
             <Icon

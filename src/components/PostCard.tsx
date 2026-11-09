@@ -14,7 +14,7 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
-import { LikeBurst, useDoubleTapLike } from "./LikeBurst";
+import { useDoubleTapLike } from "./LikeBurst";
 import { isVideoUrl, Media } from "./Media";
 import { Chip } from "./Primitives";
 import { useToast } from "./Toast";
@@ -63,7 +63,7 @@ function VideoThumb({ content, like }: { content: Content; like: DoubleTapLike }
   );
 }
 
-type DoubleTapLike = Pick<ReturnType<typeof useDoubleTapLike>, "doubleTap" | "burst">;
+type DoubleTapLike = Pick<ReturnType<typeof useDoubleTapLike>, "doubleTap">;
 
 /**
  * Double-tap anywhere in here to Like. A single tap still does the area's own
@@ -74,13 +74,11 @@ function LikeArea({
   like,
   onTap,
   accessibilityLabel,
-  burstColor,
   children,
 }: {
   like: DoubleTapLike;
   onTap?: () => void;
   accessibilityLabel?: string;
-  burstColor?: string;
   children: ReactNode;
 }) {
   const tap = () => onTap?.();
@@ -100,7 +98,6 @@ function LikeArea({
         onAccessibilityTap={onTap}
       >
         {children}
-        <LikeBurst progress={like.burst} size={80} color={burstColor} />
       </View>
     </GestureDetector>
   );
@@ -183,7 +180,7 @@ export function PostCard({
         </>
       ) : (
         // A white thumb would vanish against the light card behind a text take.
-        <LikeArea like={like} burstColor={c.up}>
+        <LikeArea like={like}>
           <Text style={styles.take}>{content.text}</Text>
         </LikeArea>
       )}

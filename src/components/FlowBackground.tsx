@@ -1,6 +1,6 @@
 import { Canvas, Fill, Shader, Skia } from "@shopify/react-native-skia";
 import { useIsFocused } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AccessibilityInfo, AppState, StyleSheet, View } from "react-native";
 import {
   cancelAnimation,
@@ -10,6 +10,7 @@ import {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
+import { useStore } from "@/state/store";
 
 /**
  * The app backdrop: a port of the FeralUI "FLOW" gradient in `gradient.jsx`
@@ -130,7 +131,19 @@ function hexToOklab(hex: string): [number, number, number] {
   ];
 }
 
-const COLORS = STOPS.map(hexToOklab);
+const BASE = STOPS.map(hexToOklab);
+
+/**
+ * How much of the profile colour's hue each stop takes. Lightness stays the
+ * stop's own, so the gradient keeps its light and dark bands; these are as
+ * strong as they go before backdropFaint drops below 4.5:1 on the darkest stop.
+ */
+const TINT = [0.2, 0.7, 0.35, 0.8];
+
+function tintedStops(accent: string) {
+  const [, a, b] = hexToOklab(accent);
+  return BASE.map(([l, sa, sb], i) => [l, sa + a * TINT[i], sb + b * TINT[i]]);
+}
 
 function useReduceMotion() {
   const [reduce, setReduce] = useState(false);
@@ -158,6 +171,8 @@ function useAppActive() {
 export function FlowBackground() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const time = useSharedValue(savedTime);
+  const { accent, unlocked, screenTint } = useStore();
+  const colors = useMemo(() => tintedStops(accent), [accent]);
 
   // Only the screen on show drives the clock (tabs stay mounted). It holds
   // still in the background — so it resumes where it was rather than jumping
@@ -189,15 +204,15 @@ export function FlowBackground() {
   const uniforms = useDerivedValue(() => ({
     u_res: [Math.max(1, size.width), Math.max(1, size.height)],
     u_time: time.value,
-    u_c0: COLORS[0],
-    u_c1: COLORS[1],
-    u_c2: COLORS[2],
-    u_c3: COLORS[3],
+    u_c0: colors[0],
+    u_c1: colors[1],
+    u_c2: colors[2],
+    u_c3: colors[3],
   }));
 
   return (
     <View
-      style={[StyleSheet.absoluteFill, styles.fallback]}
+      style={[StyleSheet.absoluteFill, styles.fallback, unlocked && { backgroundColor: screenTint }]}
       pointerEvents="none"
       onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
     >

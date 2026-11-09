@@ -6,7 +6,7 @@ import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useStore } from "@/state/store";
 import { OnBackdropProvider, useInk } from "@/theme/ink";
-import { c, f, hexToRgba, r, s, squircle, STEEL_GRADIENT } from "@/theme/tokens";
+import { c, f, hexToRgba, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
 import type { IconName } from "./Icon";
@@ -95,7 +95,7 @@ export function Btn({
   wide?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { accent } = useStore();
+  const { accent, liveGradient } = useStore();
   const bg =
     variant === "accent"
       ? accent
@@ -126,7 +126,7 @@ export function Btn({
         style={[wide && { alignSelf: "stretch" }, disabled && { opacity: 0.42 }, style]}
       >
         <LinearGradient
-          colors={STEEL_GRADIENT}
+          colors={liveGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.btn, styles.btnLive]}
@@ -329,7 +329,7 @@ export function Progress({ value, style }: { value: number; style?: StyleProp<Vi
 
 /* ── Switch ───────────────────────────────────────────────────────────────── */
 
-/** Off is a flat grey track; on is the same steel gradient the "live" button uses. */
+/** Off is a flat grey track; on is the same gradient the "live" button uses. */
 const TOGGLE_TRACK_W = 48;
 const TOGGLE_THUMB_W = 22;
 const TOGGLE_TRAVEL = TOGGLE_TRACK_W - TOGGLE_THUMB_W - 4;
@@ -343,6 +343,7 @@ export function Toggle({
   onValueChange: (v: boolean) => void;
   label: string;
 }) {
+  const { liveGradient } = useStore();
   const x = useSharedValue(value ? 1 : 0);
   useEffect(() => {
     x.value = withTiming(value ? 1 : 0, { duration: 180 });
@@ -361,7 +362,7 @@ export function Toggle({
     >
       {value ? (
         <LinearGradient
-          colors={STEEL_GRADIENT}
+          colors={liveGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.toggleTrack}

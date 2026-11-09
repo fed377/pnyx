@@ -2,11 +2,9 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
-  Keyboard,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,7 +12,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { ScrollViewInstance } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
@@ -26,6 +23,7 @@ import { GRID_LIST } from "@/lib/grids";
 import type { GridId } from "@/lib/types";
 import { useStore } from "@/state/store";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
+import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "@/components/keyboard";
 
 type Picked = {
   uri: string;
@@ -69,20 +67,6 @@ export default function ContributeScreen() {
   const [picked, setPicked] = useState<GridId[]>([]);
   const [media, setMedia] = useState<Picked | null>(null);
   const [text, setText] = useState("");
-
-  // The keyboard overlays the screen rather than resizing it, so the scroller
-  // needs to know how much room it is losing at the bottom.
-  const scroller = useRef<ScrollViewInstance>(null);
-  const [keyboard, setKeyboard] = useState(0);
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => setKeyboard(e.endCoordinates.height));
-    const hide = Keyboard.addListener("keyboardDidHide", () => setKeyboard(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
 
   if (state.profile.tier !== "speaker") {
     return (
@@ -153,7 +137,7 @@ export default function ContributeScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior={FORM_KEYBOARD_BEHAVIOR}>
       <View style={[styles.header, { paddingTop: insets.top + s[2] }]}>
         <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Cancel">
           <Text style={styles.headerSide}>Cancel</Text>
@@ -170,11 +154,10 @@ export default function ContributeScreen() {
       </View>
 
       <ScrollView
-        ref={scroller}
-        contentContainerStyle={[styles.content, { paddingBottom: s[7] + keyboard }]}
+        contentContainerStyle={[styles.content, { paddingBottom: s[7] }]}
         // "handled" keeps the keyboard up while you scroll and still lets a tap
         // on a button register; dismiss-on-drag would close it mid-scroll.
-        keyboardShouldPersistTaps="handled"
+        {...FORM_SCROLL_PROPS}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.warn}>
@@ -208,8 +191,6 @@ export default function ContributeScreen() {
             placeholderTextColor={c.textFaint}
             accessibilityLabel="Your take"
             style={styles.textarea}
-            // Bring the field above the keyboard.
-            onFocus={() => setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 120)}
           />
           <Text style={styles.counter}>{MAX - text.length} characters left</Text>
         </View>
@@ -251,7 +232,7 @@ export default function ContributeScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",

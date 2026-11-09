@@ -140,6 +140,7 @@ export default function PeopleScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         refreshControl={
           mode === "remote" ? (
             <RefreshControl refreshing={loading} onRefresh={() => void refresh()} tintColor={accent} colors={[accent]} />

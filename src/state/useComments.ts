@@ -33,7 +33,7 @@ const fromApi = (r: ApiComment): LiveComment => ({
  */
 export function useComments(contentId: string, seed: Comment[], seedAt: number) {
   const { mode, myId, bumpCommentCount } = useStore();
-  const { token } = useSession();
+  const { token, authed } = useSession();
   const remote = mode === "remote";
 
   const [remoteItems, setRemoteItems] = useState<LiveComment[] | null>(null);
@@ -43,16 +43,16 @@ export function useComments(contentId: string, seed: Comment[], seedAt: number) 
 
   const load = useCallback(async () => {
     if (!remote) return;
-    const t = await token();
-    if (!t) return;
     setLoading(true);
     try {
-      const res = await api.comments(t, contentId);
-      setRemoteItems(res.items.map(fromApi));
+      const res = await authed((t) => api.comments(t, contentId));
+      if (res) setRemoteItems(res.items.map(fromApi));
+    } catch {
+      // Leave what's on screen; the next load tries again.
     } finally {
       setLoading(false);
     }
-  }, [remote, token, contentId]);
+  }, [remote, authed, contentId]);
 
   useEffect(() => {
     void load();

@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
@@ -14,6 +14,7 @@ import type { Content, Person } from "@/lib/types";
 import { useNotifications } from "@/state/useNotifications";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
+import { Loading } from "@/components/Loading";
 
 const DAY_MS = 86_400_000;
 
@@ -96,9 +97,9 @@ export default function NotificationsScreen() {
     <View style={styles.screen}>
       <PageHeader title="Notifications" centered />
       {loading && items.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: s[6] }} color={c.textFaint} />
+        <Loading style={{ marginTop: s[6] }} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
           {today.length > 0 && (
             <View>
               <Text style={styles.section}>Today</Text>
@@ -122,7 +123,7 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   content: { padding: s[4], paddingBottom: s[7], gap: s[4] },
   section: { color: c.text, fontSize: f.sm, fontWeight: "600", marginBottom: s[1] },
   row: { flexDirection: "row", alignItems: "center", gap: s[3], paddingVertical: s[3] },

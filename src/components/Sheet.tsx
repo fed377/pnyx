@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Dimensions, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { Icon } from "./Icon";
+import { useKeyboardHeight } from "./keyboard";
 
 const SCREEN_H = Dimensions.get("window").height;
 const DURATION_IN = 260;
 const DURATION_OUT = 200;
+/** Android resizes a Modal's window for the keyboard on its own. */
+const LIFT_FOR_KEYBOARD = Platform.OS === "ios";
 
 export function Sheet({
   open,
@@ -41,6 +45,12 @@ export function Sheet({
   // finishes, instead of smoothly fading in over the whole screen the moment
   // the sheet opens.
   const progress = useSharedValue(0);
+  const keyboard = useKeyboardHeight();
+  const keyboardHeight = keyboard.animated;
+  const liftedHeight = LIFT_FOR_KEYBOARD ? keyboard.height : 0;
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const bottomMargin = floating ? Math.max(s[4], insets.bottom) : 0;
+  const liftGap = floating ? s[2] : 0;
 
   useEffect(() => {
     if (open) {
@@ -56,7 +66,13 @@ export function Sheet({
   const scrimStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
   const sheetStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ translateY: (1 - progress.value) * SCREEN_H }],
+    transform: [
+      {
+        translateY:
+          (1 - progress.value) * SCREEN_H -
+          (LIFT_FOR_KEYBOARD ? Math.max(0, keyboardHeight.value - bottomMargin + liftGap) : 0),
+      },
+    ],
   }));
 
   if (!mounted) return null;
@@ -70,7 +86,8 @@ export function Sheet({
         <Animated.View
           style={[
             styles.sheet,
-            floating && [styles.sheetFloating, { marginBottom: Math.max(s[4], insets.bottom) }],
+            floating && [styles.sheetFloating, { marginBottom: bottomMargin }],
+            liftedHeight > 0 && { maxHeight: SCREEN_H - liftedHeight - insets.top - s[3] },
             sheetStyle,
           ]}
         >
@@ -86,7 +103,17 @@ export function Sheet({
               </AnimatedPressable>
             )}
           </View>
-          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+            alwaysBounceVertical={false}
+            // A sheet's field sits at its end (the reply box); keep it in view
+            // when the keyboard squeezes the sheet shorter.
+            onLayout={() => {
+              if (liftedHeight > 0) scrollRef.current?.scrollToEnd({ animated: true });
+            }}
+          >
             {children}
           </ScrollView>
         </Animated.View>

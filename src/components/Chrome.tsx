@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
     gap: s[2],
     paddingHorizontal: s[3],
     paddingBottom: s[2],
-    backgroundColor: c.app,
     borderBottomWidth: 1,
     borderBottomColor: c.lineSoft,
   },

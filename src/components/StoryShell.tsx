@@ -5,6 +5,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "./Icon";
+import { LikeBurstHost } from "./LikeBurst";
 import { s } from "@/theme/tokens";
 
 const CLOSE_DRAG = 120;
@@ -93,6 +94,7 @@ export function StoryShell({
 
   return (
     <Modal visible={open} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <LikeBurstHost>
       <View style={styles.screen}>
         <GestureDetector gesture={pan}>
           <Animated.View style={[styles.fill, dragStyle]}>
@@ -139,6 +141,7 @@ export function StoryShell({
           </View>
         </Animated.View>
       </View>
+      </LikeBurstHost>
     </Modal>
   );
 }

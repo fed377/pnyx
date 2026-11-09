@@ -5,10 +5,12 @@ import type { LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
+import { useKeyboardHeight } from "@/components/keyboard";
 import type { IconName } from "@/components/Icon";
 import { LiquidGlassSurface } from "@/components/LiquidGlass";
 import { ImmersiveProvider, useImmersive } from "@/state/immersive";
 import { PeopleSearchProvider, usePeopleSearch } from "@/state/peopleSearch";
+import { useStore } from "@/state/store";
 import { c, f, NAV_H, NAV_INSET, NAV_SIDE_INSET, r, s, squircle } from "@/theme/tokens";
 
 // Three equal tabs in the bar, per the handoff — People moves to the
@@ -24,6 +26,8 @@ const TABS: { name: string; title: string; icon: IconName }[] = [
 // rounded-pill ends do. A few px smaller is what actually looks the same size.
 const SEARCH_SIZE = NAV_H - 6;
 const INDICATOR_INSET = 6;
+/** Space between the search bar and the top of the keyboard. */
+const KEYBOARD_GAP = s[2];
 const SPRING = { damping: 22, stiffness: 260, mass: 0.7 } as const;
 const MORPH_SPRING = { damping: 24, stiffness: 220, mass: 0.8 } as const;
 
@@ -90,20 +94,25 @@ function SearchMorph({
   const router = useRouter();
   const { query, setQuery } = usePeopleSearch();
   const progress = useSharedValue(onPeople ? 1 : 0);
+  const keyboardHeight = useKeyboardHeight().animated;
+  const restingBottom = barBottom + (NAV_H - SEARCH_SIZE) / 2;
 
   useEffect(() => {
     progress.value = withSpring(onPeople ? 1 : 0, MORPH_SPRING);
   }, [onPeople, progress]);
 
+  // `bottom`, not a transform, to clear the keyboard — same reason as width
+  // below: a transform on an ancestor stops real glass compositing.
   const boxStyle = useAnimatedStyle(() => ({
     width: SEARCH_SIZE + progress.value * Math.max(0, barWidth - SEARCH_SIZE),
+    bottom: Math.max(restingBottom, keyboardHeight.value + KEYBOARD_GAP),
   }));
   const circleStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }));
   const barStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
   return (
     <Animated.View
-      style={[styles.search, { bottom: barBottom + (NAV_H - SEARCH_SIZE) / 2, right: NAV_SIDE_INSET }, boxStyle]}
+      style={[styles.search, { right: NAV_SIDE_INSET }, boxStyle]}
     >
       <View style={styles.searchClip}>
         {/* tint is only ever "dark" here on Feed — see the tab bar's own
@@ -219,6 +228,7 @@ function TabsLayoutInner() {
   // against dark video, so the whole bar (and the search circle) flips to
   // dark-tint glass there, same reasoning as the top rail.
   const onFeed = pathname.startsWith("/feed");
+  const { screenTint } = useStore();
   const tint = onFeed ? "dark" : "light";
   const chromeColor = onFeed ? "#fff" : c.text;
 
@@ -228,7 +238,7 @@ function TabsLayoutInner() {
         screenOptions={{
           headerShown: false,
           animation: "shift",
-          sceneStyle: { backgroundColor: c.app },
+          sceneStyle: { backgroundColor: screenTint },
           tabBarActiveTintColor: chromeColor,
           tabBarInactiveTintColor: chromeColor,
           tabBarShowLabel: true,

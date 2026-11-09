@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
 import { Btn, Chip } from "@/components/Primitives";
@@ -10,6 +10,7 @@ import type { GridId } from "@/lib/types";
 import { useHotTakes } from "@/state/useHotTakes";
 import { useStore } from "@/state/store";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
+import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "@/components/keyboard";
 
 const MAX = 220;
 
@@ -65,7 +66,7 @@ export default function HotTakeComposer() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior={FORM_KEYBOARD_BEHAVIOR}>
       <View style={[styles.header, { paddingTop: insets.top + s[2] }]}>
         <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Cancel">
           <Text style={styles.headerSide}>Cancel</Text>
@@ -83,7 +84,7 @@ export default function HotTakeComposer() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.content} {...FORM_SCROLL_PROPS} showsVerticalScrollIndicator={false}>
         <View style={styles.warn}>
           <Icon name="filter" size={18} color="#fff" />
           <View style={{ flex: 1 }}>
@@ -124,7 +125,7 @@ export default function HotTakeComposer() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",

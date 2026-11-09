@@ -13,16 +13,30 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import { useAnalyticsLifecycle } from "@/analytics/analytics";
 import { AuthGate } from "@/components/AuthGate";
+import { LikeBurstHost } from "@/components/LikeBurst";
 import { PostStatusSnackbar } from "@/components/PostStatusSnackbar";
 import { SyncBanner } from "@/components/SyncBanner";
 import { ToastProvider } from "@/components/Toast";
 import { BlurTargetProvider } from "@/state/blurTarget";
 import { PushRegistration } from "@/state/usePushRegistration";
 import { SessionProvider } from "@/state/session";
-import { StoreProvider } from "@/state/store";
-import { c } from "@/theme/tokens";
+import { StoreProvider, useStore } from "@/state/store";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Separate from the root so it sits inside StoreProvider. Screens stay transparent and show this. */
+function AppStack() {
+  const { screenTint } = useStore();
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+        contentStyle: { backgroundColor: screenTint },
+      }}
+    />
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -54,18 +68,14 @@ export default function RootLayout() {
           <StoreProvider>
             <ToastProvider>
               <BlurTargetProvider>
+                <LikeBurstHost>
                 <StatusBar style="dark" />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    animation: "slide_from_right",
-                    contentStyle: { backgroundColor: c.app },
-                  }}
-                />
+                <AppStack />
                 <SyncBanner />
                 <PostStatusSnackbar />
                 <AuthGate />
                 <PushRegistration />
+                </LikeBurstHost>
               </BlurTargetProvider>
             </ToastProvider>
           </StoreProvider>

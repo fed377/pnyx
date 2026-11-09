@@ -3,7 +3,6 @@ import type { ReactNode, RefObject } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "./AnimatedPressable";
 import { GoogleIcon } from "./GoogleIcon";
 import { Icon } from "./Icon";
+import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "./keyboard";
 import { Btn } from "./Primitives";
 import { API_URL, TERMS_URL } from "@/api/client";
 import { ageOn, MIN_AGE, toBirthDate, toISODate } from "@/lib/birthday";
@@ -549,10 +549,10 @@ export function SignIn() {
         !busy;
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior={FORM_KEYBOARD_BEHAVIOR}>
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: insets.top + s[7], paddingBottom: insets.bottom + s[5] }]}
-        keyboardShouldPersistTaps="handled"
+        {...FORM_SCROLL_PROPS}
       >
         {!configured ? (
           <View style={styles.warn}>

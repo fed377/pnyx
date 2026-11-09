@@ -67,7 +67,7 @@ export default function PersonProfileScreen() {
   return (
     <View style={styles.screen}>
       <PageHeader title={person.handle} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
         <ProfileView
           name={person.name}
           handle={person.handle}
@@ -109,6 +109,6 @@ export default function PersonProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   content: { padding: s[4], paddingBottom: s[7] },
 });

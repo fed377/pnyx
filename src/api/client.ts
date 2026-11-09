@@ -321,8 +321,15 @@ export const api = {
 
   forgetMe: (token: string) => request<void>("/me", { method: "DELETE", token }),
 
-  reels: (token: string, limit = 30) =>
-    request<{ items: ApiContent[] }>(`/feed/reels?limit=${limit}`, { token }),
+  /** `exclude`: ids already loaded, so the next page is different reels. */
+  reels: (token: string, limit = 30, exclude: string[] = []) =>
+    request<{ items: ApiContent[] }>(
+      `/feed/reels?limit=${limit}${exclude.length > 0 ? `&exclude=${exclude.join(",")}` : ""}`,
+      { token },
+    ),
+
+  recordReelViews: (token: string, items: { contentId: string; watchMs: number; completion: number | null }[]) =>
+    request<void>("/feed/views", { method: "POST", token, body: { items } }),
 
   home: (token: string, limit = 40) =>
     request<{ items: ApiContent[] }>(`/home?limit=${limit}`, { token }),

@@ -1,6 +1,6 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AlignmentPill } from "@/components/Alignment";
 import { PageHeader } from "@/components/Chrome";
@@ -12,6 +12,7 @@ import { useAuthor } from "@/state/useAuthor";
 import { useConversation } from "@/state/useConversation";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
+import { Loading } from "@/components/Loading";
 
 /** A forwarded post carries the sender's vote on it. */
 function ForwardedPost({ contentId, vote, senderName }: { contentId: string; vote?: VotePower; senderName: string }) {
@@ -73,15 +74,15 @@ export default function ThreadScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
       keyboardVerticalOffset={0}
     >
       <PageHeader title={name} centered action={person && <AlignmentPill value={alignmentWith(person)} />} />
 
       {loading && messages.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: s[6] }} color={c.textFaint} />
+        <Loading style={{ marginTop: s[6] }} />
       ) : (
-        <ScrollView contentContainerStyle={styles.list}>
+        <ScrollView contentContainerStyle={styles.list} alwaysBounceVertical={false}>
           {messages.map((m) => {
             const mine = m.from === myId;
             return (
@@ -124,7 +125,7 @@ export default function ThreadScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   list: { padding: s[4], gap: s[3] },
   bubble: {
     alignSelf: "flex-start",
@@ -158,7 +159,6 @@ const styles = StyleSheet.create({
     gap: s[2],
     paddingHorizontal: s[4],
     paddingTop: s[3],
-    backgroundColor: c.app,
   },
   input: {
     flex: 1,

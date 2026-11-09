@@ -1,10 +1,11 @@
 import { usePathname } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
-import { c, s } from "@/theme/tokens";
+import { c } from "@/theme/tokens";
 import { Landing } from "./Landing";
+import { LaunchScreen } from "./Loading";
 import { SignIn } from "./SignIn";
 
 /**
@@ -30,9 +31,7 @@ export function AuthGate() {
   // content flashes past while either is still unresolved.
   if (!ready || !hydrated) {
     return (
-      <View style={[StyleSheet.absoluteFill, styles.cover]}>
-        <Text style={styles.wordmark}>PNYX</Text>
-      </View>
+      <LaunchScreen />
     );
   }
 
@@ -59,9 +58,7 @@ export function AuthGate() {
   // flight, which on a cold Render instance can take tens of seconds.
   if (mode === "remote" && !profileLoaded) {
     return (
-      <View style={[StyleSheet.absoluteFill, styles.cover]}>
-        <Text style={styles.wordmark}>PNYX</Text>
-      </View>
+      <LaunchScreen />
     );
   }
 
@@ -70,12 +67,4 @@ export function AuthGate() {
 
 const styles = StyleSheet.create({
   cover: { backgroundColor: c.app, zIndex: 40 },
-  wordmark: {
-    color: c.textFaint,
-    fontSize: 20,
-    fontWeight: "700",
-    letterSpacing: 6,
-    textAlign: "center",
-    marginTop: s[7],
-  },
 });

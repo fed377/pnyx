@@ -105,7 +105,7 @@ export default function ProfileScreen() {
   return (
     <BlurBackdrop style={styles.screen}>
       <TopBar wordmark={firstName.toLowerCase()} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
         <ProfileView
           name={state.profile.name}
           handle={state.profile.handle}

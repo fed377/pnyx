@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { identityCode } from "@/lib/algorithm";
@@ -11,6 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Icon } from "@/components/Icon";
+import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "@/components/keyboard";
 import { Btn, Field, SectionTitle, Toggle } from "@/components/Primitives";
 import { Sheet } from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
@@ -235,9 +236,9 @@ export default function SettingsScreen() {
   const tier = TIERS.find((t) => t.id === state.profile.tier)!;
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView style={styles.screen} behavior={FORM_KEYBOARD_BEHAVIOR}>
       <PageHeader title="Settings" centered />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} {...FORM_SCROLL_PROPS}>
         <AnimatedPressable
           onPress={() => void pickAvatar()}
           scaleTo={0.95}
@@ -408,7 +409,7 @@ export default function SettingsScreen() {
         changePassword={changePassword}
         hasPassword={hasPassword !== false}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -488,7 +489,7 @@ function ChangePasswordSheet({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   content: { padding: s[4], paddingBottom: s[7], gap: s[5] },
   avatarRow: { alignItems: "center", gap: s[2] },
   avatarWrap: { width: 64, height: 64 },

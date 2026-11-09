@@ -24,7 +24,7 @@ export const fromApiMessage = (m: ApiMessage): ChatMessage => ({
  */
 export function useConversations() {
   const { mode } = useStore();
-  const { token } = useSession();
+  const { authed } = useSession();
   const remote = mode === "remote";
 
   const [items, setItems] = useState<Conversation[] | null>(remote ? null : CONVERSATIONS);
@@ -35,11 +35,10 @@ export function useConversations() {
       setItems(CONVERSATIONS);
       return;
     }
-    const t = await token();
-    if (!t) return;
     setLoading(true);
     try {
-      const res = await api.conversations(t);
+      const res = await authed((t) => api.conversations(t));
+      if (!res) return;
       setItems(
         res.items.map((c) => ({
           id: c.otherUserId,
@@ -47,10 +46,12 @@ export function useConversations() {
           messages: c.lastMessage ? [fromApiMessage(c.lastMessage)] : [],
         })),
       );
+    } catch {
+      // Leave what's on screen; the next load tries again.
     } finally {
       setLoading(false);
     }
-  }, [remote, token]);
+  }, [remote, authed]);
 
   useEffect(() => {
     void load();

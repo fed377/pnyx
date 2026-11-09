@@ -13,7 +13,7 @@ import { useStore } from "./store";
  */
 export function useFriendVotes(contentId: string): { person: Person; power: VotePower }[] | null {
   const { mode, peopleById } = useStore();
-  const { token } = useSession();
+  const { authed } = useSession();
   const remote = mode === "remote";
 
   const [items, setItems] = useState<{ userId: string; power: VotePower }[] | null>(null);
@@ -25,15 +25,15 @@ export function useFriendVotes(contentId: string): { person: Person; power: Vote
     }
     let alive = true;
     void (async () => {
-      const t = await token();
-      if (!t) return;
-      const res = await api.friendVotes(t, contentId);
-      if (alive) setItems(res.items);
-    })();
+      const res = await authed((t) => api.friendVotes(t, contentId));
+      if (res && alive) setItems(res.items);
+    })().catch(() => {
+      // Friends' votes are a bonus on the result card; it renders without them.
+    });
     return () => {
       alive = false;
     };
-  }, [remote, contentId, token]);
+  }, [remote, contentId, authed]);
 
   if (!remote) return null;
   if (items === null) return [];

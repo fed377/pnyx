@@ -12,7 +12,7 @@ import { useStore } from "./store";
  */
 export function useNotifications(enabled = true) {
   const { mode } = useStore();
-  const { token } = useSession();
+  const { authed } = useSession();
   const remote = mode === "remote" && enabled;
 
   const [items, setItems] = useState<Notification[] | null>(remote ? null : enabled ? NOTIFICATIONS : []);
@@ -24,11 +24,10 @@ export function useNotifications(enabled = true) {
       setItems(NOTIFICATIONS);
       return;
     }
-    const t = await token();
-    if (!t) return;
     setLoading(true);
     try {
-      const res = await api.notifications(t);
+      const res = await authed((t) => api.notifications(t));
+      if (!res) return;
       setItems(
         res.items.map((n) => ({
           id: n.id,
@@ -40,10 +39,12 @@ export function useNotifications(enabled = true) {
           contentId: n.contentId,
         })),
       );
+    } catch {
+      // Leave what's on screen; the next load tries again.
     } finally {
       setLoading(false);
     }
-  }, [enabled, remote, token]);
+  }, [enabled, remote, authed]);
 
   useEffect(() => {
     void load();

@@ -1,12 +1,13 @@
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isRecoveryRedirect } from "@/api/oauth";
 import { Btn } from "@/components/Primitives";
 import { useSession } from "@/state/session";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
+import { Loading } from "@/components/Loading";
 
 /**
  * Where a password-recovery email link lands — opened straight from the
@@ -39,7 +40,7 @@ export default function AuthCallbackScreen() {
   if (isRecovery === null) {
     return (
       <View style={[styles.screen, styles.center]}>
-        <ActivityIndicator color={c.textFaint} />
+        <Loading />
       </View>
     );
   }
@@ -75,7 +76,7 @@ export default function AuthCallbackScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <View style={[styles.content, { paddingTop: insets.top + s[7] }]}>
         <Text style={styles.wordmark}>PNYX</Text>
         <Text style={styles.tagline}>Set a new password.</Text>
@@ -118,7 +119,7 @@ export default function AuthCallbackScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   center: { alignItems: "center", justifyContent: "center", paddingHorizontal: s[5] },
   content: { flex: 1, padding: s[5], gap: s[3] },
   wordmark: { color: c.text, fontSize: 24, fontFamily: display.bold, letterSpacing: 6 },

@@ -4,7 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { track } from "@/analytics/analytics";
-import { api, apiConfigured, type Session } from "@/api/client";
+import { api, ApiError, apiConfigured, type Session } from "@/api/client";
 import { signInWithGoogleNative } from "@/api/googleNative";
 import { sessionFromRedirect } from "@/api/oauth";
 
@@ -63,6 +63,12 @@ type SessionStore = {
    * and signs the user out if the refresh token itself is dead.
    */
   token: (force?: boolean) => Promise<string | null>;
+  /**
+   * Runs an API call with a valid token, retrying once with a forced refresh
+   * if the server rejects it. Resolves to null when there is no usable
+   * session; a dead one signs the user out via `token`. Other failures reject.
+   */
+  authed: <T,>(call: (token: string) => Promise<T>) => Promise<T | null>;
 };
 
 const SessionContext = createContext<SessionStore | null>(null);
@@ -128,9 +134,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return refreshing.current;
   }, [store]);
 
+  const authed = useCallback(
+    async <T,>(call: (t: string) => Promise<T>): Promise<T | null> => {
+      const t = await token();
+      if (!t) return null;
+      try {
+        return await call(t);
+      } catch (e) {
+        if (!(e instanceof ApiError) || e.status !== 401) throw e;
+        const fresh = await token(true);
+        return fresh ? await call(fresh) : null;
+      }
+    },
+    [token],
+  );
+
   const value = useMemo<SessionStore>(
     () => ({
       session,
+      authed,
       ready,
       configured: apiConfigured,
       signIn: async (identifier, password) => {
@@ -211,7 +233,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       token,
     }),
-    [session, ready, store, token],
+    [session, ready, store, token, authed],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

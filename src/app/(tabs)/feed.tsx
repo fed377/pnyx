@@ -5,15 +5,16 @@ import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
 import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
-import { LikeBurst, useDoubleTapLike } from "@/components/LikeBurst";
+import { useDoubleTapLike } from "@/components/LikeBurst";
 import { Media, isVideoUrl } from "@/components/Media";
-import { Card, OverlayPill } from "@/components/Primitives";
+import { OverlayPill } from "@/components/Primitives";
 import { useToast } from "@/components/Toast";
-import { VoteControls } from "@/components/VoteControls";
+import { RAIL_GAP, RAIL_LABEL_GAP, VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
 import { useZoom } from "@/components/zoom";
+import { LinearGradient } from "expo-linear-gradient";
 import { useIsFocused, useRouter, useScrollToTop } from "expo-router";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   FlatList,
@@ -55,8 +56,17 @@ function primaryGrid(content: Content) {
 }
 
 const INFO_MS = 280;
-/** Height of the vote / comment / share pills — one row, one height. */
-const ACTION_H = 44;
+/** Long enough that an ordinary tap or the start of a swipe never counts as a hold. */
+const HOLD_DELAY_MS = 250;
+const HOLD_FADE_MS = 160;
+const MIN_VIEW_MS = 1000;
+/** Start fetching the next page this many reels before the end. */
+const LOAD_MORE_WITHIN = 5;
+/** The rail's vote buttons take a size; the comment and share glyphs match what it draws. */
+const RAIL_SIZE = 48;
+const RAIL_GLYPH = Math.round(RAIL_SIZE * 0.6);
+/** Tops the rail's glyph-sized buttons up to the 44pt minimum target. */
+const RAIL_SLOP = Math.round((44 - RAIL_GLYPH) / 2);
 
 function ReelView({
   content,
@@ -67,6 +77,7 @@ function ReelView({
   infoHidden,
   onToggleInfo,
   onZoomingChange,
+  onHoldingChange,
   reelIndex,
   isAgainstGrain,
 }: {
@@ -80,11 +91,22 @@ function ReelView({
   onToggleInfo: () => void;
   /** Lets the list stop scrolling while two fingers are pinching. */
   onZoomingChange: (zooming: boolean) => void;
+  /** Press-and-hold clears the screen, including what the list draws over it. */
+  onHoldingChange: (holding: boolean) => void;
   reelIndex: number;
   isAgainstGrain: boolean;
 }) {
-  const { vote, reactionOf, pendingUntilOf, isVoteLocked, isFollowing, people, peopleById, alignmentWith } =
-    useStore();
+  const {
+    vote,
+    reactionOf,
+    pendingUntilOf,
+    isVoteLocked,
+    isFollowing,
+    people,
+    peopleById,
+    alignmentWith,
+    recordReelView,
+  } = useStore();
   const router = useRouter();
   const toast = useToast();
   const [comments, setComments] = useState(false);
@@ -101,10 +123,25 @@ function ReelView({
   }
   const togglePause = () => setPaused((p) => !p);
 
+  // Press and hold to look at the frame: paused with nothing over it, until
+  // the finger lifts. Separate from `paused`, so a tap-paused reel stays paused.
+  const [held, setHeld] = useState(false);
+  const chromeOpacity = useSharedValue(1);
+  const setHold = (next: boolean) => {
+    setHeld(next);
+    onHoldingChange(next);
+    chromeOpacity.set(withTiming(next ? 0 : 1, { duration: HOLD_FADE_MS }));
+  };
+  const heldStyle = useAnimatedStyle(() => ({ opacity: chromeOpacity.get() }));
+
   // Tracks how long this reel was the one on screen, and whether it was
   // voted on or scrolled past — see the "playing" transition effect below.
   const viewedAt = useRef<number | null>(null);
   const votedThisView = useRef(false);
+  const durationSeconds = useRef(0);
+  const onDuration = useCallback((seconds: number) => {
+    durationSeconds.current = seconds;
+  }, []);
 
   // useAuthor resolves you, a known person, or an unloaded profile.
   const author = useAuthor(content.authorId);
@@ -114,7 +151,7 @@ function ReelView({
     votedThisView.current = true;
     vote(content.id, power, { reelIndex, viewedAt: viewedAt.current ?? undefined });
   };
-  const { doubleTap, burst } = useDoubleTapLike({
+  const { doubleTap } = useDoubleTapLike({
     current: myVote,
     locked: isVoteLocked(content.id),
     own,
@@ -128,9 +165,20 @@ function ReelView({
     .onEnd((_e, success) => {
       if (success) runOnJS(togglePause)();
     });
+  const hold = Gesture.LongPress()
+    .minDuration(HOLD_DELAY_MS)
+    .maxDistance(10)
+    .onStart(() => {
+      runOnJS(setHold)(true);
+    })
+    // Not just a clean release: an interrupted hold has to restore the screen too.
+    .onFinalize(() => {
+      runOnJS(setHold)(false);
+    });
   // Exclusive: a single tap waits out a possible second one, so the first
-  // tap of a double-tap like doesn't also pause the video.
-  const mediaGesture = Gesture.Race(zoom.pinch, Gesture.Exclusive(doubleTap, tap));
+  // tap of a double-tap like doesn't also pause the video. Race: a hold that
+  // activates cancels the tap, so lifting the finger doesn't also toggle pause.
+  const mediaGesture = Gesture.Race(zoom.pinch, hold, Gesture.Exclusive(doubleTap, tap));
 
   // Clear view: slide the card down past its own height and fade it, while
   // the small "show info" pill fades in where it was.
@@ -143,6 +191,7 @@ function ReelView({
     opacity: interpolate(hidden.value, [0, 0.6], [1, 0], "clamp"),
     transform: [{ translateY: hidden.value * (cardHeight.value + TAB_BAR_CLEARANCE) }],
   }));
+  const scrimStyle = useAnimatedStyle(() => ({ opacity: 1 - hidden.value }));
   const restoreStyle = useAnimatedStyle(() => ({
     opacity: interpolate(hidden.value, [0.4, 1], [0, 1], "clamp"),
     transform: [{ scale: interpolate(hidden.value, [0, 1], [0.9, 1]) }],
@@ -157,6 +206,11 @@ function ReelView({
     if (viewedAt.current === null) return;
     const watch_duration = Date.now() - viewedAt.current;
     track("reel_viewed", { reel_index: reelIndex, watch_duration, is_against_grain: isAgainstGrain });
+    // A flick straight past hasn't really been seen.
+    if (watch_duration >= MIN_VIEW_MS) {
+      const durationMs = durationSeconds.current * 1000;
+      recordReelView(content.id, watch_duration, durationMs > 0 ? Math.min(1, watch_duration / durationMs) : null);
+    }
     if (!votedThisView.current && reactionOf(content.id) === undefined) {
       track("reel_skipped", { reel_index: reelIndex, watch_duration });
     }
@@ -195,16 +249,16 @@ function ReelView({
             scores={content.scores}
             mediaUrl={content.mediaUrl}
             fill
-            playing={playing && !paused}
+            playing={playing && !paused && !held}
             muted={muted}
+            onDuration={onDuration}
           />
         </Animated.View>
       </GestureDetector>
 
-      <LikeBurst progress={burst} />
-
       {/* Everything drawn over the reel fades out as a pinch grows it, so a
           zoom shows only the reel itself. */}
+      <Animated.View style={[StyleSheet.absoluteFill, heldStyle]} pointerEvents="box-none">
       <Animated.View style={[StyleSheet.absoluteFill, zoom.chromeStyle]} pointerEvents="box-none">
       {paused && (
         <Animated.View
@@ -219,51 +273,34 @@ function ReelView({
         </Animated.View>
       )}
 
+      {/* Only as dark as the text and rail need; clear view drops it with them. */}
+      <Animated.View style={[styles.scrim, scrimStyle]} pointerEvents="none">
+        <LinearGradient
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+
       <View style={styles.stack} pointerEvents="box-none">
         <Animated.View
-          style={cardStyle}
-          pointerEvents={infoHidden ? "none" : "auto"}
+          style={[styles.overlay, cardStyle]}
+          pointerEvents={infoHidden ? "none" : "box-none"}
           onLayout={(e) => {
             cardHeight.value = e.nativeEvent.layout.height;
           }}
         >
-          <Card tone="ink" style={styles.card}>
-            <Pressable
-              onPress={() => setExpanded((e) => !e)}
-              style={styles.info}
-              accessibilityRole="button"
-              accessibilityState={{ expanded }}
-              accessibilityLabel={
-                expanded
-                  ? "Hide the vote split and extra detail"
-                  : "Show the vote split and extra detail"
-              }
-            >
-              <View style={styles.chipRow}>
-                <OverlayPill height={26}>
-                  <Text style={styles.chipText}>{grid.label}</Text>
-                </OverlayPill>
-                {isVideo && (
-                  <OverlayPill
-                    height={26}
-                    onPress={onToggleMute}
-                    accessibilityLabel={muted ? "Turn sound on" : "Mute"}
-                  >
-                    <Icon name={muted ? "volumeOff" : "volume"} size={14} color={c.onAccent} />
-                  </OverlayPill>
-                )}
-                <OverlayPill
-                  height={26}
-                  onPress={onToggleInfo}
-                  style={styles.minimize}
-                  accessibilityLabel="Hide reel info"
-                >
-                  <View style={styles.chevronDown}>
-                    <Icon name="chevron" size={14} color={c.onAccent} strokeWidth={2} />
-                  </View>
-                </OverlayPill>
-              </View>
-
+          <Pressable
+            onPress={() => setExpanded((e) => !e)}
+            style={[styles.info, expanded && styles.infoExpanded]}
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            accessibilityLabel={
+              expanded
+                ? "Hide the vote split and extra detail"
+                : "Show the vote split and extra detail"
+            }
+          >
+            <View style={styles.bylineRow}>
               <AnimatedPressable
                 scaleTo={0.97}
                 style={styles.byline}
@@ -282,76 +319,102 @@ function ReelView({
                   photoUrl={author.avatarUrl}
                 />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {own ? "You" : author.name}
-                  </Text>
-                  <Text style={styles.handle} numberOfLines={1}>
-                    @{author.handle}
-                  </Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name} numberOfLines={1}>
+                      {own ? "You" : author.name}
+                    </Text>
+                    <Text style={styles.handle} numberOfLines={1}>
+                      @{author.handle}
+                    </Text>
+                  </View>
                   <Text style={styles.sub} numberOfLines={1}>
                     {author.locked ? "Unrevealed" : type.name}
                     {alignment !== null && ` · ${alignment}% aligned`}
                   </Text>
                 </View>
               </AnimatedPressable>
-
-              <Text style={styles.take} numberOfLines={expanded ? undefined : 3}>
-                {content.text}
-              </Text>
-
-              {expanded && (
-                <Animated.View
-                  entering={FadeIn.duration(180)}
-                  exiting={FadeOut.duration(140)}
-                  layout={Layout.duration(220)}
-                  style={styles.detail}
+              {isVideo && (
+                <OverlayPill
+                  height={26}
+                  onPress={onToggleMute}
+                  accessibilityLabel={muted ? "Turn sound on" : "Mute"}
                 >
-                  {own ? (
-                    <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
-                  ) : (
-                    myVote !== undefined && (
-                      <VoteResult content={content} friends={friends} myVote={myVote} onDark />
-                    )
-                  )}
-                  {content.context && <Text style={styles.context}>{content.context}</Text>}
-                  {content.music && (
-                    <View style={styles.music}>
-                      <Icon name="feed" size={13} color={hexToRgba(c.onAccent, 0.7)} />
-                      <Text style={styles.context}>{content.music}</Text>
-                    </View>
-                  )}
-                </Animated.View>
+                  <Icon name={muted ? "volumeOff" : "volume"} size={14} color={c.onAccent} />
+                </OverlayPill>
               )}
-            </Pressable>
-
-            <View style={styles.actions}>
-              <VoteControls
-                layout="pill"
-                size={ACTION_H}
-                counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
-                current={myVote}
-                pendingUntil={pendingUntilOf(content.id)}
-                locked={isVoteLocked(content.id)}
-                onLockedPress={() => toast("Your vote is counted — it can't be changed")}
-                disabled={own}
-                onVote={onVote}
-              />
-              <OverlayPill
-                height={ACTION_H}
-                onPress={() => setComments(true)}
-                gap={6}
-                accessibilityLabel={`${content.commentCount} comments`}
-              >
-                <Icon name="comment" size={18} color={c.onAccent} />
-                <Text style={styles.pillCount}>{compactCount(content.commentCount)}</Text>
-              </OverlayPill>
-              <OverlayPill height={ACTION_H} onPress={share} gap={6} accessibilityLabel="Share this reel">
-                <Icon name="share" size={18} color={c.onAccent} />
+              <OverlayPill height={26} onPress={onToggleInfo} accessibilityLabel="Hide reel info">
+                <View style={styles.chevronDown}>
+                  <Icon name="chevron" size={14} color={c.onAccent} strokeWidth={2} />
+                </View>
               </OverlayPill>
             </View>
 
-            <Text style={styles.timestamp}>{timeAgoLong(content.createdAt)}</Text>
-          </Card>
+            <Text style={styles.take} numberOfLines={expanded ? undefined : 2}>
+              {content.text}
+            </Text>
+
+            {expanded && (
+              <Animated.View
+                entering={FadeIn.duration(180)}
+                exiting={FadeOut.duration(140)}
+                layout={Layout.duration(220)}
+                style={styles.detail}
+              >
+                <Text style={styles.context}>
+                  {grid.label} · {timeAgoLong(content.createdAt)}
+                </Text>
+                {own ? (
+                  <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
+                ) : (
+                  myVote !== undefined && (
+                    <VoteResult content={content} friends={friends} myVote={myVote} onDark />
+                  )
+                )}
+                {content.context && <Text style={styles.context}>{content.context}</Text>}
+                {content.music && (
+                  <View style={styles.music}>
+                    <Icon name="feed" size={13} color={hexToRgba(c.onAccent, 0.7)} />
+                    <Text style={styles.context}>{content.music}</Text>
+                  </View>
+                )}
+              </Animated.View>
+            )}
+          </Pressable>
+
+          <View style={styles.actions}>
+            <VoteControls
+              layout="rail"
+              overlay
+              size={RAIL_SIZE}
+              counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
+              current={myVote}
+              pendingUntil={pendingUntilOf(content.id)}
+              locked={isVoteLocked(content.id)}
+              onLockedPress={() => toast("Your vote is counted — it can't be changed")}
+              disabled={own}
+              onVote={onVote}
+            />
+            <AnimatedPressable
+              style={styles.railButton}
+              hitSlop={RAIL_SLOP}
+              onPress={() => setComments(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`${content.commentCount} comments`}
+            >
+              <Icon name="comment" size={RAIL_GLYPH} color={c.onAccent} />
+              <Text style={styles.railLabel}>{compactCount(content.commentCount)}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              style={styles.railButton}
+              hitSlop={RAIL_SLOP}
+              onPress={share}
+              accessibilityRole="button"
+              accessibilityLabel="Share this reel"
+            >
+              <Icon name="share" size={RAIL_GLYPH} color={c.onAccent} />
+              <Text style={styles.railLabel}>Share</Text>
+            </AnimatedPressable>
+          </View>
         </Animated.View>
       </View>
 
@@ -380,6 +443,7 @@ function ReelView({
         </OverlayPill>
       </Animated.View>
       </Animated.View>
+      </Animated.View>
 
       <CommentsSheet
         content={content}
@@ -399,6 +463,8 @@ export default function FeedScreen() {
     positions,
     voteCount,
     reels: source,
+    state,
+    loadMoreReels,
     refresh,
     mode,
     accent,
@@ -414,6 +480,9 @@ export default function FeedScreen() {
   // Like mute, "clear view" carries on to the next reel until turned back off.
   const [infoHidden, setInfoHidden] = useState(false);
   const [zooming, setZooming] = useState(false);
+  const [holding, setHolding] = useState(false);
+  // Zooming and holding both show only the reel.
+  const bare = zooming || holding;
   // Tabs stay mounted, so without this the current reel would keep playing —
   // now audibly — behind every other tab and pushed screen.
   const focused = useIsFocused();
@@ -425,8 +494,8 @@ export default function FeedScreen() {
   // A zoom shows only the reel: the tab layout drops its glass chrome too.
   const { setImmersive } = useImmersive();
   useEffect(() => {
-    setImmersive(zooming && focused);
-  }, [zooming, focused, setImmersive]);
+    setImmersive(bare && focused);
+  }, [bare, focused, setImmersive]);
   useEffect(() => () => setImmersive(false), [setImmersive]);
 
   // The spinner shows only for a pull the user actually made. It used to
@@ -438,7 +507,7 @@ export default function FeedScreen() {
   const onPull = async () => {
     setPulling(true);
     try {
-      await refresh();
+      await refresh({ reshuffle: true });
     } finally {
       setPulling(false);
       snapToPage();
@@ -470,17 +539,29 @@ export default function FeedScreen() {
     },
   ).current;
 
-  // Re-ranked only when the underlying set changes — deliberately not on every
-  // vote, so the list never reshuffles underneath the user mid-scroll. Remote
-  // content arrives asynchronously, so this cannot be a one-shot useState.
+  // The server ranks reels and the store only ever appends to them, because
+  // `visible` is an index: reordering would swap the reel on screen for
+  // another. Local mode has no server, so it ranks its fixed sample set once.
   const positionsRef = useRef(positions);
   const voteCountRef = useRef(voteCount);
   positionsRef.current = positions;
   voteCountRef.current = voteCount;
+  const reactionsRef = useRef(state.reactions);
+  reactionsRef.current = state.reactions;
   const reels = useMemo(
-    () => rankReels(source, positionsRef.current, voteCountRef.current, (c) => c.globalSplit),
-    [source],
+    () =>
+      mode === "remote"
+        ? source
+        : rankReels(source, positionsRef.current, voteCountRef.current, (c) => c.globalSplit, {
+            voted: new Set(Object.keys(reactionsRef.current)),
+            random: Math.random,
+          }),
+    [source, mode],
   );
+
+  useEffect(() => {
+    if (reels.length > 0 && visible >= reels.length - LOAD_MORE_WITHIN) void loadMoreReels();
+  }, [visible, reels.length, loadMoreReels]);
 
   return (
     <BlurBackdrop
@@ -507,6 +588,7 @@ export default function FeedScreen() {
               infoHidden={infoHidden}
               onToggleInfo={() => setInfoHidden((h) => !h)}
               onZoomingChange={setZooming}
+              onHoldingChange={setHolding}
               reelIndex={index}
               // Mirrors rankReels' own insertion rule (lib/feed.ts) — only an
               // approximation of which slot is the deliberate outlier, since
@@ -519,7 +601,7 @@ export default function FeedScreen() {
           // over the same gesture.
           pagingEnabled
           // A two-finger pinch would otherwise also drag the list.
-          scrollEnabled={!zooming}
+          scrollEnabled={!bare}
           decelerationRate="fast"
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({
@@ -550,7 +632,7 @@ export default function FeedScreen() {
       )}
       {/* Hidden outright, not faded, while zooming: it's native glass (see
           state/immersive). */}
-      <View style={[styles.topOverlay, zooming && styles.hidden]} pointerEvents="box-none">
+      <View style={[styles.topOverlay, bare && styles.hidden]} pointerEvents="box-none">
         <TopBar showWordmark={false} tint="dark" />
       </View>
     </BlurBackdrop>
@@ -611,24 +693,41 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   restoreLabel: { color: c.onAccent, fontSize: f.sm, fontWeight: "700" },
-  card: { borderRadius: r.lg, gap: s[3] },
-  info: { gap: s[3] },
-  chipRow: { flexDirection: "row", gap: s[2] },
-  minimize: { marginLeft: "auto" },
+  scrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: "50%" },
+  overlay: { flexDirection: "row", alignItems: "flex-end", gap: s[3] },
+  info: { flex: 1, gap: s[2] },
+  // A long caption or the vote split can run up past the scrim, onto bright
+  // footage. The negative margin keeps the text where it was before opening.
+  infoExpanded: {
+    backgroundColor: "rgba(20,19,17,0.72)",
+    borderRadius: r.lg,
+    padding: s[3],
+    margin: -s[3],
+    marginRight: 0,
+  },
+  bylineRow: { flexDirection: "row", alignItems: "center", gap: s[2] },
   chevronDown: { transform: [{ rotate: "90deg" }] },
   chevronUp: { transform: [{ rotate: "-90deg" }] },
-  chipText: { color: c.onAccent, fontSize: f.xs, fontWeight: "600" },
-  byline: { flexDirection: "row", alignItems: "center", gap: s[2] },
-  name: { color: c.app, fontSize: f.sm, fontFamily: display.semibold },
-  handle: { color: hexToRgba(c.onAccent, 0.75), fontSize: f.xs, marginTop: 1 },
+  byline: { flex: 1, flexDirection: "row", alignItems: "center", gap: s[2] },
+  nameRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
+  name: { color: c.app, fontSize: f.sm, fontFamily: display.semibold, flexShrink: 1 },
+  handle: { color: hexToRgba(c.onAccent, 0.75), fontSize: f.xs, flexShrink: 2 },
   sub: { color: hexToRgba(c.onAccent, 0.6), fontSize: f.xs, marginTop: 1 },
-  take: { color: c.app, fontSize: f.md, fontFamily: display.semibold, lineHeight: 22 },
+  take: { color: c.app, fontSize: f.sm, lineHeight: 19 },
   detail: { gap: s[2] },
   context: { color: hexToRgba(c.onAccent, 0.7), fontSize: f.xs },
   music: { flexDirection: "row", alignItems: "center", gap: 6 },
   hint: { color: hexToRgba(c.onAccent, 0.6), fontSize: f.xs },
-  // On top of the card's own gap, so the vote row doesn't crowd the take and byline.
-  actions: { flexDirection: "row", alignItems: "center", gap: s[2], marginTop: s[2] },
-  pillCount: { color: c.onAccent, fontSize: f.sm, fontWeight: "600" },
-  timestamp: { color: hexToRgba(c.onAccent, 0.5), fontSize: f.xs },
+  // No backing of its own, so on iOS this shadows the glyphs themselves and
+  // keeps them readable over bright footage above the scrim.
+  actions: {
+    alignItems: "center",
+    gap: RAIL_GAP,
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  railButton: { alignItems: "center", gap: RAIL_LABEL_GAP },
+  railLabel: { color: "rgba(236,237,243,0.85)", fontSize: f.xs, fontWeight: "500" },
 });

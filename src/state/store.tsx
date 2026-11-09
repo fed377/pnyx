@@ -9,7 +9,7 @@ import { computePositions, totalAlignment, UNLOCK_AT, VOTE_GRACE_MS } from "@/li
 import { ALL_CONTENT, ME_DEFAULTS, ME_ID, PEOPLE, POSTS, REELS } from "@/lib/data";
 import { GRID_IDS, nearestPoint } from "@/lib/grids";
 import type { Content, GridId, Person, Positions, PrivacyTier, Vote, VotePower } from "@/lib/types";
-import { c, mixHex } from "@/theme/tokens";
+import { c, mixHex, STEEL_GRADIENT } from "@/theme/tokens";
 import { useSession } from "./session";
 
 const STORAGE_KEY = "pnyx.state.v1";
@@ -156,7 +156,12 @@ type Store = {
   profileLoaded: boolean;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  /** `reshuffle` fetches a new set of reels; otherwise the loaded ones stay put. */
+  refresh: (options?: { reshuffle?: boolean }) => Promise<void>;
+  /** Fetches the next page of reels, when there are more. */
+  loadMoreReels: () => Promise<void>;
+  /** Reports how long a reel was watched. Sent in batches. */
+  recordReelView: (contentId: string, watchMs: number, completion: number | null) => void;
   /**
    * Remote mode only: `people` is capped to the top 25 by alignment (the
    * world list), so searching it client-side could never surface
@@ -176,6 +181,10 @@ type Store = {
 
   accent: string;
   accentSoft: string;
+  /** The flat background of every screen without the animated backdrop. */
+  screenTint: string;
+  /** Live/in-progress state (a toggle that's on, a processing button). */
+  liveGradient: readonly [string, string];
 
   reels: Content[];
   posts: Content[];
@@ -232,6 +241,16 @@ type Store = {
 };
 
 const StoreContext = createContext<Store | null>(null);
+
+const SCREEN_TINT = 0.08;
+
+const REEL_PAGE = 20;
+/** The server only needs the unwatched tail; watched reels it already knows about. */
+const EXCLUDE_RECENT_REELS = 100;
+const VIEW_BATCH = 10;
+const VIEW_FLUSH_MS = 20_000;
+/** Flicking between apps shouldn't reload every feed each time. */
+const FOREGROUND_REFRESH_MS = 5 * 60 * 1000;
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { session, token, configured } = useSession();
@@ -338,10 +357,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   /* ── Remote hydration ────────────────────────────────────────────────────── */
 
-  const refresh = useCallback(async () => {
+  // Whose reels are loaded: a different account must never keep the last one's.
+  const reelsFor = useRef<string | null>(null);
+  const loadedReels = useRef<Content[]>([]);
+  loadedReels.current = serverContent?.reels ?? [];
+  const reelsExhausted = useRef(false);
+  const loadingMoreReels = useRef(false);
+  const lastRefreshAt = useRef(0);
+
+  const refresh = useCallback(async ({ reshuffle = false }: { reshuffle?: boolean } = {}) => {
     if (!remote) return;
     const t = await token();
     if (!t) return;
+    lastRefreshAt.current = Date.now();
+    // Replacing the loaded reels would change what's on screen, so only an
+    // explicit pull-to-refresh or an empty feed fetches them.
+    const fetchReels = reshuffle || reelsFor.current !== myId || loadedReels.current.length === 0;
 
     setLoading(true);
     setError(null);
@@ -350,7 +381,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 50 (the route's own cap) rather than just the free-tier's display limit —
         // premium unlocks more of "Most aligned in the world" by
         // showing more of what's already fetched, not by fetching more on demand.
-        Promise.all([api.me(tok), api.myVotes(tok), api.reels(tok, 40), api.home(tok, 40), api.people(tok, 50)]),
+        Promise.all([
+          api.me(tok),
+          api.myVotes(tok),
+          fetchReels ? api.reels(tok, REEL_PAGE) : null,
+          api.home(tok, 40),
+          api.people(tok, 50),
+        ]),
       );
       if (!result) return;
       const [me, votes, reels, home, people] = result;
@@ -378,10 +415,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfileLoaded(true);
       dispatch({ type: "serverVotes", votes: votes.items });
 
-      setServerContent({
-        reels: reels.items.map(toContent),
+      if (reels) {
+        reelsFor.current = myId;
+        reelsExhausted.current = false;
+      }
+      setServerContent((prev) => ({
+        reels: reels ? reels.items.map(toContent) : (prev?.reels ?? []),
         posts: home.items.map(toContent),
-      });
+      }));
 
       const mapped = people.items.map(toPerson);
       setServerPeople(mapped);
@@ -398,14 +439,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+  }, [remote, myId, token, callWithRetry]);
+
+  const loadMoreReels = useCallback(async () => {
+    if (!remote || reelsExhausted.current || loadingMoreReels.current) return;
+    const t = await token();
+    if (!t) return;
+    loadingMoreReels.current = true;
+    try {
+      const exclude = loadedReels.current.slice(-EXCLUDE_RECENT_REELS).map((r) => r.id);
+      const result = await callWithRetry(t, (tok) => api.reels(tok, REEL_PAGE, exclude));
+      if (!result) return;
+      if (result.items.length === 0) reelsExhausted.current = true;
+      setServerContent((prev) => {
+        if (!prev) return prev;
+        const known = new Set(prev.reels.map((r) => r.id));
+        return { ...prev, reels: [...prev.reels, ...result.items.map(toContent).filter((r) => !known.has(r.id))] };
+      });
+    } catch {
+      // The next scroll tries again.
+    } finally {
+      loadingMoreReels.current = false;
+    }
   }, [remote, token, callWithRetry]);
+
+  const viewBuffer = useRef<{ contentId: string; watchMs: number; completion: number | null }[]>([]);
+  const viewFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushReelViews = useCallback(async () => {
+    if (viewFlushTimer.current) clearTimeout(viewFlushTimer.current);
+    viewFlushTimer.current = null;
+    const items = viewBuffer.current.splice(0);
+    if (items.length === 0) return;
+    const t = await token();
+    if (!t) return;
+    // Best-effort: losing a batch only costs a slightly less informed feed.
+    await callWithRetry(t, (tok) => api.recordReelViews(tok, items)).catch(() => {});
+  }, [token, callWithRetry]);
+
+  const recordReelView = useCallback(
+    (contentId: string, watchMs: number, completion: number | null) => {
+      if (!remote) return;
+      viewBuffer.current.push({ contentId, watchMs, completion });
+      if (viewBuffer.current.length >= VIEW_BATCH) void flushReelViews();
+      else viewFlushTimer.current ??= setTimeout(() => void flushReelViews(), VIEW_FLUSH_MS);
+    },
+    [remote, flushReelViews],
+  );
 
   const searchPeople = useCallback(
     async (query: string) => {
       if (!remote || !query.trim()) return;
       const t = await token();
       if (!t) return;
-      const result = await api.people(t, 50, query.trim());
+      const result = await callWithRetry(t, (tok) => api.people(tok, 50, query.trim()));
+      if (!result) return;
       setServerPeople((prev) => {
         const byId = new Map((prev ?? []).map((p) => [p.id, p]));
         for (const row of result.items) byId.set(row.profile.id, toPerson(row));
@@ -416,7 +504,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ...Object.fromEntries(result.items.map((p) => [p.profile.id, p.total])),
       }));
     },
-    [remote, token],
+    [remote, token, callWithRetry],
   );
 
   // Coming back to the app re-fetches: something may have changed on the server
@@ -424,10 +512,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!remote) return;
     const sub = AppState.addEventListener("change", (next) => {
-      if (next === "active") void refresh();
+      if (next === "active") {
+        if (Date.now() - lastRefreshAt.current >= FOREGROUND_REFRESH_MS) void refresh();
+      } else {
+        void flushReelViews();
+      }
     });
     return () => sub.remove();
-  }, [remote, refresh]);
+  }, [remote, refresh, flushReelViews]);
 
   useEffect(() => {
     if (remote) void refresh();
@@ -816,6 +908,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Black and white until a real color is actually earned — no placeholder
   // hue standing in for the Mind-grid color before then.
   const accent = unlocked ? nearestPoint("mind", positions.mind).hex! : c.text;
+  // Kept light: any stronger and the darkest profile colours drop textFaint
+  // below 4.5:1 on it.
+  const screenTint = unlocked ? mixHex(accent, c.app, SCREEN_TINT) : c.app;
+  const liveGradient = unlocked ? ([mixHex(accent, "#ffffff", 0.7), accent] as const) : STEEL_GRADIENT;
 
   const value = useMemo<Store>(
     () => ({
@@ -837,7 +933,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // A solid, opaque tint — not a translucent overlay — so a filled chip or
       // pill reads the same regardless of what's ever been drawn behind it.
       accentSoft: mixHex(accent, c.app, 0.22),
+      screenTint,
+      liveGradient,
       reels,
+      loadMoreReels,
+      recordReelView,
       posts,
       people,
       peopleById,
@@ -870,7 +970,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     }),
     [
-      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent,
+      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
       reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
       alignments, pending,
     ],

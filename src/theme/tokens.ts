@@ -1,9 +1,9 @@
 import { Platform } from "react-native";
 
 /**
- * Warm neutral ramp — monochrome by brief (black, greys, white; colour is
- * reserved for meaningful data — grid positions, the vote up/down semantics —
- * never for UI chrome). Matches the Figma handoff's light design.
+ * Warm neutral ramp (black, greys, white), matching the Figma handoff's light
+ * design. The app's colour comes from the user's profile colour on top of
+ * this: see `accent`, `screenTint` and `liveGradient` in the store.
  */
 export const c = {
   bg: "#eeece8",
@@ -36,9 +36,10 @@ export const c = {
 } as const;
 
 /**
- * The one exception to the monochrome brief: a brushed-steel gradient reserved
- * for "live"/in-progress state (an uploading or processing button, a toggle
- * that's on) — never decoration. Light-to-dark slate, per the Figma component sheet.
+ * Brushed steel for "live"/in-progress state (an uploading or processing
+ * button, a toggle that's on) until a profile colour is earned; after that the
+ * store's `liveGradient` uses it instead. Light-to-dark slate, per the Figma
+ * component sheet.
  */
 export const STEEL_GRADIENT = ["#aeb4bf", "#767c88"] as const;
 

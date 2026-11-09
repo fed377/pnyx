@@ -73,7 +73,7 @@ export default function StatisticsScreen() {
   return (
     <View style={styles.screen}>
       <PageHeader title="Statistics" centered />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
         <View>
           <Text style={styles.hero}>How you&apos;ve moved.</Text>
           <Text style={styles.heroSub}>
@@ -231,7 +231,7 @@ export default function StatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   content: { padding: s[4], paddingBottom: s[7], gap: s[4] },
   lockedText: { color: c.textDim, fontSize: f.sm, lineHeight: 19 },
   strong: { color: c.text, fontWeight: "600" },

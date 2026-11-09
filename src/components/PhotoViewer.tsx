@@ -13,7 +13,7 @@ import { AnimatedPressable } from "./AnimatedPressable";
 import { Avatar } from "./Avatar";
 import { CommentsSheet } from "./Comments";
 import { Icon } from "./Icon";
-import { LikeBurst, useDoubleTapLike } from "./LikeBurst";
+import { useDoubleTapLike } from "./LikeBurst";
 import { Media } from "./Media";
 import { OverlayPill } from "./Primitives";
 import { StoryShell } from "./StoryShell";
@@ -49,7 +49,7 @@ export function PhotoViewer({ content, onClose }: { content: Content; onClose: (
   const grid = primaryGrid(content);
   const locked = isVoteLocked(content.id);
   const onVote = (power: VotePower) => vote(content.id, power);
-  const { doubleTap, burst } = useDoubleTapLike({ current: myVote, locked, own, onLike: onVote });
+  const { doubleTap } = useDoubleTapLike({ current: myVote, locked, own, onLike: onVote });
 
   const share = async () => {
     try {
@@ -75,7 +75,6 @@ export function PhotoViewer({ content, onClose }: { content: Content; onClose: (
             onLayout={(e) => setStage({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
           >
             <Media id={content.id} scores={content.scores} mediaUrl={content.mediaUrl} fill playing={false} />
-            <LikeBurst progress={burst} />
           </Animated.View>
         </GestureDetector>
       }

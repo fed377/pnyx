@@ -11,7 +11,7 @@ import { fromApiMessage } from "./useConversations";
  * the matching sample conversation offline. */
 export function useConversation(personId: string) {
   const { mode, myId } = useStore();
-  const { token } = useSession();
+  const { token, authed } = useSession();
   const remote = mode === "remote";
 
   const seed = !remote ? CONVERSATIONS.find((x) => x.personId === personId) : undefined;
@@ -24,11 +24,10 @@ export function useConversation(personId: string) {
 
   const load = useCallback(async () => {
     if (!remote) return;
-    const t = await token();
-    if (!t) return;
     setLoading(true);
     try {
-      const res = await api.openConversation(t, personId);
+      const res = await authed((t) => api.openConversation(t, personId));
+      if (!res) return;
       setConversationId(res.conversationId);
       setRemoteMessages(res.messages.map(fromApiMessage));
     } catch {
@@ -36,7 +35,7 @@ export function useConversation(personId: string) {
     } finally {
       setLoading(false);
     }
-  }, [remote, token, personId]);
+  }, [remote, authed, personId]);
 
   useEffect(() => {
     void load();

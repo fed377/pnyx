@@ -31,6 +31,7 @@ export function Media({
   rounded = true,
   muted = true,
   playing = true,
+  onDuration,
   style,
 }: {
   id: string;
@@ -45,6 +46,8 @@ export function Media({
   muted?: boolean;
   /** Only the reel actually on screen should be playing. */
   playing?: boolean;
+  /** The video's length in seconds, once it's known. */
+  onDuration?: (seconds: number) => void;
   style?: StyleProp<ViewStyle>;
 }) {
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
@@ -71,6 +74,15 @@ export function Media({
   useEffect(() => {
     if (isVideo) player.muted = muted;
   }, [isVideo, muted, player]);
+
+  useEffect(() => {
+    if (!isVideo || !onDuration) return;
+    if (player.status === "readyToPlay") onDuration(player.duration);
+    const sub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay") onDuration(player.duration);
+    });
+    return () => sub.remove();
+  }, [isVideo, player, onDuration]);
 
   const a = hashSeed(id);
   const b = hashSeed(id + "b");

@@ -20,7 +20,7 @@ const fromApi = (r: Awaited<ReturnType<typeof api.postHotTake>>): HotTake => ({
 /** Real, still-active hot takes in remote mode; the sample set offline. */
 export function useHotTakes() {
   const { mode, myId } = useStore();
-  const { token } = useSession();
+  const { token, authed } = useSession();
   const remote = mode === "remote";
 
   const [items, setItems] = useState<HotTake[] | null>(remote ? null : HOT_TAKES);
@@ -31,16 +31,16 @@ export function useHotTakes() {
       setItems(HOT_TAKES);
       return;
     }
-    const t = await token();
-    if (!t) return;
     setLoading(true);
     try {
-      const res = await api.hotTakes(t);
-      setItems(res.items.map(fromApi));
+      const res = await authed((t) => api.hotTakes(t));
+      if (res) setItems(res.items.map(fromApi));
+    } catch {
+      // Leave what's on screen; the next load tries again.
     } finally {
       setLoading(false);
     }
-  }, [remote, token]);
+  }, [remote, authed]);
 
   useEffect(() => {
     void load();

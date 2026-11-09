@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
@@ -12,6 +12,7 @@ import { ORIGIN } from "@/lib/algorithm";
 import { useConversations } from "@/state/useConversations";
 import { useStore } from "@/state/store";
 import { c, f, s } from "@/theme/tokens";
+import { Loading } from "@/components/Loading";
 
 export default function MessagesScreen() {
   const { alignmentWith, peopleById } = useStore();
@@ -22,9 +23,9 @@ export default function MessagesScreen() {
     <View style={styles.screen}>
       <PageHeader title="Messages" centered />
       {loading && items.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: s[6] }} color={c.textFaint} />
+        <Loading style={{ marginTop: s[6] }} />
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
           {items.length === 0 && (
             <Empty>No messages yet. Open someone&rsquo;s profile and tap Message to start a conversation.</Empty>
           )}
@@ -65,7 +66,7 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.app },
+  screen: { flex: 1 },
   content: { padding: s[4], paddingBottom: s[7] },
   row: { flexDirection: "row", alignItems: "center", gap: s[3], paddingVertical: s[3] },
   rowDivider: { borderTopWidth: 1, borderTopColor: c.lineSoft },

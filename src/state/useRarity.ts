@@ -18,7 +18,7 @@ function placeholder(label: string): number {
  */
 export function useRarity() {
   const { mode, unlocked } = useStore();
-  const { token } = useSession();
+  const { authed } = useSession();
   const remote = mode === "remote" && unlocked;
 
   const [byGrid, setByGrid] = useState<Record<GridId, number> | null>(null);
@@ -28,10 +28,13 @@ export function useRarity() {
       setByGrid(null);
       return;
     }
-    const t = await token();
-    if (!t) return;
-    setByGrid(await api.rarity(t));
-  }, [remote, token]);
+    try {
+      const res = await authed((t) => api.rarity(t));
+      if (res) setByGrid(res);
+    } catch {
+      // Keep the placeholder; the next load tries again.
+    }
+  }, [remote, authed]);
 
   useEffect(() => {
     void load();
