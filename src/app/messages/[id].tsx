@@ -6,13 +6,15 @@ import { AlignmentPill } from "@/components/Alignment";
 import { PageHeader } from "@/components/Chrome";
 import { Icon } from "@/components/Icon";
 import { Media } from "@/components/Media";
+import { LoadFailed } from "@/components/Primitives";
+import { BubblesSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { POWER_LABEL } from "@/lib/feed";
 import type { VotePower } from "@/lib/types";
 import { useAuthor } from "@/state/useAuthor";
 import { useConversation } from "@/state/useConversation";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
-import { Loading } from "@/components/Loading";
 
 /** A forwarded post carries the sender's vote on it. */
 function ForwardedPost({ contentId, vote, senderName }: { contentId: string; vote?: VotePower; senderName: string }) {
@@ -55,20 +57,29 @@ export default function ThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { alignmentWith, myId, peopleById } = useStore();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const [draft, setDraft] = useState("");
 
-  const { messages, loading, found, send: sendMessage } = useConversation(id ?? "");
+  const { messages, loading, failed, found, refresh, send: sendMessage } = useConversation(id ?? "");
 
   if (!id || !found) return <Redirect href="/messages" />;
 
   const person = peopleById[id];
   const name = person?.name ?? "Someone";
 
+  // Until the thread is open there is nowhere to send to.
+  const ready = !failed && !(loading && messages.length === 0);
+  const canSend = ready && draft.trim().length > 0;
+
   const send = () => {
     const text = draft.trim();
-    if (!text) return;
+    if (!text || !ready) return;
     setDraft("");
-    void sendMessage({ text });
+    sendMessage({ text }).catch(() => {
+      // Hand the text back rather than losing it.
+      setDraft((current) => current || text);
+      toast("Couldn't send that. Try again.");
+    });
   };
 
   return (
@@ -79,23 +90,26 @@ export default function ThreadScreen() {
     >
       <PageHeader title={name} centered action={person && <AlignmentPill value={alignmentWith(person)} />} />
 
-      {loading && messages.length === 0 ? (
-        <Loading style={{ marginTop: s[6] }} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.list} alwaysBounceVertical={false}>
-          {messages.map((m) => {
-            const mine = m.from === myId;
-            return (
-              <View key={m.id} style={[styles.bubble, mine && styles.bubbleMine]}>
-                {m.contentId && (
-                  <ForwardedPost contentId={m.contentId} vote={m.vote} senderName={name.split(" ")[0]} />
-                )}
-                {m.text && <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.text}</Text>}
-              </View>
-            );
-          })}
-        </ScrollView>
-      )}
+      <ScrollView contentContainerStyle={styles.list} alwaysBounceVertical={false}>
+        {messages.length > 0 ? null : loading ? (
+          <BubblesSkeleton />
+        ) : failed ? (
+          <LoadFailed onRetry={() => void refresh()}>Couldn&rsquo;t load this conversation.</LoadFailed>
+        ) : (
+          <Text style={styles.start}>No messages yet. Say hello to {name.split(" ")[0]}.</Text>
+        )}
+        {messages.map((m) => {
+          const mine = m.from === myId;
+          return (
+            <View key={m.id} style={[styles.bubble, mine && styles.bubbleMine]}>
+              {m.contentId && (
+                <ForwardedPost contentId={m.contentId} vote={m.vote} senderName={name.split(" ")[0]} />
+              )}
+              {m.text && <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.text}</Text>}
+            </View>
+          );
+        })}
+      </ScrollView>
 
       <View style={[styles.composer, { paddingBottom: insets.bottom + s[3] }]}>
         <TextInput
@@ -110,10 +124,10 @@ export default function ThreadScreen() {
         />
         <Pressable
           onPress={send}
-          disabled={!draft.trim()}
+          disabled={!canSend}
           accessibilityRole="button"
           accessibilityLabel="Send message"
-          style={[styles.send, !draft.trim() && { opacity: 0.4 }]}
+          style={[styles.send, !canSend && { opacity: 0.4 }]}
         >
           <View style={{ transform: [{ rotate: "-90deg" }] }}>
             <Icon name="chevron" size={16} color={c.app} />
@@ -127,6 +141,7 @@ export default function ThreadScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   list: { padding: s[4], gap: s[3] },
+  start: { color: c.textFaint, fontSize: f.sm, textAlign: "center", marginTop: s[5] },
   bubble: {
     alignSelf: "flex-start",
     maxWidth: "84%",

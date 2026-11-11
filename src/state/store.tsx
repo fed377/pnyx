@@ -196,6 +196,12 @@ type Store = {
    * offline sample set already *is* the whole population.
    */
   searchPeople: (query: string) => Promise<void>;
+  /**
+   * Remote mode only: fetches someone who isn't in `people` (a profile opened
+   * from a notification or a link) and merges them in. "missing" when there is
+   * no such account; throws when the request itself fails.
+   */
+  loadPerson: (id: string) => Promise<"ok" | "missing">;
 
   state: State;
   dispatch: (a: Action) => void;
@@ -388,7 +394,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Whose reels are loaded: a different account must never keep the last one's.
   const reelsFor = useRef<string | null>(null);
   const loadedReels = useRef<Content[]>([]);
-  loadedReels.current = serverContent?.reels ?? [];
+  // Read by refresh and loadMoreReels, which run after the render that changed it.
+  useEffect(() => {
+    loadedReels.current = serverContent?.reels ?? [];
+  }, [serverContent]);
   const reelsExhausted = useRef(false);
   const loadingMoreReels = useRef(false);
   const lastRefreshAt = useRef(0);
@@ -525,6 +534,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [remote, token, callWithRetry],
   );
 
+  const loadPerson = useCallback(
+    async (id: string): Promise<"ok" | "missing"> => {
+      if (!remote) return "missing";
+      const t = await token();
+      if (!t) return "missing";
+      let me: ApiMe | null;
+      try {
+        me = await callWithRetry(t, (tok) => api.person(tok, id));
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 400)) return "missing";
+        throw e;
+      }
+      if (!me) return "missing";
+      const total = me.alignment?.total;
+      const person = toPerson({
+        profile: me,
+        total: total ?? 0,
+        voteCount: me.voteCount,
+        unlocked: me.unlocked,
+        following: false,
+        follower: false,
+        positions: me.positions,
+      });
+      // Only added, never replacing: a ranked row already knows more (who follows whom).
+      setServerPeople((prev) => (prev?.some((p) => p.id === id) ? prev : [...(prev ?? []), person]));
+      if (total !== undefined) setAlignments((prev) => ({ ...prev, [id]: total }));
+      return "ok";
+    },
+    [remote, token, callWithRetry],
+  );
+
   // Coming back to the app re-fetches: something may have changed on the server
   // (a post approved, someone else's vote) while it was in the background.
   useEffect(() => {
@@ -539,15 +579,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [remote, refresh, flushReelViews]);
 
-  useEffect(() => {
-    if (remote) void refresh();
-    else {
+  // Signing out drops the last account's server data straight away, during
+  // the render that notices, rather than one render later from an effect.
+  const [wasRemote, setWasRemote] = useState(remote);
+  if (wasRemote !== remote) {
+    setWasRemote(remote);
+    if (!remote) {
       setServerPositions(null);
       setServerContent(null);
       setServerPeople(null);
       setAlignments({});
       setProfileLoaded(false);
     }
+  }
+
+  useEffect(() => {
+    if (!remote) return;
+    // refresh sets state only after its first await. Starting it from a
+    // resolved promise makes that visible to the compiler's effect checks.
+    void Promise.resolve().then(() => refresh());
   }, [remote, refresh]);
 
   /* ── Derived ─────────────────────────────────────────────────────────────── */
@@ -957,6 +1007,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       searchPeople,
+      loadPerson,
       state,
       dispatch,
       positions,
@@ -1004,7 +1055,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     }),
     [
-      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
+      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, loadPerson, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
       reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveSettings, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
       alignments, pending,
     ],

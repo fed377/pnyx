@@ -7,7 +7,8 @@ import { CommentsSheet } from "@/components/Comments";
 import { Icon } from "@/components/Icon";
 import { useDoubleTapLike } from "@/components/LikeBurst";
 import { Media, isVideoUrl } from "@/components/Media";
-import { OverlayPill } from "@/components/Primitives";
+import { Empty, LoadFailed, OverlayPill } from "@/components/Primitives";
+import { ReelSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import { RAIL_GAP, RAIL_LABEL_GAP, VoteControls } from "@/components/VoteControls";
 import { VoteResult } from "@/components/VoteResult";
@@ -466,6 +467,8 @@ export default function FeedScreen() {
     state,
     loadMoreReels,
     refresh,
+    loading,
+    error,
     mode,
     accent,
   } = useStore();
@@ -531,33 +534,33 @@ export default function FeedScreen() {
   // Only the reel actually on screen plays; the rest stay paused. The swap
   // waits until the next reel has almost settled: starting a video decodes
   // frames, and doing that mid-swipe is what made the page turn stutter.
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 95 }).current;
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: { index?: number | null }[] }) => {
-      const first = viewableItems[0]?.index;
-      if (typeof first === "number") setVisible(first);
-    },
-  ).current;
+  // FlatList needs both to keep their identity for the list's whole life.
+  const [viewabilityConfig] = useState(() => ({ itemVisiblePercentThreshold: 95 }));
+  const [onViewableItemsChanged] = useState(
+    () =>
+      ({ viewableItems }: { viewableItems: { index?: number | null }[] }) => {
+        const first = viewableItems[0]?.index;
+        if (typeof first === "number") setVisible(first);
+      },
+  );
 
   // The server ranks reels and the store only ever appends to them, because
   // `visible` is an index: reordering would swap the reel on screen for
-  // another. Local mode has no server, so it ranks its fixed sample set once.
-  const positionsRef = useRef(positions);
-  const voteCountRef = useRef(voteCount);
-  positionsRef.current = positions;
-  voteCountRef.current = voteCount;
-  const reactionsRef = useRef(state.reactions);
-  reactionsRef.current = state.reactions;
-  const reels = useMemo(
-    () =>
-      mode === "remote"
-        ? source
-        : rankReels(source, positionsRef.current, voteCountRef.current, (c) => c.globalSplit, {
-            voted: new Set(Object.keys(reactionsRef.current)),
-            random: Math.random,
-          }),
-    [source, mode],
-  );
+  // another. Local mode has no server, so it ranks its fixed sample set once,
+  // and votes after that don't reshuffle it.
+  const [ranked, setRanked] = useState<{ source: Content[]; reels: Content[] } | null>(null);
+  let reels = source;
+  if (mode !== "remote") {
+    if (ranked?.source === source) {
+      reels = ranked.reels;
+    } else {
+      reels = rankReels(source, positions, voteCount, (c) => c.globalSplit, {
+        voted: new Set(Object.keys(state.reactions)),
+        random: Math.random,
+      });
+      setRanked({ source, reels });
+    }
+  }
 
   useEffect(() => {
     if (reels.length > 0 && visible >= reels.length - LOAD_MORE_WITHIN) void loadMoreReels();
@@ -618,6 +621,19 @@ export default function FeedScreen() {
           removeClippedSubviews={Platform.OS === "android"}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
+          ListEmptyComponent={
+            loading ? (
+              <ReelSkeleton height={height} />
+            ) : (
+              <View style={[styles.blank, { height }]}>
+                {error ? (
+                  <LoadFailed onRetry={() => void refresh({ reshuffle: true })}>Couldn&apos;t load reels.</LoadFailed>
+                ) : (
+                  <Empty>No reels right now. Pull down to check again.</Empty>
+                )}
+              </View>
+            )
+          }
           refreshControl={
             mode === "remote" ? (
               <RefreshControl
@@ -642,6 +658,7 @@ export default function FeedScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
   topOverlay: { position: "absolute", left: 0, right: 0, top: 0 },
+  blank: { justifyContent: "center", padding: s[5], paddingBottom: TAB_BAR_CLEARANCE },
   hidden: { display: "none" },
   stack: {
     position: "absolute",

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { api } from "@/api/client";
 import { hashSeed } from "@/lib/format";
 import type { GridId } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
+import { useRemote } from "./useRemote";
 
 /** No real population to compare against offline — same hash-based stand-in
  * Statistics has always shown in sample mode. */
@@ -17,30 +18,18 @@ function placeholder(label: string): number {
  * no population to measure against there).
  */
 export function useRarity() {
-  const { mode, unlocked } = useStore();
+  const { mode, unlocked, myId } = useStore();
   const { authed } = useSession();
   const remote = mode === "remote" && unlocked;
 
-  const [byGrid, setByGrid] = useState<Record<GridId, number> | null>(null);
-
-  const load = useCallback(async () => {
-    if (!remote) {
-      setByGrid(null);
-      return;
-    }
-    try {
-      const res = await authed((t) => api.rarity(t));
-      if (res) setByGrid(res);
-    } catch {
-      // Keep the placeholder; the next load tries again.
-    }
-  }, [remote, authed]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const fetch = useCallback(() => authed((t) => api.rarity(t)), [authed]);
+  // A failure leaves no number rather than a made-up one; the next visit tries again.
+  const { data: byGrid, loading } = useRemote(remote ? myId : null, fetch);
 
   /** `label` (e.g. "Values-Adapt") is the offline fallback's own seed — kept
-   * so a caller doesn't need to know which mode it's actually in. */
-  return (gridId: GridId, label: string): number => byGrid?.[gridId] ?? placeholder(label);
+   * so a caller doesn't need to know which mode it's actually in. Null when the
+   * real number hasn't arrived (see `loading`) or couldn't be fetched. */
+  const rarity = (gridId: GridId, label: string): number | null =>
+    byGrid?.[gridId] ?? (remote ? null : placeholder(label));
+  return { rarity, loading };
 }

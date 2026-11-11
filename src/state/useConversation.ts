@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { track } from "@/analytics/analytics";
-import { api } from "@/api/client";
+import { api, ApiError } from "@/api/client";
 import { CONVERSATIONS } from "@/lib/data";
 import type { ChatMessage, VotePower } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
 import { fromApiMessage } from "./useConversations";
+import { useRemote } from "./useRemote";
 
 /** The 1:1 thread with `personId` — opened (get-or-create) in remote mode,
  * the matching sample conversation offline. */
@@ -16,32 +17,17 @@ export function useConversation(personId: string) {
 
   const seed = !remote ? CONVERSATIONS.find((x) => x.personId === personId) : undefined;
 
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [remoteMessages, setRemoteMessages] = useState<ChatMessage[] | null>(null);
-  const [loading, setLoading] = useState(remote);
-  const [notFound, setNotFound] = useState(false);
+  const fetch = useCallback(async () => {
+    const res = await authed((t) => api.openConversation(t, personId));
+    return res ? { conversationId: res.conversationId, messages: res.messages.map(fromApiMessage) } : null;
+  }, [authed, personId]);
+  const { data, loading, error, refresh, mutate } = useRemote(remote ? personId : null, fetch);
   const [localExtra, setLocalExtra] = useState<ChatMessage[]>([]);
+  const conversationId = data?.conversationId ?? null;
 
-  const load = useCallback(async () => {
-    if (!remote) return;
-    setLoading(true);
-    try {
-      const res = await authed((t) => api.openConversation(t, personId));
-      if (!res) return;
-      setConversationId(res.conversationId);
-      setRemoteMessages(res.messages.map(fromApiMessage));
-    } catch {
-      setNotFound(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [remote, authed, personId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const messages: ChatMessage[] = remote ? (remoteMessages ?? []) : [...(seed?.messages ?? []), ...localExtra];
+  // Only a missing person means there's no thread; anything else can be retried.
+  const notFound = error instanceof ApiError && (error.status === 404 || error.status === 400);
+  const messages: ChatMessage[] = remote ? (data?.messages ?? []) : [...(seed?.messages ?? []), ...localExtra];
   const found = remote ? !notFound : seed !== undefined;
 
   const send = useCallback(
@@ -61,11 +47,11 @@ export function useConversation(personId: string) {
         contentId: input.contentId,
         votePower: input.votePower,
       });
-      setRemoteMessages((prev) => [...(prev ?? []), fromApiMessage(row)]);
+      mutate((prev) => prev && { ...prev, messages: [...prev.messages, fromApiMessage(row)] });
       track("message_sent");
     },
-    [remote, token, conversationId, myId],
+    [remote, token, conversationId, myId, mutate, setLocalExtra],
   );
 
-  return { messages, loading, found, send };
+  return { messages, loading, failed: error !== null && !notFound, found, refresh, send };
 }

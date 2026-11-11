@@ -7,6 +7,8 @@ import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { Icon } from "@/components/Icon";
 import { Media } from "@/components/Media";
+import { Empty, LoadFailed } from "@/components/Primitives";
+import { RowsSkeleton } from "@/components/Skeleton";
 import { ORIGIN } from "@/lib/algorithm";
 import type { Notification } from "@/lib/data";
 import { timeAgo } from "@/lib/format";
@@ -14,7 +16,6 @@ import type { Content, Person } from "@/lib/types";
 import { useNotifications } from "@/state/useNotifications";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
-import { Loading } from "@/components/Loading";
 
 const DAY_MS = 86_400_000;
 
@@ -51,7 +52,7 @@ function Accessory({ n, content }: { n: Notification; content: Content | undefin
 export default function NotificationsScreen() {
   const router = useRouter();
   const { peopleById, contentById } = useStore();
-  const { items, loading } = useNotifications();
+  const { items, loading, failed, refresh } = useNotifications();
 
   // A snapshot taken once, when the screen mounts — reading "now" fresh on
   // every render would be impure.
@@ -96,28 +97,32 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.screen}>
       <PageHeader title="Notifications" centered />
-      {loading && items.length === 0 ? (
-        <Loading style={{ marginTop: s[6] }} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
-          {today.length > 0 && (
-            <View>
-              <Text style={styles.section}>Today</Text>
-              {today.map((n, i) => (
-                <Row key={n.id} n={n} index={i} />
-              ))}
-            </View>
-          )}
-          {week.length > 0 && (
-            <View>
-              <Text style={styles.section}>This week</Text>
-              {week.map((n, i) => (
-                <Row key={n.id} n={n} index={today.length + i} />
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      )}
+      <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
+        {items.length === 0 &&
+          (loading ? (
+            <RowsSkeleton avatar={40} label="Loading notifications" />
+          ) : failed ? (
+            <LoadFailed onRetry={() => void refresh()}>Couldn&rsquo;t load your notifications.</LoadFailed>
+          ) : (
+            <Empty>Nothing yet. Reactions to your posts, new followers and replies show up here.</Empty>
+          ))}
+        {today.length > 0 && (
+          <View>
+            <Text style={styles.section}>Today</Text>
+            {today.map((n, i) => (
+              <Row key={n.id} n={n} index={i} />
+            ))}
+          </View>
+        )}
+        {week.length > 0 && (
+          <View>
+            <Text style={styles.section}>This week</Text>
+            {week.map((n, i) => (
+              <Row key={n.id} n={n} index={today.length + i} />
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }

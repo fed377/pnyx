@@ -1,5 +1,5 @@
 import { Tabs, useRouter, usePathname } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
@@ -215,10 +215,11 @@ function TabsLayoutInner() {
     if (e.nativeEvent.layout.width > 0) setBarWidth(e.nativeEvent.layout.width);
   };
 
-  const lastIndex = useRef(0);
+  // Off the tabs (a pushed screen), the bar keeps showing the tab you came from.
+  const [lastIndex, setLastIndex] = useState(0);
   const rawIndex = TABS.findIndex((t) => (t.name === "index" ? pathname === "/" : pathname.startsWith(`/${t.name}`)));
-  if (rawIndex !== -1) lastIndex.current = rawIndex;
-  const activeIndex = rawIndex === -1 ? lastIndex.current : rawIndex;
+  if (rawIndex !== -1 && rawIndex !== lastIndex) setLastIndex(rawIndex);
+  const activeIndex = rawIndex === -1 ? lastIndex : rawIndex;
 
   const onPeople = pathname === "/people";
   // While a reel is pinch-zoomed, only the reel shows.

@@ -441,7 +441,8 @@ export function SignIn() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
-  const [handleStatus, setHandleStatus] = useState<HandleStatus>("idle");
+  // The last handle the server answered for. Any other valid handle is still being checked.
+  const [checked, setChecked] = useState<{ handle: string; status: HandleStatus } | null>(null);
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
@@ -456,26 +457,28 @@ export function SignIn() {
   const dateInvalid = dateStarted && day.length > 0 && month.length > 0 && year.length === 4 && !birth;
 
   // Debounced, race-safe live handle-availability check for the create-account screen.
-  const handleCheckSeq = useRef(0);
+  const trimmedHandle = handle.trim();
+  const handleCheckable = HANDLE_RE.test(trimmedHandle) && trimmedHandle.length >= 2;
   useEffect(() => {
-    const trimmed = handle.trim();
-    if (!HANDLE_RE.test(trimmed) || trimmed.length < 2) {
-      setHandleStatus("idle");
-      return;
-    }
-    setHandleStatus("checking");
-    const seq = ++handleCheckSeq.current;
+    if (!handleCheckable) return;
+    let alive = true;
+    const settle = (status: HandleStatus) => alive && setChecked({ handle: trimmedHandle, status });
     const timer = setTimeout(() => {
-      handleAvailable(trimmed)
-        .then((available) => {
-          if (handleCheckSeq.current === seq) setHandleStatus(available ? "available" : "taken");
-        })
-        .catch(() => {
-          if (handleCheckSeq.current === seq) setHandleStatus("idle");
-        });
+      handleAvailable(trimmedHandle).then(
+        (available) => settle(available ? "available" : "taken"),
+        () => settle("idle"),
+      );
     }, HANDLE_CHECK_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [handle, handleAvailable]);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [trimmedHandle, handleCheckable, handleAvailable]);
+  const handleStatus: HandleStatus = !handleCheckable
+    ? "idle"
+    : checked?.handle === trimmedHandle
+      ? checked.status
+      : "checking";
 
   const submit = async () => {
     setError(null);

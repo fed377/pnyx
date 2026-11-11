@@ -38,6 +38,8 @@ export function Sheet({
   // transition of its own once `visible` flips false, so unmounting on
   // `open` directly would cut the animation off mid-flight.
   const [mounted, setMounted] = useState(open);
+  // Mounting happens the moment `open` turns on, in the same render.
+  if (open && !mounted) setMounted(true);
   // Scrim and sheet animate on separate values rather than one shared "slide"
   // transform: driving both off a single Animated.View (what RN's built-in
   // `animationType="slide"` does) drags the scrim along with the sheet's
@@ -54,7 +56,6 @@ export function Sheet({
 
   useEffect(() => {
     if (open) {
-      setMounted(true);
       progress.value = withTiming(1, { duration: DURATION_IN, easing: Easing.out(Easing.cubic) });
     } else {
       progress.value = withTiming(0, { duration: DURATION_OUT, easing: Easing.in(Easing.cubic) }, (finished) => {

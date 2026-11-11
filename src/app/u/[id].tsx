@@ -1,10 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 import { track } from "@/analytics/analytics";
 import { PageHeader } from "@/components/Chrome";
-import { Btn } from "@/components/Primitives";
+import { Btn, Empty, LoadFailed } from "@/components/Primitives";
 import { ProfileView } from "@/components/ProfileView";
+import { ProfileSkeleton } from "@/components/Skeleton";
 import { affinity } from "@/lib/feed";
 import { GRID_IDS } from "@/lib/grids";
 import type { GridId, PrivacyTier } from "@/lib/types";
@@ -20,7 +21,8 @@ function hiddenGridsFor(tier: PrivacyTier): GridId[] {
 
 export default function PersonProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { alignmentWith, isFollowing, toggleFollow, isBlocked, toggleBlock, peopleById, reels, posts } = useStore();
+  const { alignmentWith, isFollowing, toggleFollow, isBlocked, toggleBlock, peopleById, reels, posts, mode, myId, loadPerson } =
+    useStore();
   const router = useRouter();
   const person = id ? peopleById[id] : undefined;
 
@@ -41,7 +43,46 @@ export default function PersonProfileScreen() {
     if (person) track("profile_viewed");
   }, [person?.id]);
 
-  if (!person) return <Redirect href="/people" />;
+  // Someone outside the loaded people (opened from a notification, say) is fetched on demand.
+  const [lookup, setLookup] = useState<"loading" | "missing" | "failed">("loading");
+  const [attempt, setAttempt] = useState(0);
+  const known = person !== undefined;
+  useEffect(() => {
+    if (!id || known || mode !== "remote" || id === myId) return;
+    let alive = true;
+    loadPerson(id).then(
+      (result) => alive && result === "missing" && setLookup("missing"),
+      () => alive && setLookup("failed"),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [id, known, mode, myId, loadPerson, attempt]);
+  const retry = () => {
+    setLookup("loading");
+    setAttempt((n) => n + 1);
+  };
+
+  // Your own profile lives on its own tab.
+  if (id === myId) return <Redirect href="/profile" />;
+
+  if (!person) {
+    if (mode !== "remote") return <Redirect href="/people" />;
+    return (
+      <View style={styles.screen}>
+        <PageHeader title="Profile" />
+        <ScrollView contentContainerStyle={styles.content} alwaysBounceVertical={false}>
+          {lookup === "missing" ? (
+            <Empty>This account doesn&rsquo;t exist anymore.</Empty>
+          ) : lookup === "failed" ? (
+            <LoadFailed onRetry={retry}>Couldn&rsquo;t load this profile.</LoadFailed>
+          ) : (
+            <ProfileSkeleton />
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
 
   const following = isFollowing(person.id);
   const blocked = isBlocked(person.id);

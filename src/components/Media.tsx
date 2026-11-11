@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
+import type { VideoPlayer } from "expo-video";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
@@ -20,6 +21,11 @@ import { r as radius, squircle } from "@/theme/tokens";
  */
 export function isVideoUrl(url?: string): boolean {
   return Boolean(url && /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url));
+}
+
+/** The player is a native object driven imperatively, not React state. */
+function setMuted(player: VideoPlayer, muted: boolean) {
+  player.muted = muted;
 }
 
 export function Media({
@@ -72,7 +78,7 @@ export function Media({
   // The setup callback above only runs when the player is created — a
   // screen-level mute toggle has to reach an existing player too.
   useEffect(() => {
-    if (isVideo) player.muted = muted;
+    if (isVideo) setMuted(player, muted);
   }, [isVideo, muted, player]);
 
   useEffect(() => {

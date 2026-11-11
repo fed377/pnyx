@@ -16,17 +16,15 @@ export function useFriendVotes(contentId: string): { person: Person; power: Vote
   const { authed } = useSession();
   const remote = mode === "remote";
 
-  const [items, setItems] = useState<{ userId: string; power: VotePower }[] | null>(null);
+  // Keyed by post, so a recycled card never shows the last post's friends.
+  const [loaded, setLoaded] = useState<{ contentId: string; items: { userId: string; power: VotePower }[] } | null>(null);
 
   useEffect(() => {
-    if (!remote) {
-      setItems(null);
-      return;
-    }
+    if (!remote) return;
     let alive = true;
     void (async () => {
       const res = await authed((t) => api.friendVotes(t, contentId));
-      if (res && alive) setItems(res.items);
+      if (res && alive) setLoaded({ contentId, items: res.items });
     })().catch(() => {
       // Friends' votes are a bonus on the result card; it renders without them.
     });
@@ -36,8 +34,8 @@ export function useFriendVotes(contentId: string): { person: Person; power: Vote
   }, [remote, contentId, authed]);
 
   if (!remote) return null;
-  if (items === null) return [];
-  return items.flatMap(({ userId, power }) => {
+  if (loaded === null || loaded.contentId !== contentId) return [];
+  return loaded.items.flatMap(({ userId, power }) => {
     const person = peopleById[userId];
     return person ? [{ person, power }] : [];
   });

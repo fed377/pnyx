@@ -9,8 +9,10 @@ import { useStore } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
+import { LoadFailed } from "./Primitives";
 import { Sheet } from "./Sheet";
-import { Loading } from "./Loading";
+import { RowsSkeleton } from "./Skeleton";
+import { useToast } from "./Toast";
 
 const REPORT_REASONS = ["Spam", "Harassment or abuse", "Copyright", "Something else"] as const;
 
@@ -75,7 +77,12 @@ export function CommentsSheet({
   open: boolean;
   onClose: () => void;
 }) {
-  const { items: all, loading, addComment, castVote } = useComments(content.id, content.comments, content.createdAt);
+  const { items: all, loading, failed, refresh, addComment, castVote } = useComments(
+    content.id,
+    content.comments,
+    content.createdAt,
+  );
+  const toast = useToast();
   const { reportContent } = useStore();
   const [draft, setDraft] = useState("");
 
@@ -83,7 +90,11 @@ export function CommentsSheet({
     const text = draft.trim();
     if (!text) return;
     setDraft("");
-    void addComment(text);
+    addComment(text).catch(() => {
+      // Hand the reply back rather than losing it.
+      setDraft((current) => current || text);
+      toast("Couldn't post your reply. Try again.");
+    });
   };
 
   return (
@@ -94,12 +105,22 @@ export function CommentsSheet({
       closeLabel="Done"
       floating
     >
-      {loading && all.length === 0 ? (
-        <Loading style={{ marginVertical: s[4] }} />
+      {all.length === 0 ? (
+        loading ? (
+          <RowsSkeleton count={3} avatar={32} label="Loading replies" />
+        ) : failed ? (
+          <LoadFailed onRetry={() => void refresh()}>Couldn&rsquo;t load the replies.</LoadFailed>
+        ) : (
+          <Text style={styles.none}>No replies yet. Start the conversation.</Text>
+        )
       ) : (
         <View style={{ gap: s[4] }}>
           {all.map((cm) => (
-            <CommentRow key={cm.id} cm={cm} onVote={(id, power) => void castVote(id, power)} />
+            <CommentRow
+              key={cm.id}
+              cm={cm}
+              onVote={(id, power) => castVote(id, power).catch(() => toast("Couldn't count that vote. Try again."))}
+            />
           ))}
         </View>
       )}
@@ -144,6 +165,7 @@ export function CommentsSheet({
 }
 
 const styles = StyleSheet.create({
+  none: { color: c.textFaint, fontSize: f.sm, textAlign: "center", paddingVertical: s[3] },
   comment: { flexDirection: "row", gap: s[3], alignItems: "flex-start" },
   body: { flex: 1, gap: 2 },
   who: { color: c.text, fontSize: f.sm, fontWeight: "600" },

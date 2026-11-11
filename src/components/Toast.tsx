@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import { c, f, r, s, squircle } from "@/theme/tokens";
@@ -7,7 +7,7 @@ const ToastContext = createContext<(msg: string) => void>(() => {});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [msg, setMsg] = useState<string | null>(null);
-  const fade = useRef(new Animated.Value(0)).current;
+  const [fade] = useState(() => new Animated.Value(0));
 
   const show = useCallback((m: string) => setMsg(m), []);
 

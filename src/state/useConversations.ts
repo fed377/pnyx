@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { api } from "@/api/client";
 import type { ApiMessage } from "@/api/client";
 import { CONVERSATIONS } from "@/lib/data";
 import type { ChatMessage, Conversation } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
+import { useRemote } from "./useRemote";
 
 export const fromApiMessage = (m: ApiMessage): ChatMessage => ({
   id: m.id,
@@ -23,39 +24,28 @@ export const fromApiMessage = (m: ApiMessage): ChatMessage => ({
  * already fetched a conversation id for them.
  */
 export function useConversations() {
-  const { mode } = useStore();
+  const { mode, myId } = useStore();
   const { authed } = useSession();
   const remote = mode === "remote";
 
-  const [items, setItems] = useState<Conversation[] | null>(remote ? null : CONVERSATIONS);
-  const [loading, setLoading] = useState(remote);
+  const fetch = useCallback(async () => {
+    const res = await authed((t) => api.conversations(t));
+    return res
+      ? res.items.map(
+          (c): Conversation => ({
+            id: c.otherUserId,
+            personId: c.otherUserId,
+            messages: c.lastMessage ? [fromApiMessage(c.lastMessage)] : [],
+          }),
+        )
+      : null;
+  }, [authed]);
+  const { data, loading, error, refresh } = useRemote(remote ? myId : null, fetch);
 
-  const load = useCallback(async () => {
-    if (!remote) {
-      setItems(CONVERSATIONS);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await authed((t) => api.conversations(t));
-      if (!res) return;
-      setItems(
-        res.items.map((c) => ({
-          id: c.otherUserId,
-          personId: c.otherUserId,
-          messages: c.lastMessage ? [fromApiMessage(c.lastMessage)] : [],
-        })),
-      );
-    } catch {
-      // Leave what's on screen; the next load tries again.
-    } finally {
-      setLoading(false);
-    }
-  }, [remote, authed]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { items: items ?? [], loading, refresh: load };
+  return {
+    items: remote ? (data ?? []) : CONVERSATIONS,
+    loading,
+    failed: error !== null,
+    refresh,
+  };
 }

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { api } from "@/api/client";
 import type { ApiComment } from "@/api/client";
 import type { Comment } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
+import { useRemote } from "./useRemote";
 
 export type LiveComment = {
   id: string;
@@ -36,27 +37,13 @@ export function useComments(contentId: string, seed: Comment[], seedAt: number) 
   const { token, authed } = useSession();
   const remote = mode === "remote";
 
-  const [remoteItems, setRemoteItems] = useState<LiveComment[] | null>(null);
-  const [loading, setLoading] = useState(remote);
+  const fetch = useCallback(async () => {
+    const res = await authed((t) => api.comments(t, contentId));
+    return res ? res.items.map(fromApi) : null;
+  }, [authed, contentId]);
+  const { data: remoteItems, loading, error, refresh, mutate } = useRemote(remote ? contentId : null, fetch);
   const [localAdded, setLocalAdded] = useState<LiveComment[]>([]);
   const [localVotes, setLocalVotes] = useState<Record<string, 1 | -1>>({});
-
-  const load = useCallback(async () => {
-    if (!remote) return;
-    setLoading(true);
-    try {
-      const res = await authed((t) => api.comments(t, contentId));
-      if (res) setRemoteItems(res.items.map(fromApi));
-    } catch {
-      // Leave what's on screen; the next load tries again.
-    } finally {
-      setLoading(false);
-    }
-  }, [remote, authed, contentId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   const items: LiveComment[] = remote
     ? (remoteItems ?? [])
@@ -88,10 +75,10 @@ export function useComments(contentId: string, seed: Comment[], seedAt: number) 
       const t = await token();
       if (!t) return;
       const row = await api.addComment(t, contentId, text);
-      setRemoteItems((prev) => [...(prev ?? []), fromApi(row)]);
+      mutate((prev) => [...(prev ?? []), fromApi(row)]);
       bumpCommentCount(contentId);
     },
-    [remote, token, contentId, myId, bumpCommentCount],
+    [remote, token, contentId, myId, bumpCommentCount, mutate],
   );
 
   const castVote = useCallback(
@@ -108,12 +95,12 @@ export function useComments(contentId: string, seed: Comment[], seedAt: number) 
       const t = await token();
       if (!t) return;
       const res = await api.voteComment(t, commentId, power);
-      setRemoteItems((prev) =>
+      mutate((prev) =>
         prev ? prev.map((c) => (c.id === commentId ? { ...c, up: res.up, down: res.down, myVote: res.myVote } : c)) : prev,
       );
     },
-    [remote, token, contentId],
+    [remote, token, mutate],
   );
 
-  return { items, loading, addComment, castVote };
+  return { items, loading, failed: error !== null, refresh, addComment, castVote };
 }

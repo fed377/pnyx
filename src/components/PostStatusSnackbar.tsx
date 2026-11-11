@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text } from "react-native";
 import { useStore } from "@/state/store";
 import { c, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
@@ -16,7 +16,7 @@ const AUTO_DISMISS_MS: Partial<Record<"posted" | "failed", number>> = {
  */
 export function PostStatusSnackbar() {
   const { postStatus, postError, dismissPostStatus } = useStore();
-  const fade = useRef(new Animated.Value(0)).current;
+  const [fade] = useState(() => new Animated.Value(0));
   const visible = postStatus !== "idle";
 
   useEffect(() => {

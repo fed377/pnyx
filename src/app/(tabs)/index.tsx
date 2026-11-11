@@ -11,7 +11,8 @@ import { HotTakeViewer } from "@/components/HotTakeViewer";
 import { Icon } from "@/components/Icon";
 import { PhotoViewer } from "@/components/PhotoViewer";
 import { PostCard } from "@/components/PostCard";
-import { Btn, Chip, Empty, Progress, SectionTitle } from "@/components/Primitives";
+import { Btn, Chip, Empty, LoadFailed, Progress, SectionTitle } from "@/components/Primitives";
+import { PostsSkeleton, TakesSkeleton } from "@/components/Skeleton";
 import { UNLOCK_AT } from "@/lib/algorithm";
 import { useHotTakes } from "@/state/useHotTakes";
 import { useStore } from "@/state/store";
@@ -87,10 +88,10 @@ export default function HomeScreen() {
   // Tapping the Home tab while already on Home scrolls back to the top.
   const scrollRef = useRef<ScrollViewInstance>(null);
   useScrollToTop(scrollRef);
-  const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, mode, myId } = useStore();
+  const { alignmentWith, state, accent, posts: source, peopleById, refresh, loading, error, mode, myId } = useStore();
   const router = useRouter();
   const [takeIndex, setTakeIndex] = useState<number | null>(null);
-  const { items: hotTakes, refresh: refreshHotTakes } = useHotTakes();
+  const { items: hotTakes, loading: takesLoading, failed: takesFailed, refresh: refreshHotTakes } = useHotTakes();
   const visibleTakes = useMemo(() => hotTakes.filter((t) => peopleById[t.authorId]), [hotTakes, peopleById]);
 
   // Posting a hot take happens on a separate screen (`/hot-take`) that shares
@@ -164,6 +165,18 @@ export default function HomeScreen() {
                 New
               </Text>
             </AnimatedPressable>
+            {visibleTakes.length === 0 && takesLoading && <TakesSkeleton />}
+            {visibleTakes.length === 0 && !takesLoading && takesFailed && (
+              <AnimatedPressable
+                onPress={() => void refreshHotTakes()}
+                style={styles.takesFailed}
+                accessibilityRole="button"
+                accessibilityLabel="Couldn't load hot takes. Try again"
+              >
+                <Text style={[styles.takesFailedText, { color: ink.dim }]}>Couldn&apos;t load hot takes.</Text>
+                <Text style={styles.takesRetry}>Try again</Text>
+              </AnimatedPressable>
+            )}
             {visibleTakes.map((t, i) => {
               const p = peopleById[t.authorId];
               return (
@@ -188,10 +201,18 @@ export default function HomeScreen() {
         </View>
 
         {posts.length === 0 ? (
-          <Empty>
-            Nobody clears {state.alignmentFilter}% alignment yet. Lower the filter, or vote on more reels to sharpen
-            your position.
-          </Empty>
+          source.length > 0 ? (
+            <Empty>
+              Nobody clears {state.alignmentFilter}% alignment yet. Lower the filter, or vote on more reels to sharpen
+              your position.
+            </Empty>
+          ) : loading ? (
+            <PostsSkeleton />
+          ) : error ? (
+            <LoadFailed onRetry={() => void refresh()}>Couldn&apos;t load posts.</LoadFailed>
+          ) : (
+            <Empty>No posts yet. Follow people or post something yourself to fill this up.</Empty>
+          )
         ) : (
           <View style={{ gap: s[5] }}>
             {posts.map((post, i) => (
@@ -250,4 +271,7 @@ const styles = StyleSheet.create({
   },
   takeAdd: { borderStyle: "dashed", backgroundColor: c.surface2 },
   takeName: { color: c.textDim, fontSize: f.xs },
+  takesFailed: { height: 64, justifyContent: "center", gap: 2 },
+  takesFailedText: { color: c.textDim, fontSize: f.xs },
+  takesRetry: { color: c.text, fontSize: f.sm, fontWeight: "600" },
 });

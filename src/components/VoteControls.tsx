@@ -96,7 +96,7 @@ export function VoteControls({
 }) {
   const [holding, setHolding] = useState<Dir | null>(null);
   const [preview, setPreview] = useState(false);
-  const progress = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
   const anim = useRef<Animated.CompositeAnimation | null>(null);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const committed = useRef(false);

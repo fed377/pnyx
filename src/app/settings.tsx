@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/Chrome";
 import { AnimatedPressable } from "@/components/AnimatedPressable";
 import { Icon } from "@/components/Icon";
 import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "@/components/keyboard";
+import { LoadingMark } from "@/components/Loading";
 import { Btn, Field, SectionTitle, Toggle } from "@/components/Primitives";
 import { Sheet } from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
@@ -22,7 +23,7 @@ import type { GridId, PrivacyTier } from "@/lib/types";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
 import type { SettingsPatch } from "@/state/store";
-import { c, f, r, s, squircle } from "@/theme/tokens";
+import { c, f, hexToRgba, r, s, squircle } from "@/theme/tokens";
 
 const TIERS: { id: PrivacyTier; label: string; note: string }[] = [
   { id: "speaker", label: "Speaker", note: "Most public. Your loved and hated takes are visible, and you can post." },
@@ -198,7 +199,8 @@ export default function SettingsScreen() {
   const patch = Object.fromEntries(
     Object.entries(edits).filter(([key, value]) => !sameValue(value, saved[key as keyof Draft])),
   ) as SettingsPatch;
-  const dirty = Object.keys(patch).length > 0;
+  const changeCount = Object.keys(patch).length;
+  const dirty = changeCount > 0;
 
   const tierChangedAt = state.profile.tierChangedAt ? Date.parse(state.profile.tierChangedAt) : null;
   const tierUnlocksAt = tierChangedAt === null ? null : tierChangedAt + TIER_COOLDOWN_DAYS * DAY_MS;
@@ -453,10 +455,36 @@ export default function SettingsScreen() {
         <Animated.View
           entering={FadeInDown.duration(200)}
           exiting={FadeOutDown.duration(160)}
-          style={[styles.saveBar, { paddingBottom: insets.bottom + s[3] }]}
+          style={[styles.saveDock, { paddingBottom: insets.bottom + s[2] }]}
         >
-          <Btn label="Discard" variant="outline" onPress={() => setEdits({})} disabled={saving} style={{ flex: 1 }} />
-          <Btn label={saving ? "Saving…" : "Save changes"} onPress={save} disabled={saving} style={{ flex: 2 }} />
+          <View style={styles.saveBar}>
+            <Text style={styles.saveCount} numberOfLines={1} accessibilityLiveRegion="polite">
+              {changeCount === 1 ? "1 unsaved change" : `${changeCount} unsaved changes`}
+            </Text>
+            <AnimatedPressable
+              onPress={() => setEdits({})}
+              disabled={saving}
+              scaleTo={0.94}
+              style={[styles.discard, saving && styles.saveBarDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Discard changes"
+              accessibilityState={{ disabled: saving }}
+            >
+              <Text style={styles.discardLabel}>Discard</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={save}
+              disabled={saving}
+              scaleTo={0.94}
+              style={styles.saveBtn}
+              accessibilityRole="button"
+              accessibilityLabel={saving ? "Saving changes" : "Save changes"}
+              accessibilityState={{ disabled: saving, busy: saving }}
+            >
+              {saving ? <LoadingMark size={16} /> : <Icon name="check" size={15} color={c.text} />}
+              <Text style={styles.saveLabel}>{saving ? "Saving" : "Save"}</Text>
+            </AnimatedPressable>
+          </View>
         </Animated.View>
       )}
 
@@ -688,15 +716,39 @@ const styles = StyleSheet.create({
   tierRule: { flexDirection: "row", gap: s[1], marginTop: s[2], paddingHorizontal: s[1] },
   tierRuleText: { flex: 1, color: c.textDim, fontSize: f.xs, lineHeight: 17 },
   tierRuleTextLocked: { color: c.text, fontWeight: "600" },
+  // Floats above the form as one dark pill, so it reads as a pending decision rather than page chrome.
+  saveDock: { paddingHorizontal: s[3], paddingTop: s[2] },
   saveBar: {
     flexDirection: "row",
-    gap: s[2],
-    paddingHorizontal: s[4],
-    paddingTop: s[3],
-    backgroundColor: c.app,
-    borderTopWidth: 1,
-    borderTopColor: c.lineSoft,
+    alignItems: "center",
+    gap: s[1],
+    paddingLeft: s[4] + 2,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: r.full,
+    backgroundColor: c.text,
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    ...squircle,
   },
+  saveCount: { flex: 1, color: c.app, fontSize: f.sm, fontWeight: "600" },
+  discard: { height: 44, paddingHorizontal: s[3], justifyContent: "center", borderRadius: r.full },
+  discardLabel: { color: hexToRgba(c.app, 0.78), fontSize: f.sm, fontWeight: "600" },
+  saveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 44,
+    paddingHorizontal: s[4] + 2,
+    borderRadius: r.full,
+    backgroundColor: c.surface,
+    ...squircle,
+  },
+  saveLabel: { color: c.text, fontSize: f.sm, fontWeight: "700" },
+  saveBarDisabled: { opacity: 0.4 },
   sheetLead: { color: c.textDim, fontSize: f.sm, marginBottom: s[4], lineHeight: 20 },
   legalLinks: { gap: s[3] },
   legalLink: { color: c.text, fontSize: f.sm, fontWeight: "600", textDecorationLine: "underline" },

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { track } from "@/analytics/analytics";
 import { api } from "@/api/client";
 import { HOT_TAKES } from "@/lib/data";
 import type { GridId, HotTake } from "@/lib/types";
 import { useSession } from "./session";
 import { useStore } from "./store";
+import { useRemote } from "./useRemote";
 
 const fromApi = (r: Awaited<ReturnType<typeof api.postHotTake>>): HotTake => ({
   id: r.id,
@@ -23,34 +24,18 @@ export function useHotTakes() {
   const { token, authed } = useSession();
   const remote = mode === "remote";
 
-  const [items, setItems] = useState<HotTake[] | null>(remote ? null : HOT_TAKES);
-  const [loading, setLoading] = useState(remote);
-
-  const load = useCallback(async () => {
-    if (!remote) {
-      setItems(HOT_TAKES);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await authed((t) => api.hotTakes(t));
-      if (res) setItems(res.items.map(fromApi));
-    } catch {
-      // Leave what's on screen; the next load tries again.
-    } finally {
-      setLoading(false);
-    }
-  }, [remote, authed]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const fetch = useCallback(async () => {
+    const res = await authed((t) => api.hotTakes(t));
+    return res ? res.items.map(fromApi) : null;
+  }, [authed]);
+  const { data, loading, error, refresh, mutate } = useRemote(remote ? myId : null, fetch);
+  // Offline there is nowhere to post to, so posted takes live here.
+  const [localPosted, setLocalPosted] = useState<HotTake[]>([]);
 
   const post = useCallback(
     async (category: GridId, text: string) => {
       if (!remote) {
-        // Offline there is nowhere to post to — a local-only stub, same
-        // fallback `publish` uses for an offline post.
+        // A local-only stub, same fallback `publish` uses for an offline post.
         const stub: HotTake = {
           id: `local-${Date.now()}`,
           authorId: myId,
@@ -61,18 +46,24 @@ export function useHotTakes() {
           comments: 0,
           createdAt: Date.now(),
         };
-        setItems((prev) => [stub, ...(prev ?? [])]);
+        setLocalPosted((prev) => [stub, ...prev]);
         track("hot_take_posted");
         return;
       }
       const t = await token();
       if (!t) throw new Error("not signed in");
       const row = await api.postHotTake(t, category, text);
-      setItems((prev) => [fromApi(row), ...(prev ?? [])]);
+      mutate((prev) => [fromApi(row), ...(prev ?? [])]);
       track("hot_take_posted");
     },
-    [remote, token, myId],
+    [remote, token, myId, mutate],
   );
 
-  return { items: items ?? [], loading, refresh: load, post };
+  return {
+    items: remote ? (data ?? []) : [...localPosted, ...HOT_TAKES],
+    loading,
+    failed: error !== null,
+    refresh,
+    post,
+  };
 }

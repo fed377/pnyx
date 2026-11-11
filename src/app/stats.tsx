@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
 import { Crest } from "@/components/Crest";
 import { GridPlot } from "@/components/GridPlot";
 import { Card, LockedRow, Note, SectionTitle } from "@/components/Primitives";
+import { Bone, Skeleton } from "@/components/Skeleton";
 import { conviction, UNLOCK_AT, positionHistory } from "@/lib/algorithm";
 import { pct } from "@/lib/format";
 import { GRID_LIST, nearestPoint, orientationOf } from "@/lib/grids";
@@ -46,9 +47,20 @@ function closestMatch(people: Person[], alignmentWith: (p: Person) => number): {
   return best;
 }
 
+/** How many people share a type. Nothing at all if the real number couldn't be fetched. */
+function Rarity({ value, loading }: { value: number | null; loading: boolean }) {
+  if (value !== null) return <Text style={styles.gridRarity}>{value}% of people share this type.</Text>;
+  if (!loading) return null;
+  return (
+    <Skeleton label="Loading how rare this type is" style={{ marginTop: 4 }}>
+      <Bone width="70%" height={10} />
+    </Skeleton>
+  );
+}
+
 export default function StatisticsScreen() {
   const { state, positions, unlocked, voteCount, accent, people, alignmentWith } = useStore();
-  const rarity = useRarity();
+  const { rarity, loading: rarityLoading } = useRarity();
 
   const history = useMemo(() => positionHistory(state.votes, 4), [state.votes]);
 
@@ -61,13 +73,12 @@ export default function StatisticsScreen() {
   const counts = useMemo(() => voteCounts(state.votes), [state.votes]);
   const total = state.votes.length;
   const decisive = useMemo(() => mostDecisive(positions), [positions]);
-  // Date.now() belongs in an effect, not render — this reads "now" once per
-  // mount/vote-list-change rather than treating the current instant as a value
-  // that's safe to read while rendering.
-  const [thisWeek, setThisWeek] = useState(0);
-  useEffect(() => {
-    setThisWeek(state.votes.filter((v) => v.at >= Date.now() - 7 * DAY_MS).length);
-  }, [state.votes]);
+  // "Now" is read once, when the screen opens, rather than on every render.
+  const [openedAt] = useState(Date.now);
+  const thisWeek = useMemo(
+    () => state.votes.filter((v) => v.at >= openedAt - 7 * DAY_MS).length,
+    [state.votes, openedAt],
+  );
   const match = useMemo(() => closestMatch(people, alignmentWith), [people, alignmentWith]);
 
   return (
@@ -107,9 +118,7 @@ export default function StatisticsScreen() {
                     <Text style={styles.gridSub}>{subline}</Text>
                     <Text style={styles.gridMeaning}>{meaning}</Text>
                     {unlocked && (
-                      <Text style={styles.gridRarity}>
-                        {rarity(grid.id, `${grid.label}-${near.name}`)}% of people share this type.
-                      </Text>
+                      <Rarity value={rarity(grid.id, `${grid.label}-${near.name}`)} loading={rarityLoading} />
                     )}
                   </View>
                 </View>

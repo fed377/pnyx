@@ -7,7 +7,8 @@ import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
 import { TopBar } from "@/components/Chrome";
-import { Chip, Empty, LockedRow, Note, SegTabs } from "@/components/Primitives";
+import { Chip, Empty, LoadFailed, LockedRow, Note, SegTabs } from "@/components/Primitives";
+import { RowsSkeleton } from "@/components/Skeleton";
 import { GRID_LIST, nearestPoint } from "@/lib/grids";
 import type { GridId, Person } from "@/lib/types";
 import { usePeopleSearch } from "@/state/peopleSearch";
@@ -94,8 +95,19 @@ function PersonRow({
 }
 
 export default function PeopleScreen() {
-  const { alignmentWith, state, dispatch, isFollowing, people: everyone, refresh, loading, mode, accent, searchPeople } =
-    useStore();
+  const {
+    alignmentWith,
+    state,
+    dispatch,
+    isFollowing,
+    people: everyone,
+    refresh,
+    loading,
+    error,
+    mode,
+    accent,
+    searchPeople,
+  } = useStore();
   const { query } = usePeopleSearch();
   const [tab, setTab] = useState<"world" | "following" | "followers">("world");
   const [gridFocus, setGridFocus] = useState<GridId | "all">("all");
@@ -105,11 +117,33 @@ export default function PeopleScreen() {
   // a client-side filter over it could never find someone outside that set, so
   // a real search re-queries the whole user base and merges whatever it finds
   // back into the store. Debounced so every keystroke doesn't fire its own request.
+  // The last search that finished. Any other query or attempt is still pending,
+  // debounce included, so "No one matches" never shows before the answer does.
+  const [searchAttempt, setSearchAttempt] = useState(0);
+  const [settled, setSettled] = useState<{ query: string; attempt: number; failed: boolean } | null>(null);
   useEffect(() => {
     if (mode !== "remote" || !query.trim()) return;
-    const timer = setTimeout(() => void searchPeople(query), 300);
-    return () => clearTimeout(timer);
-  }, [mode, query, searchPeople]);
+    let alive = true;
+    const done = (failed: boolean) => alive && setSettled({ query, attempt: searchAttempt, failed });
+    const timer = setTimeout(() => {
+      searchPeople(query).then(
+        () => done(false),
+        () => done(true),
+      );
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [mode, query, searchPeople, searchAttempt]);
+  const search =
+    mode !== "remote" || !query.trim()
+      ? "idle"
+      : settled?.query !== query || settled.attempt !== searchAttempt
+        ? "pending"
+        : settled.failed
+          ? "failed"
+          : "idle";
 
   const ranked = useMemo(
     () =>
@@ -187,9 +221,25 @@ export default function PeopleScreen() {
         <View>
           <Text style={styles.subhead}>Everyone, by alignment</Text>
           {list.length === 0 ? (
-            <Empty>
-              {searching ? `No one matches "${query.trim()}".` : "Nobody here clears your alignment filter yet."}
-            </Empty>
+            searching && search === "pending" ? (
+              <RowsSkeleton count={3} avatar={44} label="Searching" />
+            ) : searching && search === "failed" ? (
+              <LoadFailed onRetry={() => setSearchAttempt((n) => n + 1)}>Couldn&apos;t search right now.</LoadFailed>
+            ) : searching ? (
+              <Empty>No one matches &ldquo;{query.trim()}&rdquo;.</Empty>
+            ) : everyone.length === 0 && loading ? (
+              <RowsSkeleton avatar={44} label="Loading people" />
+            ) : everyone.length === 0 && error ? (
+              <LoadFailed onRetry={() => void refresh()}>Couldn&apos;t load people.</LoadFailed>
+            ) : everyone.length === 0 ? (
+              <Empty>No one else is here yet.</Empty>
+            ) : tab === "following" ? (
+              <Empty>You&apos;re not following anyone{state.alignmentFilter > 0 ? " who clears your filter" : ""} yet.</Empty>
+            ) : tab === "followers" ? (
+              <Empty>No followers{state.alignmentFilter > 0 ? " who clear your filter" : ""} yet.</Empty>
+            ) : (
+              <Empty>Nobody here clears your alignment filter yet.</Empty>
+            )
           ) : (
             <View>
               {list.map(({ p, a }, i) => (

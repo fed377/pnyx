@@ -37,6 +37,28 @@ export function Empty({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * A load that failed. Kept apart from Empty on purpose: "nothing here" and
+ * "couldn't fetch it" need different next steps, and only this one has a retry.
+ */
+export function LoadFailed({
+  children = "Couldn't load this. Check your connection.",
+  onRetry,
+  retrying = false,
+}: {
+  children?: ReactNode;
+  onRetry: () => void;
+  retrying?: boolean;
+}) {
+  const ink = useInk();
+  return (
+    <View style={[styles.empty, styles.failed]}>
+      <Text style={[styles.emptyText, { color: ink.dim }]}>{children}</Text>
+      <Btn label={retrying ? "Trying again…" : "Try again"} variant="outline" onPress={onRetry} disabled={retrying} />
+    </View>
+  );
+}
+
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 
 /**
@@ -471,6 +493,7 @@ export const styles = StyleSheet.create({
     borderRadius: r.md,
   },
   emptyText: { color: c.textDim, fontSize: f.sm, textAlign: "center" },
+  failed: { alignItems: "center", gap: s[3] },
   card: {
     padding: s[4],
     borderRadius: r.md,

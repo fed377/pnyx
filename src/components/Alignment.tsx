@@ -10,10 +10,7 @@ export function useTickUp(value: number, ms = 1000, enabled = true) {
   const raf = useRef(0);
 
   useEffect(() => {
-    if (!enabled) {
-      setShown(value);
-      return;
-    }
+    if (!enabled) return;
     let cancelled = false;
     AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
@@ -37,7 +34,7 @@ export function useTickUp(value: number, ms = 1000, enabled = true) {
     };
   }, [value, ms, enabled]);
 
-  return shown;
+  return enabled ? shown : value;
 }
 
 export function AlignmentPill({ value, muted = false }: { value: number; muted?: boolean }) {
