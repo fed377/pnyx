@@ -2,7 +2,7 @@ import { Tabs, useRouter, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/Icon";
 import { useKeyboardHeight } from "@/components/keyboard";
@@ -47,7 +47,7 @@ function TabIndicator({
   useEffect(() => {
     if (barWidth <= 0) return;
     translateX.value = withSpring(segment * activeIndex + INDICATOR_INSET, SPRING);
-    width.value = withTiming(Math.max(segment - INDICATOR_INSET * 2, 0), { duration: 180 });
+    width.value = withSpring(Math.max(segment - INDICATOR_INSET * 2, 0), SPRING);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, barWidth]);
 

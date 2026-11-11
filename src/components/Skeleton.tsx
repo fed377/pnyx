@@ -4,12 +4,14 @@ import { StyleSheet, View } from "react-native";
 import type { DimensionValue, StyleProp, ViewStyle } from "react-native";
 import Animated, {
   Easing,
+  FadeIn,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { duration, ease, exit, SKELETON_DELAY_MS } from "@/theme/motion";
 import { c, hexToRgba, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const PULSE_MS = 900;
@@ -20,6 +22,8 @@ const BONE = hexToRgba(c.text, 0.09);
 /**
  * The shape of what's coming, while it loads. The whole block pulses as one,
  * so its bones never drift out of step; with reduced motion it holds still.
+ * It fades in only after a short wait, so a quick load never flashes it, and
+ * fades out over the content arriving in its place.
  */
 export function Skeleton({
   children,
@@ -41,8 +45,13 @@ export function Skeleton({
   const animated = useAnimatedStyle(() => ({ opacity: pulse.get() }));
 
   return (
-    <Animated.View style={[animated, style]} accessibilityRole="progressbar" accessibilityLabel={label}>
-      {children}
+    <Animated.View
+      entering={FadeIn.delay(SKELETON_DELAY_MS).duration(duration.base).easing(ease.out)}
+      exiting={exit.fade()}
+      accessibilityRole="progressbar"
+      accessibilityLabel={label}
+    >
+      <Animated.View style={[animated, style]}>{children}</Animated.View>
     </Animated.View>
   );
 }

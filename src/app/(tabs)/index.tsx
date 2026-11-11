@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter, useScrollToTop } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ScrollViewInstance } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { BlurBackdrop } from "@/components/BlurBackdrop";
@@ -17,6 +17,7 @@ import { UNLOCK_AT } from "@/lib/algorithm";
 import { useHotTakes } from "@/state/useHotTakes";
 import { useStore } from "@/state/store";
 import { useInk } from "@/theme/ink";
+import { enter } from "@/theme/motion";
 import { c, display, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** Even on all four sides, and the one value the button's concentric radius is derived from. */
@@ -216,7 +217,7 @@ export default function HomeScreen() {
         ) : (
           <View style={{ gap: s[5] }}>
             {posts.map((post, i) => (
-              <Animated.View key={post.id} entering={FadeInDown.duration(260).delay(enterDelay(i))}>
+              <Animated.View key={post.id} entering={enter.rise().delay(enterDelay(i))}>
                 <PostCard
                   content={post}
                   onOpenPhoto={post.type === "image" ? setPhotoId : undefined}

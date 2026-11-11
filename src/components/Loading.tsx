@@ -4,7 +4,6 @@ import type { StyleProp, ViewStyle } from "react-native";
 import Animated, {
   Easing,
   FadeIn,
-  FadeOut,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -108,7 +107,6 @@ export function LaunchScreen() {
 
   return (
     <Animated.View
-      exiting={FadeOut.duration(260)}
       style={[
         StyleSheet.absoluteFill,
         styles.launch,

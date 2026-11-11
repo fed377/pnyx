@@ -1,6 +1,8 @@
 import { Redirect, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import type { ScrollViewInstance } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AlignmentPill } from "@/components/Alignment";
 import { PageHeader } from "@/components/Chrome";
@@ -14,6 +16,7 @@ import type { VotePower } from "@/lib/types";
 import { useAuthor } from "@/state/useAuthor";
 import { useConversation } from "@/state/useConversation";
 import { useStore } from "@/state/store";
+import { enter } from "@/theme/motion";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 
 /** A forwarded post carries the sender's vote on it. */
@@ -58,6 +61,9 @@ export default function ThreadScreen() {
   const { alignmentWith, myId, peopleById } = useStore();
   const insets = useSafeAreaInsets();
   const toast = useToast();
+  // Opens at the newest message; after that, new ones glide into view.
+  const listRef = useRef<ScrollViewInstance>(null);
+  const atBottomOnce = useRef(false);
   const [draft, setDraft] = useState("");
 
   const { messages, loading, failed, found, refresh, send: sendMessage } = useConversation(id ?? "");
@@ -90,7 +96,16 @@ export default function ThreadScreen() {
     >
       <PageHeader title={name} centered action={person && <AlignmentPill value={alignmentWith(person)} />} />
 
-      <ScrollView contentContainerStyle={styles.list} alwaysBounceVertical={false}>
+      <ScrollView
+        ref={listRef}
+        contentContainerStyle={styles.list}
+        alwaysBounceVertical={false}
+        onContentSizeChange={() => {
+          if (messages.length === 0) return;
+          listRef.current?.scrollToEnd({ animated: atBottomOnce.current });
+          atBottomOnce.current = true;
+        }}
+      >
         {messages.length > 0 ? null : loading ? (
           <BubblesSkeleton />
         ) : failed ? (
@@ -101,12 +116,12 @@ export default function ThreadScreen() {
         {messages.map((m) => {
           const mine = m.from === myId;
           return (
-            <View key={m.id} style={[styles.bubble, mine && styles.bubbleMine]}>
+            <Animated.View key={m.id} entering={enter.rise()} style={[styles.bubble, mine && styles.bubbleMine]}>
               {m.contentId && (
                 <ForwardedPost contentId={m.contentId} vote={m.vote} senderName={name.split(" ")[0]} />
               )}
               {m.text && <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{m.text}</Text>}
-            </View>
+            </Animated.View>
           );
         })}
       </ScrollView>

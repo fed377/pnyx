@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { enter } from "@/theme/motion";
 import { useStore } from "@/state/store";
 import { OnBackdropProvider, useInk } from "@/theme/ink";
 import { c, f, hexToRgba, r, s, squircle } from "@/theme/tokens";
@@ -31,9 +32,9 @@ export function Note({ icon, children }: { icon?: IconName; children: ReactNode 
 export function Empty({ children }: { children: ReactNode }) {
   const ink = useInk();
   return (
-    <View style={styles.empty}>
+    <Animated.View entering={enter.fade()} style={styles.empty}>
       <Text style={[styles.emptyText, { color: ink.dim }]}>{children}</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -52,10 +53,10 @@ export function LoadFailed({
 }) {
   const ink = useInk();
   return (
-    <View style={[styles.empty, styles.failed]}>
+    <Animated.View entering={enter.fade()} style={[styles.empty, styles.failed]}>
       <Text style={[styles.emptyText, { color: ink.dim }]}>{children}</Text>
       <Btn label={retrying ? "Trying again…" : "Try again"} variant="outline" onPress={onRetry} disabled={retrying} />
-    </View>
+    </Animated.View>
   );
 }
 

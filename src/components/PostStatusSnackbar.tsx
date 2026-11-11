@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text } from "react-native";
+import { useEffect } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import Animated from "react-native-reanimated";
 import { useStore } from "@/state/store";
+import { enter, exit } from "@/theme/motion";
 import { c, f, r, s, squircle, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const AUTO_DISMISS_MS: Partial<Record<"posted" | "failed", number>> = {
@@ -16,18 +18,7 @@ const AUTO_DISMISS_MS: Partial<Record<"posted" | "failed", number>> = {
  */
 export function PostStatusSnackbar() {
   const { postStatus, postError, dismissPostStatus } = useStore();
-  const [fade] = useState(() => new Animated.Value(0));
   const visible = postStatus !== "idle";
-
-  useEffect(() => {
-    if (!visible) return;
-    Animated.timing(fade, {
-      toValue: 1,
-      duration: 180,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-  }, [visible, fade]);
 
   // "uploading" has no timer — it clears when the status actually changes,
   // not on a fixed clock, since the upload's real duration is unknown.
@@ -48,10 +39,7 @@ export function PostStatusSnackbar() {
         : (postError ?? "Could not post that");
 
   return (
-    <Animated.View
-      pointerEvents="box-none"
-      style={[styles.wrap, { opacity: fade, transform: [{ translateY: fade.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }] }]}
-    >
+    <Animated.View entering={enter.rise()} exiting={exit.sink()} pointerEvents="box-none" style={styles.wrap}>
       <Pressable
         onPress={postStatus === "uploading" ? undefined : dismissPostStatus}
         accessibilityRole={postStatus === "uploading" ? undefined : "button"}

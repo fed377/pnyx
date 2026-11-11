@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
@@ -15,6 +15,7 @@ import { timeAgo } from "@/lib/format";
 import type { Content, Person } from "@/lib/types";
 import { useNotifications } from "@/state/useNotifications";
 import { useStore } from "@/state/store";
+import { enter } from "@/theme/motion";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 
 const DAY_MS = 86_400_000;
@@ -68,7 +69,7 @@ export default function NotificationsScreen() {
     const person: Person | undefined = peopleById[n.personId];
     const name = person?.name ?? "Someone";
     return (
-      <Animated.View entering={FadeInDown.duration(240).delay(enterDelay(index))}>
+      <Animated.View entering={enter.rise().delay(enterDelay(index))}>
         <AnimatedPressable
           scaleTo={0.98}
           style={styles.row}

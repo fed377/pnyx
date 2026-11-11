@@ -30,10 +30,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
-  FadeIn,
-  FadeOut,
   interpolate,
-  Layout,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -47,6 +44,7 @@ import type { Content, VotePower } from "@/lib/types";
 import { useImmersive } from "@/state/immersive";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
+import { enter, exit, move } from "@/theme/motion";
 import { c, display, f, hexToRgba, r, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** The grid this post's scores are most confident on — shown as the card's category chip. */
@@ -263,8 +261,8 @@ function ReelView({
       <Animated.View style={[StyleSheet.absoluteFill, zoom.chromeStyle]} pointerEvents="box-none">
       {paused && (
         <Animated.View
-          entering={FadeIn.duration(140)}
-          exiting={FadeOut.duration(140)}
+          entering={enter.fade()}
+          exiting={exit.fade()}
           style={styles.pausedBadge}
           pointerEvents="none"
         >
@@ -301,7 +299,7 @@ function ReelView({
                 : "Show the vote split and extra detail"
             }
           >
-            <View style={styles.bylineRow}>
+            <Animated.View layout={move()} style={styles.bylineRow}>
               <AnimatedPressable
                 scaleTo={0.97}
                 style={styles.byline}
@@ -348,17 +346,17 @@ function ReelView({
                   <Icon name="chevron" size={14} color={c.onAccent} strokeWidth={2} />
                 </View>
               </OverlayPill>
-            </View>
+            </Animated.View>
 
-            <Text style={styles.take} numberOfLines={expanded ? undefined : 2}>
+            <Animated.Text layout={move()} style={styles.take} numberOfLines={expanded ? undefined : 2}>
               {content.text}
-            </Text>
+            </Animated.Text>
 
             {expanded && (
               <Animated.View
-                entering={FadeIn.duration(180)}
-                exiting={FadeOut.duration(140)}
-                layout={Layout.duration(220)}
+                entering={enter.fade()}
+                exiting={exit.fade()}
+                layout={move()}
                 style={styles.detail}
               >
                 <Text style={styles.context}>

@@ -3,15 +3,16 @@ import { Pressable } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { spring } from "@/theme/motion";
 import type { AnimatedStyle } from "react-native-reanimated";
 
 const Wrapped = Animated.createAnimatedComponent(Pressable);
 
 /** Snappy press feedback shared by every tappable surface in the app: shrink in, spring back out. */
 export const PRESS_IN_MS = 80;
-export const PRESS_OUT_MS = 140;
 
 /**
  * Drop-in replacement for `Pressable` that scales down on press instead of (or alongside)
@@ -42,7 +43,7 @@ export function AnimatedPressable({
   };
   const handlePressOut: NonNullable<PressableProps["onPressOut"]> = (e) => {
     // eslint-disable-next-line react-hooks/immutability
-    scale.value = withTiming(1, { duration: PRESS_OUT_MS });
+    scale.value = withSpring(1, spring.release);
     onPressOut?.(e);
   };
 

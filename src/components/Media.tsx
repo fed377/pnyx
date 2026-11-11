@@ -1,13 +1,15 @@
 import { Image } from "expo-image";
 import { useVideoPlayer, VideoView } from "expo-video";
 import type { VideoPlayer } from "expo-video";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import Svg, { Circle, G, Rect } from "react-native-svg";
 import { hashSeed } from "@/lib/format";
 import { nearestPoint } from "@/lib/grids";
 import type { Scores } from "@/lib/types";
+import { duration, ease } from "@/theme/motion";
 import { r as radius, squircle } from "@/theme/tokens";
 
 /**
@@ -22,6 +24,9 @@ import { r as radius, squircle } from "@/theme/tokens";
 export function isVideoUrl(url?: string): boolean {
   return Boolean(url && /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url));
 }
+
+/** Long enough for the first frame to have drawn once the player says it's ready. */
+const REVEAL_FALLBACK_MS = 400;
 
 /** The player is a native object driven imperatively, not React state. */
 function setMuted(player: VideoPlayer, muted: boolean) {
@@ -75,6 +80,27 @@ export function Media({
     else player.pause();
   }, [isVideo, playing, player]);
 
+  // The video surface is black until its first frame decodes, so it stays
+  // hidden over the post's own colour and fades in once there's a picture.
+  // Readiness is the fallback in case the first-frame event never arrives.
+  const shown = useSharedValue(0);
+  const videoStyle = useAnimatedStyle(() => ({ opacity: shown.get() }));
+  const reveal = useCallback(() => {
+    if (shown.get() === 0) shown.set(withTiming(1, { duration: duration.base, easing: ease.out }));
+  }, [shown]);
+  useEffect(() => {
+    if (!isVideo) return;
+    shown.set(0);
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+    const sub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay") fallback ??= setTimeout(reveal, REVEAL_FALLBACK_MS);
+    });
+    return () => {
+      sub.remove();
+      clearTimeout(fallback);
+    };
+  }, [isVideo, player, shown, reveal]);
+
   // The setup callback above only runs when the player is created — a
   // screen-level mute toggle has to reach an existing player too.
   useEffect(() => {
@@ -123,12 +149,15 @@ export function Media({
     return (
       <View onLayout={onLayout} style={frame}>
         {isVideo ? (
-          <VideoView
-            style={{ width: "100%", height: "100%" }}
-            player={player}
-            nativeControls={false}
-            contentFit={fill ? "cover" : "contain"}
-          />
+          <Animated.View style={[{ width: "100%", height: "100%" }, videoStyle]}>
+            <VideoView
+              style={{ width: "100%", height: "100%" }}
+              player={player}
+              nativeControls={false}
+              contentFit={fill ? "cover" : "contain"}
+              onFirstFrameRender={reveal}
+            />
+          </Animated.View>
         ) : (
           <Image
             source={{ uri: mediaUrl }}

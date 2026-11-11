@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
@@ -14,6 +14,7 @@ import type { GridId, Person } from "@/lib/types";
 import { usePeopleSearch } from "@/state/peopleSearch";
 import { useStore } from "@/state/store";
 import { useInk } from "@/theme/ink";
+import { enter } from "@/theme/motion";
 import { c, display, f, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 const WORLD_LIMIT = 10;
@@ -70,7 +71,7 @@ function PersonRow({
   const type = nearestPoint(gridFocus, person.positions[gridFocus]);
 
   return (
-    <Animated.View entering={FadeInDown.duration(240).delay(enterDelay(index))}>
+    <Animated.View entering={enter.rise().delay(enterDelay(index))}>
       <AnimatedPressable
         scaleTo={0.98}
         style={styles.row}

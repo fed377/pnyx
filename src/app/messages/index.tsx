@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { AlignmentPill } from "@/components/Alignment";
 import { AnimatedPressable, enterDelay } from "@/components/AnimatedPressable";
 import { Avatar } from "@/components/Avatar";
@@ -12,6 +12,7 @@ import { timeAgo } from "@/lib/format";
 import { ORIGIN } from "@/lib/algorithm";
 import { useConversations } from "@/state/useConversations";
 import { useStore } from "@/state/store";
+import { enter } from "@/theme/motion";
 import { c, f, s } from "@/theme/tokens";
 
 export default function MessagesScreen() {
@@ -36,7 +37,7 @@ export default function MessagesScreen() {
           const name = person?.name ?? "Someone";
           const last = convo.messages[convo.messages.length - 1];
           return (
-            <Animated.View key={convo.id} entering={FadeInDown.duration(240).delay(enterDelay(i))}>
+            <Animated.View key={convo.id} entering={enter.rise().delay(enterDelay(i))}>
               <AnimatedPressable
                 scaleTo={0.98}
                 style={[styles.row, i > 0 && styles.rowDivider]}

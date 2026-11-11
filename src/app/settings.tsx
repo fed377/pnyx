@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
-import Animated, { FadeInDown, FadeOutDown, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { identityCode } from "@/lib/algorithm";
 import { Avatar } from "@/components/Avatar";
@@ -23,6 +23,7 @@ import type { GridId, PrivacyTier } from "@/lib/types";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
 import type { SettingsPatch } from "@/state/store";
+import { enter, exit } from "@/theme/motion";
 import { c, f, hexToRgba, r, s, squircle } from "@/theme/tokens";
 
 const TIERS: { id: PrivacyTier; label: string; note: string }[] = [
@@ -453,8 +454,8 @@ export default function SettingsScreen() {
 
       {dirty && (
         <Animated.View
-          entering={FadeInDown.duration(200)}
-          exiting={FadeOutDown.duration(160)}
+          entering={enter.rise()}
+          exiting={exit.sink()}
           style={[styles.saveDock, { paddingBottom: insets.bottom + s[2] }]}
         >
           <View style={styles.saveBar}>

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { timeAgo } from "@/lib/format";
 import type { Content } from "@/lib/types";
 import { useAuthor } from "@/state/useAuthor";
 import { useComments } from "@/state/useComments";
 import type { LiveComment } from "@/state/useComments";
 import { useStore } from "@/state/store";
+import { enter } from "@/theme/motion";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -116,11 +118,12 @@ export function CommentsSheet({
       ) : (
         <View style={{ gap: s[4] }}>
           {all.map((cm) => (
-            <CommentRow
-              key={cm.id}
-              cm={cm}
-              onVote={(id, power) => castVote(id, power).catch(() => toast("Couldn't count that vote. Try again."))}
-            />
+            <Animated.View key={cm.id} entering={enter.rise()}>
+              <CommentRow
+                cm={cm}
+                onVote={(id, power) => castVote(id, power).catch(() => toast("Couldn't count that vote. Try again."))}
+              />
+            </Animated.View>
           ))}
         </View>
       )}
