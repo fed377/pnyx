@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PNYX dev</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #161513;
+    --ink-soft: #282725;
+    --plate: #faf9f6;
+    --up: #157a57;
+    --down: #b3303e;
+    --wait: #8a6100;
+    --rule: rgba(22, 21, 19, 0.22);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font: 400 16px/1.45 "Familjen Grotesk", system-ui, sans-serif;
+    /* A still of the app's own FLOW backdrop, in the same four stops. */
+    background:
+      radial-gradient(70vmax 60vmax at 12% 8%, #ffffff 0%, transparent 62%),
+      radial-gradient(60vmax 60vmax at 92% 18%, #b8b8b8 0%, transparent 60%),
+      radial-gradient(70vmax 55vmax at 78% 96%, #ddddd6 0%, transparent 62%),
+      radial-gradient(55vmax 55vmax at 6% 100%, #bdbdbd 0%, transparent 60%),
+      #cfd0d0;
+    background-attachment: fixed;
+  }
+  main {
+    min-height: 100%;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 40px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+    gap: clamp(32px, 6vw, 72px);
+    align-items: center;
+  }
+  .wordmark { font-weight: 700; font-size: 20px; letter-spacing: 6px; margin: 0 0 clamp(32px, 7vh, 72px); }
+  h1 {
+    font-weight: 600;
+    font-size: clamp(44px, 6.4vw, 72px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px;
+  }
+  .hint { color: var(--ink-soft); font-size: 18px; margin: 0 0 28px; max-width: 34ch; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    height: 46px;
+    padding: 0 22px;
+    border-radius: 999px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button.primary { background: var(--ink); color: var(--plate); }
+  button:hover:not(:disabled) { background: rgba(22, 21, 19, 0.1); }
+  button.primary:hover:not(:disabled) { background: #33312e; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  :focus-visible { outline: 2.5px solid var(--ink); outline-offset: 3px; }
+  [hidden] { display: none !important; }
+
+  .status { margin: 0; }
+  .status div {
+    display: grid;
+    grid-template-columns: 14px 120px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 10px;
+    padding: 11px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .status dt { font-weight: 600; grid-column: 2; }
+  .status dd { margin: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .dot { grid-column: 1; grid-row: 1; width: 10px; height: 10px; border-radius: 50%; align-self: center; background: rgba(22, 21, 19, 0.3); }
+  .dot.up { background: var(--up); }
+  .dot.down { background: var(--down); }
+  .dot.wait { background: var(--wait); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+
+  .error { color: var(--down); font-weight: 500; margin: 16px 0 0; max-width: 60ch; overflow-wrap: anywhere; }
+
+  details { margin-top: 18px; }
+  summary { cursor: pointer; font-weight: 600; }
+  pre {
+    font: 12.5px/1.5 Consolas, Menlo, monospace;
+    background: rgba(250, 249, 246, 0.7);
+    border-radius: 12px;
+    padding: 12px 14px;
+    max-height: 240px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .plate {
+    aspect-ratio: 1;
+    background: var(--plate);
+    border-radius: 44px;
+    padding: 12%;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 30px 60px -28px rgba(22, 21, 19, 0.55);
+    text-align: center;
+    color: var(--ink-soft);
+  }
+  .plate svg { display: block; width: 100%; height: 100%; }
+  .plate.reveal { animation: arrive 320ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @keyframes arrive { from { transform: scale(0.96); opacity: 0.4; } }
+  .link { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
+  .link a { flex: 1; min-width: 0; color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+  .link button { height: 38px; padding: 0 16px; flex: none; }
+
+  @media (max-width: 760px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    .wordmark { margin-bottom: 24px; }
+    aside { order: -1; }
+    .status div { grid-template-columns: 14px 104px minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot.wait, .plate.reveal { animation: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <p class="wordmark">PNYX</p>
+    <h1 id="title" aria-live="polite">Checking</h1>
+    <p class="hint" id="hint">Looking for a running app server.</p>
+    <div class="actions">
+      <button class="primary" id="start" hidden>Start the app</button>
+      <button id="restart" hidden>Restart</button>
+      <button id="stop" hidden>Stop</button>
+    </div>
+    <dl class="status">
+      <div><span class="dot" id="d-app"></span><dt>App server</dt><dd id="s-app">Checking</dd></div>
+      <div><span class="dot" id="d-tunnel"></span><dt>Tunnel</dt><dd id="s-tunnel">Checking</dd></div>
+      <div><span class="dot" id="d-backend"></span><dt>Backend</dt><dd id="s-backend">Checking</dd></div>
+    </dl>
+    <p class="error" id="error" hidden></p>
+    <details>
+      <summary>Server log</summary>
+      <pre id="logs"></pre>
+    </details>
+  </section>
+
+  <aside>
+    <div class="plate" id="plate">The QR code appears here once the app is ready.</div>
+    <div class="link" id="linkRow" hidden>
+      <a id="link"></a>
+      <button id="copy">Copy</button>
+    </div>
+  </aside>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const COPY = {
+    stopped: ["Not running", "Start the app, then scan the code with your iPhone camera."],
+    starting: ["Starting", "The tunnel can take up to a minute."],
+    running: ["Ready to scan", "Point your iPhone camera at the code. It opens in Expo Go."],
+    stopping: ["Stopping", "Shutting the app server down."],
+  };
+
+  const TUNNEL = {
+    off: ["", "Not running"],
+    connecting: ["wait", "Connecting"],
+    up: ["up", "Reachable from your phone"],
+    down: ["down", "Not reachable. Check your connection, or restart."],
+  };
+
+  let lastQr = null;
+  let acting = false;
+
+  function setStatus(key, cls, text) {
+    $("d-" + key).className = "dot " + cls;
+    $("s-" + key).textContent = text;
+  }
+
+  function render(s) {
+    const [title, hint] = COPY[s.phase];
+    $("title").textContent = title;
+    $("hint").textContent = hint;
+
+    $("start").hidden = s.phase !== "stopped";
+    $("restart").hidden = s.phase === "stopped";
+    $("stop").hidden = s.phase === "stopped";
+    for (const id of ["start", "restart", "stop"]) $(id).disabled = acting || s.phase === "stopping";
+
+    const app = { stopped: ["", "Off"], starting: ["wait", "Starting"], running: ["up", "Running"], stopping: ["wait", "Stopping"] }[s.phase];
+    setStatus("app", app[0], app[1]);
+
+    const [tc, tt] = TUNNEL[s.tunnel];
+    setStatus("tunnel", tc, tt);
+
+    if (s.backend === "none") setStatus("backend", "", "No backend set in .env");
+    else if (s.backend === "checking") setStatus("backend", "wait", "Checking");
+    else if (s.backend === "up") setStatus("backend", "up", `Online, answered in ${s.backendMs} ms`);
+    else setStatus("backend", "down", "Not responding. It may be waking up, or down.");
+
+    const showError = s.phase === "stopped" || s.phase === "starting";
+    $("error").hidden = !(s.lastError && showError);
+    $("error").textContent = s.lastError ? `${s.lastError} Try starting it again.` : "";
+
+    const plate = $("plate");
+    if (s.qr !== lastQr) {
+      lastQr = s.qr;
+      if (s.qr) {
+        plate.innerHTML = s.qr;
+        plate.setAttribute("role", "img");
+        plate.setAttribute("aria-label", "QR code that opens the app in Expo Go");
+        plate.classList.remove("reveal");
+        void plate.offsetWidth;
+        plate.classList.add("reveal");
+      } else {
+        plate.removeAttribute("role");
+        plate.removeAttribute("aria-label");
+      }
+    }
+    if (!s.qr) {
+      plate.textContent = s.phase === "starting" ? "Waiting for the tunnel." : "The QR code appears here once the app is ready.";
+    }
+
+    $("linkRow").hidden = !s.qr;
+    if (s.link) {
+      $("link").textContent = s.link;
+      $("link").href = s.link;
+    }
+
+    const box = $("logs");
+    const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;
+    box.textContent = s.managed
+      ? s.logs.join("\n")
+      : s.phase === "stopped"
+        ? "Nothing yet."
+        : "This server was started outside the dashboard, so its log isn't available here. Restart it to see the log.";
+    if (atEnd) box.scrollTop = box.scrollHeight;
+  }
+
+  function offline() {
+    $("title").textContent = "Dashboard stopped";
+    $("hint").textContent = "Run npm run dashboard in pnyx-native to bring it back.";
+    for (const id of ["start", "restart", "stop"]) $(id).hidden = true;
+  }
+
+  async function poll() {
+    try {
+      render(await (await fetch("/api/state")).json());
+    } catch {
+      offline();
+    }
+  }
+
+  async function act(path) {
+    acting = true;
+    for (const id of ["start", "restart", "stop"]) $(id).disabled = true;
+    try {
+      render(await (await fetch(path, { method: "POST" })).json());
+    } catch {
+      offline();
+    } finally {
+      acting = false;
+      poll();
+    }
+  }
+
+  $("start").onclick = () => act("/api/start");
+  $("restart").onclick = () => act("/api/restart");
+  $("stop").onclick = () => act("/api/stop");
+  $("copy").onclick = async () => {
+    await navigator.clipboard.writeText($("link").textContent);
+    $("copy").textContent = "Copied";
+    setTimeout(() => ($("copy").textContent = "Copy"), 1400);
+  };
+
+  poll();
+  setInterval(poll, 1500);
+</script>
+</body>
+</html>
