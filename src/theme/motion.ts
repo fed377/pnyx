@@ -1,4 +1,4 @@
-import { Easing, FadeIn, FadeInDown, FadeOut, FadeOutDown, LinearTransition } from "react-native-reanimated";
+import { Easing, FadeIn, FadeInDown, FadeOut, FadeOutDown } from "react-native-reanimated";
 
 /**
  * One set of timings for the whole app, so things that happen together move
@@ -43,9 +43,6 @@ export const exit = {
   fade: () => FadeOut.duration(duration.quick).easing(ease.in),
   sink: () => FadeOutDown.duration(duration.quick).easing(ease.in),
 } as const;
-
-/** For views pushed around by something appearing beside them, so they slide instead of jumping. */
-export const move = () => LinearTransition.duration(duration.base).easing(ease.inOut);
 
 /**
  * A skeleton waits this long before showing, so a fast load goes straight to

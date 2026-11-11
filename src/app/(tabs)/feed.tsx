@@ -31,6 +31,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   interpolate,
+  LinearTransition,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -44,7 +45,7 @@ import type { Content, VotePower } from "@/lib/types";
 import { useImmersive } from "@/state/immersive";
 import { useStore } from "@/state/store";
 import { useAuthor } from "@/state/useAuthor";
-import { enter, exit, move } from "@/theme/motion";
+import { duration, ease, enter, exit } from "@/theme/motion";
 import { c, display, f, hexToRgba, r, s, TAB_BAR_CLEARANCE } from "@/theme/tokens";
 
 /** The grid this post's scores are most confident on — shown as the card's category chip. */
@@ -109,7 +110,10 @@ function ReelView({
   const router = useRouter();
   const toast = useToast();
   const [comments, setComments] = useState(false);
+  // `expanded` is what was asked for, `open` is what's drawn: closing keeps
+  // the open caption drawn until the panel has shrunk back over it.
   const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const isVideo = isVideoUrl(content.mediaUrl);
 
   // Tap to pause. A reel you scroll away from and come back to starts playing
@@ -186,6 +190,44 @@ function ReelView({
   useEffect(() => {
     hidden.value = withTiming(infoHidden ? 1 : 0, { duration: INFO_MS, easing: Easing.out(Easing.cubic) });
   }, [infoHidden, hidden]);
+  // Opening and closing change the layout once and let captionMove() slide
+  // the frames, which runs natively rather than re-laying-out every frame.
+  // The panel sits on the bottom edge and clips, so opening grows it upward
+  // and reveals the rest beneath the first lines. Closing first clamps the
+  // panel back to its closed height over the open caption, then puts the
+  // open caption away once that has finished.
+  const [closedH, setClosedH] = useState(0);
+  const [clamped, setClamped] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
+  const toggleCaption = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+    if (expanded) {
+      setExpanded(false);
+      setClamped(true);
+      closeTimer.current = setTimeout(() => {
+        closeTimer.current = null;
+        setOpen(false);
+        setClamped(false);
+      }, duration.slow);
+    } else {
+      setExpanded(true);
+      setOpen(true);
+      setClamped(false);
+    }
+  };
+  // The dark card behind an open caption fades in as it grows.
+  const infoCard = useSharedValue(0);
+  useEffect(() => {
+    infoCard.set(withTiming(expanded ? 1 : 0, PANEL_TIMING));
+  }, [expanded, infoCard]);
+  const infoCardStyle = useAnimatedStyle(() => ({ opacity: infoCard.get() }));
   const cardStyle = useAnimatedStyle(() => ({
     opacity: interpolate(hidden.value, [0, 0.6], [1, 0], "clamp"),
     transform: [{ translateY: hidden.value * (cardHeight.value + TAB_BAR_CLEARANCE) }],
@@ -281,139 +323,152 @@ function ReelView({
       </Animated.View>
 
       <View style={styles.stack} pointerEvents="box-none">
-        <Animated.View
-          style={[styles.overlay, cardStyle]}
-          pointerEvents={infoHidden ? "none" : "box-none"}
-          onLayout={(e) => {
-            cardHeight.value = e.nativeEvent.layout.height;
-          }}
-        >
-          <Pressable
-            onPress={() => setExpanded((e) => !e)}
-            style={[styles.info, expanded && styles.infoExpanded]}
-            accessibilityRole="button"
-            accessibilityState={{ expanded }}
-            accessibilityLabel={
-              expanded
-                ? "Hide the vote split and extra detail"
-                : "Show the vote split and extra detail"
-            }
+        {/* Moves up as the panel grows. Every frame below that changes with
+            the caption slides on the same transition, so they stay together. */}
+        <Animated.View layout={captionMove()} pointerEvents="box-none">
+          <Animated.View
+            style={[styles.overlay, cardStyle]}
+            pointerEvents={infoHidden ? "none" : "box-none"}
+            onLayout={(e) => {
+              cardHeight.value = e.nativeEvent.layout.height;
+            }}
           >
-            <Animated.View layout={move()} style={styles.bylineRow}>
-              <AnimatedPressable
-                scaleTo={0.97}
-                style={styles.byline}
-                accessibilityRole="link"
-                accessibilityLabel={`Open ${author.name}'s profile`}
-                onPress={() =>
-                  router.push(own ? "/profile" : { pathname: "/u/[id]", params: { id: author.id } })
+            <Animated.View
+              layout={captionMove()}
+              style={[styles.panel, (open || clamped) && styles.panelClip, clamped && { maxHeight: closedH }]}
+            >
+              <Animated.View style={[styles.infoCard, infoCardStyle]} pointerEvents="none" />
+              <Pressable
+                onPress={toggleCaption}
+                accessibilityRole="button"
+                accessibilityState={{ expanded }}
+                accessibilityLabel={
+                  expanded
+                    ? "Hide the vote split and extra detail"
+                    : "Show the vote split and extra detail"
                 }
               >
-                <Avatar
-                  name={author.name}
-                  positions={author.positions}
-                  size={30}
-                  locked={author.locked}
-                  badge={false}
-                  photoUrl={author.avatarUrl}
-                />
-                <View style={{ flex: 1 }}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.name} numberOfLines={1}>
-                      {own ? "You" : author.name}
-                    </Text>
-                    <Text style={styles.handle} numberOfLines={1}>
-                      @{author.handle}
-                    </Text>
-                  </View>
-                  <Text style={styles.sub} numberOfLines={1}>
-                    {author.locked ? "Unrevealed" : type.name}
-                    {alignment !== null && ` · ${alignment}% aligned`}
-                  </Text>
-                </View>
-              </AnimatedPressable>
-              {isVideo && (
-                <OverlayPill
-                  height={26}
-                  onPress={onToggleMute}
-                  accessibilityLabel={muted ? "Turn sound on" : "Mute"}
+                <View
+                  style={[styles.info, open && styles.infoOpen]}
+                  onLayout={(e) => {
+                    if (!open) setClosedH(e.nativeEvent.layout.height);
+                  }}
                 >
-                  <Icon name={muted ? "volumeOff" : "volume"} size={14} color={c.onAccent} />
-                </OverlayPill>
-              )}
-              <OverlayPill height={26} onPress={onToggleInfo} accessibilityLabel="Hide reel info">
-                <View style={styles.chevronDown}>
-                  <Icon name="chevron" size={14} color={c.onAccent} strokeWidth={2} />
+                  <View style={styles.bylineRow}>
+                    <AnimatedPressable
+                      scaleTo={0.97}
+                      style={styles.byline}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Open ${author.name}'s profile`}
+                      onPress={() =>
+                        router.push(own ? "/profile" : { pathname: "/u/[id]", params: { id: author.id } })
+                      }
+                    >
+                      <Avatar
+                        name={author.name}
+                        positions={author.positions}
+                        size={30}
+                        locked={author.locked}
+                        badge={false}
+                        photoUrl={author.avatarUrl}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.name} numberOfLines={1}>
+                            {own ? "You" : author.name}
+                          </Text>
+                          <Text style={styles.handle} numberOfLines={1}>
+                            @{author.handle}
+                          </Text>
+                        </View>
+                        <Text style={styles.sub} numberOfLines={1}>
+                          {author.locked ? "Unrevealed" : type.name}
+                          {alignment !== null && ` · ${alignment}% aligned`}
+                        </Text>
+                      </View>
+                    </AnimatedPressable>
+                    {isVideo && (
+                      <OverlayPill
+                        height={26}
+                        onPress={onToggleMute}
+                        accessibilityLabel={muted ? "Turn sound on" : "Mute"}
+                      >
+                        <Icon name={muted ? "volumeOff" : "volume"} size={14} color={c.onAccent} />
+                      </OverlayPill>
+                    )}
+                    <OverlayPill height={26} onPress={onToggleInfo} accessibilityLabel="Hide reel info">
+                      <View style={styles.chevronDown}>
+                        <Icon name="chevron" size={14} color={c.onAccent} strokeWidth={2} />
+                      </View>
+                    </OverlayPill>
+                  </View>
+
+                  <Text style={styles.take} numberOfLines={open ? undefined : 2}>
+                    {content.text}
+                  </Text>
+
+                  {open && (
+                    <Animated.View entering={enter.fade()} style={styles.detail}>
+                      <Text style={styles.context}>
+                        {grid.label} · {timeAgoLong(content.createdAt)}
+                      </Text>
+                      {own ? (
+                        <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
+                      ) : (
+                        myVote !== undefined && (
+                          <VoteResult content={content} friends={friends} myVote={myVote} onDark />
+                        )
+                      )}
+                      {content.context && <Text style={styles.context}>{content.context}</Text>}
+                      {content.music && (
+                        <View style={styles.music}>
+                          <Icon name="feed" size={13} color={hexToRgba(c.onAccent, 0.7)} />
+                          <Text style={styles.context}>{content.music}</Text>
+                        </View>
+                      )}
+                    </Animated.View>
+                  )}
                 </View>
-              </OverlayPill>
+              </Pressable>
             </Animated.View>
 
-            <Animated.Text layout={move()} style={styles.take} numberOfLines={expanded ? undefined : 2}>
-              {content.text}
-            </Animated.Text>
-
-            {expanded && (
-              <Animated.View
-                entering={enter.fade()}
-                exiting={exit.fade()}
-                layout={move()}
-                style={styles.detail}
+            {/* Its place in the row shifts as the panel grows; sliding it on the
+                same transition cancels out, so the rail stays still on screen. */}
+            <Animated.View layout={captionMove()} style={styles.actions}>
+              <VoteControls
+                layout="rail"
+                overlay
+                size={RAIL_SIZE}
+                counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
+                current={myVote}
+                pendingUntil={pendingUntilOf(content.id)}
+                locked={isVoteLocked(content.id)}
+                onLockedPress={() => toast("Your vote is counted — it can't be changed")}
+                disabled={own}
+                onVote={onVote}
+              />
+              <AnimatedPressable
+                style={styles.railButton}
+                hitSlop={RAIL_SLOP}
+                onPress={() => setComments(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`${content.commentCount} comments`}
               >
-                <Text style={styles.context}>
-                  {grid.label} · {timeAgoLong(content.createdAt)}
-                </Text>
-                {own ? (
-                  <Text style={styles.hint}>Your own reel — other people decide where it sits.</Text>
-                ) : (
-                  myVote !== undefined && (
-                    <VoteResult content={content} friends={friends} myVote={myVote} onDark />
-                  )
-                )}
-                {content.context && <Text style={styles.context}>{content.context}</Text>}
-                {content.music && (
-                  <View style={styles.music}>
-                    <Icon name="feed" size={13} color={hexToRgba(c.onAccent, 0.7)} />
-                    <Text style={styles.context}>{content.music}</Text>
-                  </View>
-                )}
-              </Animated.View>
-            )}
-          </Pressable>
-
-          <View style={styles.actions}>
-            <VoteControls
-              layout="rail"
-              overlay
-              size={RAIL_SIZE}
-              counts={{ up: content.globalSplit.love + content.globalSplit.like, down: content.globalSplit.hate + content.globalSplit.dislike }}
-              current={myVote}
-              pendingUntil={pendingUntilOf(content.id)}
-              locked={isVoteLocked(content.id)}
-              onLockedPress={() => toast("Your vote is counted — it can't be changed")}
-              disabled={own}
-              onVote={onVote}
-            />
-            <AnimatedPressable
-              style={styles.railButton}
-              hitSlop={RAIL_SLOP}
-              onPress={() => setComments(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`${content.commentCount} comments`}
-            >
-              <Icon name="comment" size={RAIL_GLYPH} color={c.onAccent} />
-              <Text style={styles.railLabel}>{compactCount(content.commentCount)}</Text>
-            </AnimatedPressable>
-            <AnimatedPressable
-              style={styles.railButton}
-              hitSlop={RAIL_SLOP}
-              onPress={share}
-              accessibilityRole="button"
-              accessibilityLabel="Share this reel"
-            >
-              <Icon name="share" size={RAIL_GLYPH} color={c.onAccent} />
-              <Text style={styles.railLabel}>Share</Text>
-            </AnimatedPressable>
-          </View>
+                <Icon name="comment" size={RAIL_GLYPH} color={c.onAccent} />
+                <Text style={styles.railLabel}>{compactCount(content.commentCount)}</Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                style={styles.railButton}
+                hitSlop={RAIL_SLOP}
+                onPress={share}
+                accessibilityRole="button"
+                accessibilityLabel="Share this reel"
+              >
+                <Icon name="share" size={RAIL_GLYPH} color={c.onAccent} />
+                <Text style={styles.railLabel}>Share</Text>
+              </AnimatedPressable>
+            </Animated.View>
+          </Animated.View>
         </Animated.View>
       </View>
 
@@ -653,6 +708,12 @@ export default function FeedScreen() {
   );
 }
 
+/** How far the caption card reaches past the text: its edge sits this far from the screen. */
+const CARD_INSET = s[2];
+const PANEL_TIMING = { duration: duration.slow, easing: ease.inOut };
+/** One transition for every frame the caption moves, so they stay in step. */
+const captionMove = () => LinearTransition.duration(PANEL_TIMING.duration).easing(PANEL_TIMING.easing);
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
   topOverlay: { position: "absolute", left: 0, right: 0, top: 0 },
@@ -710,15 +771,27 @@ const styles = StyleSheet.create({
   restoreLabel: { color: c.onAccent, fontSize: f.sm, fontWeight: "700" },
   scrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: "50%" },
   overlay: { flexDirection: "row", alignItems: "flex-end", gap: s[3] },
-  info: { flex: 1, gap: s[2] },
+  // The padding is the same open or closed, so the text never shifts
+  // sideways; the outset puts the card's edge CARD_INSET from the screen.
+  panel: { flex: 1, marginLeft: -CARD_INSET },
+  // Clips the caption to its sliding frame, only while open or closing. A
+  // straight-edged clip: the card draws its own rounded corners, so the clip
+  // never rounds off the end of a line.
+  panelClip: { overflow: "hidden" },
+  info: { gap: s[2], paddingHorizontal: CARD_INSET, paddingTop: CARD_INSET },
+  // Room under the last line once the card is showing. Its bottom edge stays
+  // level with the bottom of the vote rail.
+  infoOpen: { paddingBottom: s[3] },
   // A long caption or the vote split can run up past the scrim, onto bright
-  // footage. The negative margin keeps the text where it was before opening.
-  infoExpanded: {
-    backgroundColor: "rgba(20,19,17,0.72)",
+  // footage, so an open caption sits on its own dark card.
+  infoCard: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     borderRadius: r.lg,
-    padding: s[3],
-    margin: -s[3],
-    marginRight: 0,
+    backgroundColor: "rgba(20,19,17,0.72)",
   },
   bylineRow: { flexDirection: "row", alignItems: "center", gap: s[2] },
   chevronDown: { transform: [{ rotate: "90deg" }] },
