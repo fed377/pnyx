@@ -8,6 +8,7 @@ import { duration, ease } from "@/theme/motion";
 import { c } from "@/theme/tokens";
 import { Landing } from "./Landing";
 import { LaunchScreen } from "./Loading";
+import { Onboarding } from "./Onboarding";
 import { SignIn } from "./SignIn";
 
 /**
@@ -17,7 +18,7 @@ import { SignIn } from "./SignIn";
  */
 export function AuthGate() {
   const { ready, session, configured } = useSession();
-  const { hydrated, mode, profileLoaded } = useStore();
+  const { hydrated, mode, profileLoaded, needsOnboarding } = useStore();
   const pathname = usePathname();
   // Resets on a fresh app launch (this component's own remount), not
   // persisted — the point is a first landing screen for this session, not a
@@ -27,7 +28,7 @@ export function AuthGate() {
   // A password-recovery link opens this while signed out (the whole point of
   // forgetting your password) — it must never be covered by the sign-in
   // screen the way every other route is.
-  const cover: "launch" | "landing" | "signin" | null =
+  const cover: "launch" | "landing" | "signin" | "welcome" | null =
     pathname === "/auth-callback"
       ? null
       : // Reading the stored session, or the local store: cover the app so no
@@ -49,7 +50,10 @@ export function AuthGate() {
             // flight, which on a cold Render instance can take tens of seconds.
             mode === "remote" && !profileLoaded
             ? "launch"
-            : null;
+            : // A new account sees the welcome tour once, before the app itself.
+              needsOnboarding
+              ? "welcome"
+              : null;
 
   // One opaque cover whose contents crossfade, so moving between launch,
   // landing and sign-in never shows the app through the gap, and the app is
@@ -73,6 +77,8 @@ export function AuthGate() {
               <LaunchScreen />
             ) : cover === "landing" ? (
               <Landing onContinue={() => setPastLanding(true)} />
+            ) : cover === "welcome" ? (
+              <Onboarding mode="first" />
             ) : (
               <SignIn />
             )}

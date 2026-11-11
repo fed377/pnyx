@@ -52,7 +52,7 @@ function AnimalFrame({ positions, active }: { positions: Positions; active: bool
  * instead would start loading the new image while the fade was already
  * running, so it popped in a beat late.
  */
-function AnimalPreview() {
+export function AnimalPreview() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {

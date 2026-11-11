@@ -19,6 +19,7 @@ const ROUTES: [url: string, expected: RegExp][] = [
   ["/messages/m1", /Exactly the complaint/i],
   ["/contribute", /Only Speakers can post/i],
   ["/notifications", /loved your take/i],
+  ["/how-it-works", /No quiz/i],
 ];
 
 describe("startup", () => {

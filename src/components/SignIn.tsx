@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import type { ReactNode, RefObject } from "react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { TextInputInstance } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AnimatedPressable } from "./AnimatedPressable";
@@ -20,6 +19,7 @@ import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "./keyboard";
 import { Btn } from "./Primitives";
 import { API_URL, TERMS_URL } from "@/api/client";
 import { ageOn, MIN_AGE, toBirthDate, toISODate } from "@/lib/birthday";
+import { BirthdayField } from "./BirthdayField";
 import { useSession } from "@/state/session";
 import { c, display, f, r, s, squircle } from "@/theme/tokens";
 
@@ -273,19 +273,6 @@ function CreateAccountScreen({
   onBack: () => void;
   onLogin: () => void;
 }) {
-  const monthRef = useRef<TextInputInstance>(null);
-  const yearRef = useRef<TextInputInstance>(null);
-
-  // Some host environments (the RN test renderer among them) don't implement the
-  // imperative handle — auto-advance is a nicety, so a missing focus() is a no-op.
-  const focusNext = (ref: RefObject<TextInputInstance | null>) => () => {
-    try {
-      ref.current?.focus();
-    } catch {
-      // ignore
-    }
-  };
-
   return (
     <>
       <AnimatedPressable
@@ -346,53 +333,15 @@ function CreateAccountScreen({
         <PasswordRow value={password} onChangeText={setPassword} placeholder="Password" />
       </FieldGroup>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Birthday</Text>
-        <View style={styles.dateRow}>
-          <TextInput
-            value={day}
-            onChangeText={(v) => {
-              const digits = v.replace(/\D/g, "").slice(0, 2);
-              setDay(digits);
-              if (digits.length === 2) focusNext(monthRef)();
-            }}
-            placeholder="DD"
-            placeholderTextColor={c.textFaint}
-            accessibilityLabel="Birth day"
-            keyboardType="number-pad"
-            maxLength={2}
-            style={[styles.dateInput, styles.dateInputSmall]}
-          />
-          <TextInput
-            ref={monthRef}
-            value={month}
-            onChangeText={(v) => {
-              const digits = v.replace(/\D/g, "").slice(0, 2);
-              setMonth(digits);
-              if (digits.length === 2) focusNext(yearRef)();
-            }}
-            placeholder="MM"
-            placeholderTextColor={c.textFaint}
-            accessibilityLabel="Birth month"
-            keyboardType="number-pad"
-            maxLength={2}
-            style={[styles.dateInput, styles.dateInputSmall]}
-          />
-          <TextInput
-            ref={yearRef}
-            value={year}
-            onChangeText={(v) => setYear(v.replace(/\D/g, "").slice(0, 4))}
-            placeholder="YYYY"
-            placeholderTextColor={c.textFaint}
-            accessibilityLabel="Birth year"
-            keyboardType="number-pad"
-            maxLength={4}
-            style={[styles.dateInput, styles.dateInputWide]}
-          />
-        </View>
-        {dateInvalid && <Text style={styles.error}>Enter a valid birth date.</Text>}
-        <Text style={styles.hint}>You must be {MIN_AGE} or older to use PNYX.</Text>
-      </View>
+      <BirthdayField
+        day={day}
+        setDay={setDay}
+        month={month}
+        setMonth={setMonth}
+        year={year}
+        setYear={setYear}
+        invalid={dateInvalid}
+      />
 
       {handleStatus === "taken" && (
         <Text style={styles.error}>@{handle.trim()} is taken. Try another handle.</Text>
@@ -658,22 +607,6 @@ const styles = StyleSheet.create({
   rowDivider: { borderTopWidth: 1, borderTopColor: c.line },
   rowInput: { flex: 1, color: c.text, fontSize: f.md, padding: 0 },
   at: { color: c.textFaint, fontSize: f.md },
-
-  field: { gap: 6 },
-  label: { color: c.textFaint, fontSize: f.xs, letterSpacing: 0.9, textTransform: "uppercase" },
-  dateRow: { flexDirection: "row", gap: s[2] },
-  dateInput: {
-    color: c.text,
-    fontSize: f.md,
-    textAlign: "center",
-    paddingVertical: 12,
-    borderRadius: r.sm,
-    backgroundColor: c.surface2,
-    ...squircle,
-  },
-  dateInputSmall: { width: 64 },
-  dateInputWide: { width: 92 },
-  hint: { color: c.textFaint, fontSize: f.xs },
 
   pill: { paddingHorizontal: s[2], paddingVertical: 4, borderRadius: r.full },
   pillAvailable: { backgroundColor: c.text },

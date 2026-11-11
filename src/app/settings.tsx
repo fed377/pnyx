@@ -448,6 +448,7 @@ export default function SettingsScreen() {
         </Group>
 
         <Group title="About">
+          <ActionRow label="How PNYX works" onPress={() => router.push("/how-it-works")} chevron />
           <ActionRow label="Terms and moderation" onPress={() => setAbout(true)} chevron last />
         </Group>
       </ScrollView>

@@ -202,6 +202,14 @@ type Store = {
    * no such account; throws when the request itself fails.
    */
   loadPerson: (id: string) => Promise<"ok" | "missing">;
+  /** Remote mode only: this account hasn't been through the welcome tour yet. */
+  needsOnboarding: boolean;
+  /** Remote mode only: the account has no birthday (a Google sign-up), so
+   * the tour asks for one before it can finish. */
+  needsBirthday: boolean;
+  /** Marks the tour done on the server, with the birthday when one was asked
+   * for. The server enforces the minimum age and rejects with a 403 below it. */
+  completeOnboarding: (birthday?: string) => Promise<void>;
 
   state: State;
   dispatch: (a: Action) => void;
@@ -318,6 +326,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // tens of seconds), including the *previous* account's data if it hasn't
   // been cleared yet. AuthGate covers the app while this is false.
   const [profileLoaded, setProfileLoaded] = useState(false);
+  // From GET /me: whether this account still needs the welcome tour.
+  const [account, setAccount] = useState<{ onboarded: boolean; hasBirthday: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Posting runs in the background now — Contribute navigates back the
@@ -439,6 +449,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (me.notifPrefs) dispatch({ type: "notifPrefs", value: me.notifPrefs });
       dispatch({ type: "gridPublic", value: me.gridPublic });
       dispatch({ type: "profile", patch: profileFromMe(me) });
+      setAccount({ onboarded: me.onboarded, hasBirthday: Boolean(me.birthday) });
       setProfileLoaded(true);
       dispatch({ type: "serverVotes", votes: votes.items });
 
@@ -565,6 +576,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [remote, token, callWithRetry],
   );
 
+  const completeOnboarding = useCallback(
+    async (birthday?: string) => {
+      if (!remote) return;
+      const t = await token();
+      if (!t) throw new Error("not signed in");
+      const me = await callWithRetry(t, (tok) => api.updateMe(tok, { onboarded: true, ...(birthday ? { birthday } : {}) }));
+      if (me) setAccount({ onboarded: me.onboarded, hasBirthday: Boolean(me.birthday) });
+    },
+    [remote, token, callWithRetry],
+  );
+
   // Coming back to the app re-fetches: something may have changed on the server
   // (a post approved, someone else's vote) while it was in the background.
   useEffect(() => {
@@ -590,6 +612,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setServerPeople(null);
       setAlignments({});
       setProfileLoaded(false);
+      setAccount(null);
     }
   }
 
@@ -1008,6 +1031,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       refresh,
       searchPeople,
       loadPerson,
+      needsOnboarding: remote && account !== null && !account.onboarded,
+      needsBirthday: remote && account !== null && !account.hasBirthday,
+      completeOnboarding,
       state,
       dispatch,
       positions,
@@ -1055,7 +1081,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
     }),
     [
-      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, loadPerson, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
+      mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, loadPerson, account, completeOnboarding, remote, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
       reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveSettings, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
       alignments, pending,
     ],
