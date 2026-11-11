@@ -49,6 +49,11 @@ export type ApiProfile = {
    * own `/me`, same as notifPrefs — the server enforces the minimum age
    * server-side before `onboarded` can be set to true. */
   birthday?: string | null;
+  /** Present on your own `/me`: when the tier last actually changed, or null
+   * if it never has. The server allows one change per 30 days after it. */
+  tierChangedAt?: string | null;
+  /** Own `/me` only: true for accounts the server lets skip that cooldown. */
+  tierCooldownExempt?: boolean;
   createdAt: string;
 };
 

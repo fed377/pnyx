@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type { ReactNode } from "react";
 import { identifyUser, resetAnalyticsUser, track, VOTE_TYPE_LABEL } from "@/analytics/analytics";
 import { api, ApiError, uploadToSignedUrl } from "@/api/client";
+import type { ApiMe } from "@/api/client";
 import { toContent, toPerson, toSplit } from "@/api/adapters";
 import { computePositions, totalAlignment, UNLOCK_AT, VOTE_GRACE_MS } from "@/lib/algorithm";
 import { ALL_CONTENT, ME_DEFAULTS, ME_ID, PEOPLE, POSTS, REELS } from "@/lib/data";
@@ -25,7 +26,32 @@ export type Profile = {
   city: string;
   tier: PrivacyTier;
   avatarUrl?: string;
+  /** When the tier last actually changed (ISO). Null or absent means never, so
+   * the server's once-per-30-days cooldown hasn't started. */
+  tierChangedAt?: string | null;
+  /** Set server-side for the team's own accounts — no cooldown at all. */
+  tierCooldownExempt?: boolean;
 };
+
+/** What the Settings page's save button sends — one PATCH for all of it. */
+export type SettingsPatch = Partial<Pick<Profile, "name" | "handle" | "pronouns" | "bio" | "tier">> & {
+  notifPrefs?: State["notifPrefs"];
+  gridPublic?: State["gridPublic"];
+};
+
+function profileFromMe(me: ApiMe): Partial<Profile> {
+  return {
+    handle: me.handle,
+    name: me.name || me.handle,
+    pronouns: me.pronouns,
+    bio: me.bio,
+    city: me.city,
+    avatarUrl: me.avatarUrl,
+    tier: me.privacyTier,
+    tierChangedAt: me.tierChangedAt ?? null,
+    tierCooldownExempt: me.tierCooldownExempt ?? false,
+  };
+}
 
 type State = {
   profile: Profile;
@@ -69,10 +95,10 @@ type Action =
   | { type: "setFollow"; personId: string; following: boolean }
   | { type: "setBlock"; personId: string; blocked: boolean }
   | { type: "profile"; patch: Partial<Profile> }
-  | { type: "gridPublic"; grid: GridId; value: boolean }
-  /** Whole-object replace, not a per-key patch — `saveNotifPrefs()` merges
-   * before dispatching, since the server (like `gridPublic`) wants the full
-   * object either way and `refresh()` needs to replace it wholesale too. */
+  | { type: "gridPublic"; value: Record<GridId, boolean> }
+  /** Whole-object replaces, not per-key patches (this and `gridPublic`) — the
+   * server wants the full object either way and `refresh()` replaces it
+   * wholesale too. */
   | { type: "notifPrefs"; value: State["notifPrefs"] }
   | { type: "filter"; value: number }
   /** No self-serve purchase flow exists yet — dispatched only from `refresh()`,
@@ -105,7 +131,7 @@ function reducer(state: State, action: Action): State {
     case "profile":
       return { ...state, profile: { ...state.profile, ...action.patch } };
     case "gridPublic":
-      return { ...state, gridPublic: { ...state.gridPublic, [action.grid]: action.value } };
+      return { ...state, gridPublic: action.value };
     case "notifPrefs":
       return { ...state, notifPrefs: action.value };
     case "filter":
@@ -212,7 +238,9 @@ type Store = {
    * one-time confirmation. No-op in local/offline mode. */
   reportContent: (contentId: string, reason: string) => Promise<void>;
   saveProfile: (patch: Partial<Profile>) => Promise<void>;
-  saveNotifPrefs: (patch: Partial<State["notifPrefs"]>) => Promise<void>;
+  /** Unlike saveProfile, nothing changes locally until the server accepts it,
+   * and a rejection (a taken handle, the tier cooldown) throws to the caller. */
+  saveSettings: (patch: SettingsPatch) => Promise<void>;
   /** Uploads a picked photo (through the same signed-URL flow post media
    * uses) and saves it as the profile's avatar. */
   saveAvatar: (fileUri: string, mediaType: string) => Promise<void>;
@@ -400,18 +428,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Always present on your own /me (the server only strips it from
       // someone else's profile) — but guard anyway rather than trust that.
       if (me.notifPrefs) dispatch({ type: "notifPrefs", value: me.notifPrefs });
-      dispatch({
-        type: "profile",
-        patch: {
-          handle: me.handle,
-          name: me.name || me.handle,
-          pronouns: me.pronouns,
-          bio: me.bio,
-          city: me.city,
-          avatarUrl: me.avatarUrl,
-          tier: me.privacyTier,
-        },
-      });
+      dispatch({ type: "gridPublic", value: me.gridPublic });
+      dispatch({ type: "profile", patch: profileFromMe(me) });
       setProfileLoaded(true);
       dispatch({ type: "serverVotes", votes: votes.items });
 
@@ -773,20 +791,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [remote, token, callWithRetry],
   );
 
-  const saveNotifPrefs = useCallback(
-    async (patch: Partial<State["notifPrefs"]>) => {
-      const next = { ...state.notifPrefs, ...patch };
-      dispatch({ type: "notifPrefs", value: next });
-      if (!remote) return;
-      const t = await token();
-      if (!t) return;
-      try {
-        await callWithRetry(t, (tok) => api.updateMe(tok, { notifPrefs: next }));
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "could not save your notification preferences");
+  const saveSettings = useCallback(
+    async ({ notifPrefs, gridPublic, tier, ...fields }: SettingsPatch) => {
+      if (!remote) {
+        // No server to enforce the tier cooldown offline, so stamp it here
+        // the same way the API would.
+        const tierChanged = tier !== undefined && tier !== state.profile.tier;
+        dispatch({
+          type: "profile",
+          patch: { ...fields, ...(tierChanged ? { tier, tierChangedAt: new Date().toISOString() } : {}) },
+        });
+        if (notifPrefs) dispatch({ type: "notifPrefs", value: notifPrefs });
+        if (gridPublic) dispatch({ type: "gridPublic", value: gridPublic });
+        return;
       }
+      const t = await token();
+      if (!t) throw new Error("not signed in");
+      const me = await callWithRetry(t, (tok) =>
+        api.updateMe(tok, {
+          ...fields,
+          ...(tier !== undefined ? { privacyTier: tier } : {}),
+          ...(notifPrefs ? { notifPrefs } : {}),
+          ...(gridPublic ? { gridPublic } : {}),
+        }),
+      );
+      if (!me) throw new Error("not signed in");
+      if (me.notifPrefs) dispatch({ type: "notifPrefs", value: me.notifPrefs });
+      dispatch({ type: "gridPublic", value: me.gridPublic });
+      dispatch({ type: "profile", patch: profileFromMe(me) });
     },
-    [remote, state.notifPrefs, token, callWithRetry],
+    [remote, state.profile.tier, token, callWithRetry],
   );
 
   const saveAvatar = useCallback(
@@ -948,7 +982,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleBlock,
       reportContent,
       saveProfile,
-      saveNotifPrefs,
+      saveSettings,
       saveAvatar,
       forgetMe,
       publish,
@@ -971,7 +1005,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       mode, myId, hydrated, profileLoaded, loading, error, refresh, searchPeople, state, positions, voteCount, unlocked, accent, screenTint, liveGradient, loadMoreReels, recordReelView,
-      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
+      reels, posts, people, peopleById, contentById, vote, bumpCommentCount, toggleFollow, toggleBlock, reportContent, saveProfile, saveSettings, saveAvatar, forgetMe, publish, submitPost, postStatus, postError, dismissPostStatus,
       alignments, pending,
     ],
   );

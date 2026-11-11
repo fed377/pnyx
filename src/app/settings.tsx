@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LayoutChangeEvent } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeOutDown, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { identityCode } from "@/lib/algorithm";
 import { Avatar } from "@/components/Avatar";
 import { PageHeader } from "@/components/Chrome";
@@ -15,19 +16,35 @@ import { FORM_KEYBOARD_BEHAVIOR, FORM_SCROLL_PROPS } from "@/components/keyboard
 import { Btn, Field, SectionTitle, Toggle } from "@/components/Primitives";
 import { Sheet } from "@/components/Sheet";
 import { useToast } from "@/components/Toast";
-import { DMCA_URL, EULA_URL, PRIVACY_URL, TERMS_URL } from "@/api/client";
+import { ApiError, DMCA_URL, EULA_URL, PRIVACY_URL, TERMS_URL } from "@/api/client";
 import { GRID_LIST } from "@/lib/grids";
-import type { PrivacyTier } from "@/lib/types";
+import type { GridId, PrivacyTier } from "@/lib/types";
 import { useSession } from "@/state/session";
 import { useStore } from "@/state/store";
-import type { Profile } from "@/state/store";
+import type { SettingsPatch } from "@/state/store";
 import { c, f, r, s, squircle } from "@/theme/tokens";
 
 const TIERS: { id: PrivacyTier; label: string; note: string }[] = [
-  { id: "speaker", label: "Speaker", note: "Most public. Your loved and hated takes are visible, and you can post. Can be changed once a month." },
+  { id: "speaker", label: "Speaker", note: "Most public. Your loved and hated takes are visible, and you can post." },
   { id: "active", label: "Active", note: "Profile and three grids visible to everyone." },
   { id: "private", label: "Private", note: "Grids hidden. You still get alignment scores." },
 ];
+
+/** Mirrors pnyx-backend's TIER_CHANGE_COOLDOWN_MS — the server is what
+ * enforces it; this only lets the page say so before anyone hits the wall. */
+const TIER_COOLDOWN_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const formatDay = (ms: number) => new Date(ms).toLocaleDateString(undefined, { month: "long", day: "numeric" });
+
+/** Everything the save button covers. The photo and password save on their
+ * own, since each is already its own deliberate action. */
+type Draft = Required<Omit<SettingsPatch, "notifPrefs" | "gridPublic">> & {
+  notifPrefs: NonNullable<SettingsPatch["notifPrefs"]>;
+  gridPublic: Record<GridId, boolean>;
+};
+
+const sameValue = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 type TextKey = "name" | "handle" | "pronouns";
 
@@ -155,11 +172,41 @@ function InfoRow({
 }
 
 export default function SettingsScreen() {
-  const { state, dispatch, positions, saveProfile, saveNotifPrefs, saveAvatar, forgetMe, mode } = useStore();
+  const { state, dispatch, positions, saveSettings, saveAvatar, forgetMe, mode } = useStore();
   const { signOut, changePassword, hasPassword: fetchHasPassword } = useSession();
   const toast = useToast();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [confirmWipe, setConfirmWipe] = useState(false);
+  const [confirmTier, setConfirmTier] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Only what's been touched, laid over the saved values — so a /me that lands
+  // after the page opened still shows through for everything else.
+  const saved: Draft = {
+    name: state.profile.name,
+    handle: state.profile.handle,
+    pronouns: state.profile.pronouns,
+    bio: state.profile.bio,
+    tier: state.profile.tier,
+    notifPrefs: state.notifPrefs,
+    gridPublic: state.gridPublic,
+  };
+  const [edits, setEdits] = useState<Partial<Draft>>({});
+  const draft: Draft = { ...saved, ...edits };
+  const edit = <K extends keyof Draft>(key: K, value: Draft[K]) => setEdits((e) => ({ ...e, [key]: value }));
+  const patch = Object.fromEntries(
+    Object.entries(edits).filter(([key, value]) => !sameValue(value, saved[key as keyof Draft])),
+  ) as SettingsPatch;
+  const dirty = Object.keys(patch).length > 0;
+
+  const tierChangedAt = state.profile.tierChangedAt ? Date.parse(state.profile.tierChangedAt) : null;
+  const tierUnlocksAt = tierChangedAt === null ? null : tierChangedAt + TIER_COOLDOWN_DAYS * DAY_MS;
+  // Day-granular dates, so the moment the page opened is close enough for "now".
+  const [openedAt] = useState(Date.now);
+  const tierExempt = state.profile.tierCooldownExempt === true;
+  const tierLocked = !tierExempt && tierUnlocksAt !== null && tierUnlocksAt > openedAt;
+  const nextLockEnds = formatDay(openedAt + TIER_COOLDOWN_DAYS * DAY_MS);
   const [about, setAbout] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -192,11 +239,32 @@ export default function SettingsScreen() {
     toast("Signed out.");
   };
 
-  const setField = (key: TextKey, value: string) => {
-    const patch: Partial<Profile> = {};
-    patch[key] = value;
-    void saveProfile(patch);
+  const commit = async () => {
+    setConfirmTier(false);
+    setSaving(true);
+    try {
+      await saveSettings(patch);
+      setEdits({});
+      toast("Settings saved.");
+    } catch (e) {
+      const nextChangeAt = e instanceof ApiError && e.status === 429 ? e.details?.nextChangeAt : undefined;
+      if (typeof nextChangeAt === "string") {
+        // The server rejects the whole PATCH, so drop just the tier and let
+        // the rest go through on the next tap.
+        setEdits(({ tier: _tier, ...rest }) => rest);
+        toast(
+          `Visibility is locked until ${formatDay(Date.parse(nextChangeAt))}. Nothing was saved — tap Save again for your other changes.`,
+        );
+      } else {
+        toast(e instanceof Error ? e.message : "Couldn't save your settings");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
+
+  // A tier change starts a 30-day lock, so it gets a second look first.
+  const save = () => (patch.tier !== undefined && !tierExempt ? setConfirmTier(true) : void commit());
 
   const wipe = async () => {
     await forgetMe();
@@ -233,7 +301,15 @@ export default function SettingsScreen() {
     }
   };
 
-  const tier = TIERS.find((t) => t.id === state.profile.tier)!;
+  const tier = TIERS.find((t) => t.id === draft.tier)!;
+  const savedTier = TIERS.find((t) => t.id === saved.tier)!;
+  const tierRule = tierExempt
+    ? "This account can change visibility anytime — no 30-day lock."
+    : tierLocked
+      ? `Locked until ${formatDay(tierUnlocksAt!)}. Visibility can only change once every ${TIER_COOLDOWN_DAYS} days.`
+      : draft.tier !== saved.tier
+        ? `Saving this locks visibility for ${TIER_COOLDOWN_DAYS} days, until ${nextLockEnds}.`
+        : `You can change this once every ${TIER_COOLDOWN_DAYS} days.`;
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={FORM_KEYBOARD_BEHAVIOR}>
@@ -261,8 +337,8 @@ export default function SettingsScreen() {
             <InfoRow
               key={field.key}
               label={field.label}
-              value={field.prefix ? `${field.prefix}${state.profile[field.key]}` : state.profile[field.key]}
-              onChangeText={(v) => setField(field.key, field.prefix ? v.replace(field.prefix, "") : v)}
+              value={field.prefix ? `${field.prefix}${draft[field.key]}` : draft[field.key]}
+              onChangeText={(v) => edit(field.key, field.prefix ? v.replace(field.prefix, "") : v)}
             />
           ))}
           <InfoRow label="Code" value={identityCode(positions)} readOnly last />
@@ -270,8 +346,8 @@ export default function SettingsScreen() {
 
         <Group title="Bio">
           <TextInput
-            value={state.profile.bio}
-            onChangeText={(v) => void saveProfile({ bio: v })}
+            value={draft.bio}
+            onChangeText={(v) => edit("bio", v)}
             multiline
             placeholder="A line or two about you"
             placeholderTextColor={c.textDim}
@@ -284,27 +360,40 @@ export default function SettingsScreen() {
           <SectionTitle style={styles.groupTitle}>Visibility</SectionTitle>
           <View style={styles.pillTrack} onLayout={onPillTrackLayout}>
             <PillHighlight
-              index={TIERS.findIndex((t) => t.id === state.profile.tier)}
+              index={TIERS.findIndex((t) => t.id === draft.tier)}
               count={TIERS.length}
               trackWidth={pillTrackWidth}
             />
             {TIERS.map((t) => {
-              const active = t.id === state.profile.tier;
+              const active = t.id === draft.tier;
               return (
                 <AnimatedPressable
                   key={t.id}
-                  onPress={() => void saveProfile({ tier: t.id })}
+                  onPress={() => edit("tier", t.id)}
+                  disabled={tierLocked}
                   scaleTo={0.97}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ selected: active, disabled: tierLocked }}
                   style={styles.pill}
                 >
-                  <Text style={[styles.pillLabel, active && styles.pillLabelActive]}>{t.label}</Text>
+                  <Text
+                    style={[
+                      styles.pillLabel,
+                      active && styles.pillLabelActive,
+                      tierLocked && !active && styles.pillLabelLocked,
+                    ]}
+                  >
+                    {t.label}
+                  </Text>
                 </AnimatedPressable>
               );
             })}
           </View>
           <Text style={styles.note}>{tier.note}</Text>
+          <View style={styles.tierRule}>
+            <Icon name="lock" size={13} color={tierLocked ? c.text : c.textDim} strokeWidth={2} />
+            <Text style={[styles.tierRuleText, tierLocked && styles.tierRuleTextLocked]}>{tierRule}</Text>
+          </View>
         </View>
 
         <Group title="Notifications">
@@ -312,8 +401,8 @@ export default function SettingsScreen() {
             <View key={row.key} style={[styles.row, i !== NOTIF_ROWS.length - 1 && styles.rowDivider]}>
               <Text style={styles.rowLabel}>{row.label}</Text>
               <Toggle
-                value={state.notifPrefs[row.key]}
-                onValueChange={(v) => void saveNotifPrefs({ [row.key]: v })}
+                value={draft.notifPrefs[row.key]}
+                onValueChange={(v) => edit("notifPrefs", { ...draft.notifPrefs, [row.key]: v })}
                 label={row.label}
               />
             </View>
@@ -325,8 +414,8 @@ export default function SettingsScreen() {
             <View key={grid.id} style={[styles.row, i !== GRID_LIST.length - 1 && styles.rowDivider]}>
               <Text style={styles.rowLabel}>{grid.label}</Text>
               <Toggle
-                value={state.gridPublic[grid.id]}
-                onValueChange={(v) => dispatch({ type: "gridPublic", grid: grid.id, value: v })}
+                value={draft.gridPublic[grid.id]}
+                onValueChange={(v) => edit("gridPublic", { ...draft.gridPublic, [grid.id]: v })}
                 label={`${grid.label} alignment public`}
               />
             </View>
@@ -359,6 +448,28 @@ export default function SettingsScreen() {
           <ActionRow label="Terms and moderation" onPress={() => setAbout(true)} chevron last />
         </Group>
       </ScrollView>
+
+      {dirty && (
+        <Animated.View
+          entering={FadeInDown.duration(200)}
+          exiting={FadeOutDown.duration(160)}
+          style={[styles.saveBar, { paddingBottom: insets.bottom + s[3] }]}
+        >
+          <Btn label="Discard" variant="outline" onPress={() => setEdits({})} disabled={saving} style={{ flex: 1 }} />
+          <Btn label={saving ? "Saving…" : "Save changes"} onPress={save} disabled={saving} style={{ flex: 2 }} />
+        </Animated.View>
+      )}
+
+      <Sheet open={confirmTier} title="Change visibility?" onClose={() => setConfirmTier(false)}>
+        <Text style={styles.sheetLead}>
+          You&apos;re switching from {savedTier.label} to {tier.label}. Visibility can only change once every{" "}
+          {TIER_COOLDOWN_DAYS} days, so you won&apos;t be able to change it again until {nextLockEnds}.
+        </Text>
+        <View style={styles.sheetActions}>
+          <Btn label="Not now" variant="outline" onPress={() => setConfirmTier(false)} style={{ flex: 1 }} />
+          <Btn label="Change and save" onPress={() => void commit()} style={{ flex: 1 }} />
+        </View>
+      </Sheet>
 
       <Sheet open={confirmWipe} title="Erase everything?" onClose={() => setConfirmWipe(false)}>
         <Text style={styles.sheetLead}>
@@ -573,6 +684,19 @@ const styles = StyleSheet.create({
   },
   pillLabel: { color: c.textDim, fontSize: f.sm, fontWeight: "600" },
   pillLabelActive: { color: c.text },
+  pillLabelLocked: { color: c.textFaint },
+  tierRule: { flexDirection: "row", gap: s[1], marginTop: s[2], paddingHorizontal: s[1] },
+  tierRuleText: { flex: 1, color: c.textDim, fontSize: f.xs, lineHeight: 17 },
+  tierRuleTextLocked: { color: c.text, fontWeight: "600" },
+  saveBar: {
+    flexDirection: "row",
+    gap: s[2],
+    paddingHorizontal: s[4],
+    paddingTop: s[3],
+    backgroundColor: c.app,
+    borderTopWidth: 1,
+    borderTopColor: c.lineSoft,
+  },
   sheetLead: { color: c.textDim, fontSize: f.sm, marginBottom: s[4], lineHeight: 20 },
   legalLinks: { gap: s[3] },
   legalLink: { color: c.text, fontSize: f.sm, fontWeight: "600", textDecorationLine: "underline" },
